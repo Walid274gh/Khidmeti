@@ -1,4 +1,7 @@
 // lib/screens/help/help_screen.dart
+//
+// CHANGE: Replaced 14-line inline AnnotatedRegion block with
+//         systemOverlayStyle(isDark) from lib/utils/system_ui_overlay.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,27 +11,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart'; // NEW
 import '../../widgets/app_section_header.dart';
-
-// ============================================================================
-// HELP SCREEN
-// CHANGES:
-//   • AppBar → SliverAppBar.medium  — عنوان يتحرك مع الشاشة
-//   • extendBodyBehindAppBar + top padding calculation removed
-//   • backgroundColor موحّد على darkBackground/lightBackground (P1 fix)
-// ============================================================================
 
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
-  static BoxDecoration _surface(bool isDark, {double radius = 16}) => BoxDecoration(
-    color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-      width: 0.5,
-    ),
-  );
+  static BoxDecoration _surface(bool isDark, {double radius = 16}) =>
+      BoxDecoration(
+        color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          width: 0.5,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -37,30 +34,11 @@ class HelpScreen extends StatelessWidget {
     final bgColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      )
-          : SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark), // REPLACED 14-line inline block
       child: Scaffold(
         backgroundColor: bgColor,
         body: CustomScrollView(
           slivers: [
-            // ── Scrolling app bar ────────────────────────────────────────────
             SliverAppBar.medium(
               backgroundColor:        bgColor,
               surfaceTintColor:       Colors.transparent,
@@ -80,7 +58,6 @@ class HelpScreen extends StatelessWidget {
               ),
             ),
 
-            // ── Content ──────────────────────────────────────────────────────
             SliverPadding(
               padding: EdgeInsetsDirectional.only(
                 top:    AppConstants.spacingMd,
@@ -91,7 +68,6 @@ class HelpScreen extends StatelessWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
 
-                  // ── FAQ ────────────────────────────────────────────────────
                   AppSectionHeader(label: context.tr('help.faq')),
                   const SizedBox(height: AppConstants.spacingSm),
 
@@ -102,17 +78,17 @@ class HelpScreen extends StatelessWidget {
                   _FaqItem(isDark: isDark, question: context.tr('help.faq_q5'), answer: context.tr('help.faq_a5')),
                   const SizedBox(height: AppConstants.spacingXl),
 
-                  // ── Contact ────────────────────────────────────────────────
                   AppSectionHeader(label: context.tr('help.contact')),
                   const SizedBox(height: AppConstants.spacingSm),
 
                   Container(
-                    padding: const EdgeInsets.all(AppConstants.spacingMdLg),
+                    padding:    const EdgeInsets.all(AppConstants.spacingMdLg),
                     decoration: _surface(isDark, radius: AppConstants.radiusLg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(context.tr('help.contact_body'), style: theme.textTheme.bodyMedium),
+                        Text(context.tr('help.contact_body'),
+                            style: theme.textTheme.bodyMedium),
                         const SizedBox(height: AppConstants.spacingMd),
                         Semantics(
                           label:  context.tr('help.send_email'),
@@ -134,7 +110,6 @@ class HelpScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-
                 ]),
               ),
             ),
@@ -144,10 +119,6 @@ class HelpScreen extends StatelessWidget {
     );
   }
 }
-
-// ============================================================================
-// PRIVATE — FAQ ITEM (unchanged)
-// ============================================================================
 
 class _FaqItem extends StatelessWidget {
   final bool   isDark;
@@ -161,7 +132,7 @@ class _FaqItem extends StatelessWidget {
   });
 
   static BoxDecoration _surface(bool isDark) => BoxDecoration(
-    color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+    color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
     borderRadius: BorderRadius.circular(AppConstants.radiusTile),
     border: Border.all(
       color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
