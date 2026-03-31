@@ -1,4 +1,7 @@
 // lib/screens/settings/widgets/profile_card.dart
+//
+// CHANGE: settings_provider.dart import updated from '../settings_provider.dart'
+//         to '../../../providers/settings_provider.dart'.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -7,11 +10,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../widgets/app_user_avatar.dart';
-import '../settings_provider.dart';
-
-// FIX (Structure): ProfileAvatar (profile_avatar.dart) merged here.
-// The original file was 12 lines with zero added logic — a pure wrapper
-// around AppUserAvatar used only by this widget. File deleted.
+import '../../../providers/settings_provider.dart'; // CHANGED path
 
 class ProfileCard extends StatelessWidget {
   final SettingsState state;
@@ -47,7 +46,6 @@ class ProfileCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Inlined from deleted profile_avatar.dart — zero logic change.
             AppUserAvatar(
               imageUrl:    state.profileImageUrl,
               name:        state.userName ?? '',
@@ -69,8 +67,7 @@ class ProfileCard extends StatelessWidget {
                       fontSize:      AppConstants.fontSizeXl,
                       fontWeight:    FontWeight.w700,
                       letterSpacing: -0.3,
-                      // FIX: replaced raw Color(0xAA000000) with AppTheme token.
-                      shadows: AppTheme.profileCardTextShadow,
+                      shadows:       AppTheme.profileCardTextShadow,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -78,12 +75,9 @@ class ProfileCard extends StatelessWidget {
 
                   if (state.isWorkerAccount &&
                       state.professionLabel != null &&
-                      state.professionLabel!.isNotEmpty) ...[ 
+                      state.professionLabel!.isNotEmpty) ...[
                     const SizedBox(height: AppConstants.spacingXs),
                     Container(
-                      // FIX: replaced EdgeInsets.symmetric(horizontal: 10, vertical: 3)
-                      // with AppConstants.badgePaddingH / badgePaddingV tokens.
-                      // FIX: replaced BorderRadius.circular(20) with AppConstants.radiusXl.
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppConstants.badgePaddingH,
                         vertical:   AppConstants.badgePaddingV,

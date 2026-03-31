@@ -1,4 +1,7 @@
 // lib/screens/settings/widgets/settings_content.dart
+//
+// CHANGE: settings_provider.dart import updated from '../settings_provider.dart'
+//         to '../../../providers/settings_provider.dart'.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,33 +9,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../../providers/core_providers.dart';
 import '../../../providers/theme_provider.dart';
+import '../../../providers/settings_provider.dart'; // CHANGED path
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../widgets/app_section_header.dart';
 import '../../../widgets/glass_bottom_sheet.dart';
 import '../../../widgets/shimmer_box.dart';
-import '../settings_provider.dart';
 import 'profile_card.dart';
 import 'settings_tile.dart';
 import 'sheet_option.dart';
 import 'sign_out_tile.dart';
-
-// ============================================================================
-// SETTINGS CONTENT
-// ============================================================================
-//
-// FIX (Performance): theme and language subtitles are now wrapped in targeted
-// Consumer widgets so only those tiles rebuild on theme/language change,
-// rather than the entire ListView. The full tree still rebuilds on locale
-// change at the MaterialApp level, but the Riverpod dependency scope is now
-// correctly bounded.
-//
-// FIX (QA): isSigningOut / isDeletingAccount passed to SignOutTile.isEnabled
-// to prevent double-tap race condition.
-//
-// FIX (Marketplace P0): "Delete account" tile added to comply with RGPD,
-// App Store, and Play Store requirements.
 
 class SettingsContent extends ConsumerWidget {
   final SettingsState state;
@@ -41,10 +28,7 @@ class SettingsContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // LanguageService is watched here only for the language subtitle — the
-    // Consumer below narrows the rebuild scope for the theme tile.
-    final languageService = ref.watch(languageServiceProvider);
-    // Derived from SettingsState — whether any blocking action is running.
+    final languageService    = ref.watch(languageServiceProvider);
     final isActionInProgress = state.isSigningOut || state.isDeletingAccount;
 
     return ListView(
@@ -57,8 +41,6 @@ class SettingsContent extends ConsumerWidget {
         end:    AppConstants.paddingMd,
       ),
       children: [
-
-        // ── Profile card: shimmer while data loads, real card when ready ──────
         if (state.status == SettingsStatus.loading)
           const _ProfileCardSkeleton()
         else
@@ -66,7 +48,6 @@ class SettingsContent extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingLg),
 
-        // ── Static tiles below — always shown immediately ─────────────────────
         AppSectionHeader(label: context.tr('settings.general')),
         const SizedBox(height: AppConstants.spacingSm),
 
@@ -87,8 +68,6 @@ class SettingsContent extends ConsumerWidget {
           onTap:          () => context.push(AppRoutes.notifications),
         ),
 
-        // FIX (Performance): Consumer wraps only the theme tile so that
-        // ThemeMode changes rebuild just this tile instead of the full ListView.
         Consumer(
           builder: (context, ref, _) {
             final themeMode = ref.watch(themeModeProvider);
@@ -132,7 +111,6 @@ class SettingsContent extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingSm),
 
-        // FIX (QA): isEnabled = !isActionInProgress prevents double-tap.
         SignOutTile(
           onSignOut: isActionInProgress ? () {} : () => _confirmSignOut(context, ref),
           isEnabled: !isActionInProgress,
@@ -140,7 +118,6 @@ class SettingsContent extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingXs),
 
-        // FIX (Marketplace P0): Delete account tile — RGPD + App Store + Play Store.
         _DeleteAccountTile(
           isEnabled: !isActionInProgress,
           onTap:     () => _confirmDeleteAccount(context, ref),
@@ -201,11 +178,7 @@ class SettingsContent extends ConsumerWidget {
     );
   }
 
-  void _showThemeSheet(
-    BuildContext context,
-    WidgetRef    ref,
-    ThemeMode    current,
-  ) {
+  void _showThemeSheet(BuildContext context, WidgetRef ref, ThemeMode current) {
     showModalBottomSheet<void>(
       context:            context,
       backgroundColor:    Colors.transparent,
@@ -219,20 +192,16 @@ class SettingsContent extends ConsumerWidget {
             isSelected: current == ThemeMode.system,
             onTap: () {
               Navigator.of(sheetCtx).pop();
-              ref.read(themeModeProvider.notifier)
-                  .setThemeMode(ThemeMode.system);
+              ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.system);
             },
           ),
-          // FIX (L10n): changed keys from 'settings.light' / 'settings.dark'
-          // (missing) to the correct keys now added to all locale maps.
           SheetOption(
             label:      context.tr('settings.light'),
             icon:       Icons.light_mode_rounded,
             isSelected: current == ThemeMode.light,
             onTap: () {
               Navigator.of(sheetCtx).pop();
-              ref.read(themeModeProvider.notifier)
-                  .setThemeMode(ThemeMode.light);
+              ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.light);
             },
           ),
           SheetOption(
@@ -241,8 +210,7 @@ class SettingsContent extends ConsumerWidget {
             isSelected: current == ThemeMode.dark,
             onTap: () {
               Navigator.of(sheetCtx).pop();
-              ref.read(themeModeProvider.notifier)
-                  .setThemeMode(ThemeMode.dark);
+              ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark);
             },
           ),
         ],
@@ -304,8 +272,6 @@ class SettingsContent extends ConsumerWidget {
     );
   }
 
-  // FIX (L10n): uses `settings.light` and `settings.dark` — keys that now
-  // exist in all three locale maps after the localization.dart update.
   String _themeModeLabel(BuildContext context, ThemeMode mode) {
     return switch (mode) {
       ThemeMode.system => context.tr('settings.system'),
@@ -317,8 +283,6 @@ class SettingsContent extends ConsumerWidget {
 
 // ============================================================================
 // PRIVATE — DELETE ACCOUNT TILE
-// Visually distinct from SignOutTile: uses error color instead of signOutRed,
-// and a different icon, to signal a higher-stakes irreversible action.
 // ============================================================================
 
 class _DeleteAccountTile extends StatelessWidget {
@@ -332,8 +296,8 @@ class _DeleteAccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme    = Theme.of(context);
-    final isDark   = theme.brightness == Brightness.dark;
+    final theme      = Theme.of(context);
+    final isDark     = theme.brightness == Brightness.dark;
     final errorColor = isEnabled
         ? theme.colorScheme.error
         : theme.colorScheme.error.withOpacity(0.4);
@@ -371,11 +335,7 @@ class _DeleteAccountTile extends StatelessWidget {
                     color:        errorColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                   ),
-                  child: Icon(
-                    AppIcons.deleteAccount,
-                    color: errorColor,
-                    size:  20,
-                  ),
+                  child: Icon(AppIcons.deleteAccount, color: errorColor, size: 20),
                 ),
                 const SizedBox(width: AppConstants.spacingTileInner),
                 Expanded(
@@ -404,7 +364,6 @@ class _DeleteAccountTile extends StatelessWidget {
 
 // ============================================================================
 // PRIVATE — PROFILE CARD SKELETON
-// Shimmers only the card area. Tiles beneath it are never blocked.
 // ============================================================================
 
 class _ProfileCardSkeleton extends StatefulWidget {
@@ -423,7 +382,7 @@ class _ProfileCardSkeletonState extends State<_ProfileCardSkeleton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
+      vsync:    this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
     _anim = Tween<double>(begin: 0.3, end: 0.7)
