@@ -1,0 +1,400 @@
+// lib/providers/core_providers.dart
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../config/cloudinary_config.dart';
+import '../services/analytics_service.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/language_service.dart';
+import '../services/notification_push_service.dart';
+import '../services/native_channel_service.dart';
+import '../services/permission_service.dart';
+import '../services/location_service.dart';
+import '../services/wilaya_manager.dart';
+import '../services/geographic_grid_service.dart';
+import '../services/realtime_location_service.dart';
+import '../services/media_service.dart';
+import '../services/cloudinary_service.dart';
+import '../services/service_request_service.dart';
+import '../services/worker_bid_service.dart';
+import '../services/smart_search_service.dart';
+import '../services/ai_intent_extractor.dart';
+import '../services/audio_service.dart';
+import '../services/notification_service.dart';
+import '../services/routing_service.dart';
+import '../services/geocoding_service.dart';
+import '../services/speech_to_text_service.dart';
+import '../models/user_model.dart';
+import '../models/worker_model.dart';
+import '../models/service_request_enhanced_model.dart';
+import '../models/worker_bid_model.dart';
+// FIX (Structure): ai_providers.dart merged here — was a 6-line file
+// imported by only 2 consumers. No growth potential → merged per over-split rule.
+export 'auth_providers.dart';
+
+// ============================================================================
+// AI INTENT EXTRACTOR — merged from lib/providers/ai_providers.dart
+// ============================================================================
+// FIX (Structure): ai_providers.dart was 6 lines and imported by only
+// core_providers.dart and home_search_controller.dart. Merging eliminates
+// one indirection file with zero growth potential (single provider, no state).
+
+final aiIntentExtractorProvider = Provider<AiIntentExtractorService>((ref) {
+  return AiIntentExtractorService();
+});
+
+// ============================================================================
+// LEVEL 0 — INDEPENDENT SERVICES
+// ============================================================================
+
+final firestoreServiceProvider = Provider<FirestoreService>((ref) {
+  _logInfo('Initializing FirestoreService');
+  final service = FirestoreService();
+  service.startCacheCleanup();
+  ref.onDispose(() { _logInfo('Disposing FirestoreService'); service.dispose(); });
+  return service;
+});
+
+final nativeChannelServiceProvider = Provider<NativeChannelService>((ref) {
+  _logInfo('Initializing NativeChannelService');
+  final service = NativeChannelService();
+  ref.onDispose(() { _logInfo('Disposing NativeChannelService'); service.dispose(); });
+  return service;
+});
+
+final permissionServiceProvider = Provider<PermissionService>((ref) {
+  _logInfo('Initializing PermissionService');
+  final service = PermissionService();
+  ref.onDispose(() { _logInfo('Disposing PermissionService'); service.dispose(); });
+  return service;
+});
+
+final locationServiceProvider = Provider<LocationService>((ref) {
+  _logInfo('Initializing LocationService');
+  final service = LocationService();
+  ref.onDispose(() async { _logInfo('Disposing LocationService'); await service.dispose(); });
+  return service;
+});
+
+final languageServiceProvider = ChangeNotifierProvider<LanguageService>((ref) {
+  _logInfo('Initializing LanguageService');
+  final service = LanguageService();
+  ref.onDispose(() { _logInfo('Disposing LanguageService'); service.dispose(); });
+  return service;
+});
+
+final wilayaManagerProvider = Provider<WilayaManager>((ref) {
+  _logInfo('Initializing WilayaManager');
+  final service = WilayaManager();
+  ref.onDispose(() { _logInfo('Disposing WilayaManager'); service.dispose(); });
+  return service;
+});
+
+final cloudinaryServiceProvider = Provider<CloudinaryService>((ref) {
+  _logInfo('Initializing CloudinaryService');
+  CloudinaryConfig.validate();
+  return CloudinaryService(
+    cloudName:    CloudinaryConfig.cloudName,
+    uploadPreset: CloudinaryConfig.uploadPreset,
+  );
+});
+
+final routingServiceProvider = Provider<RoutingService>((ref) {
+  _logInfo('Initializing RoutingService');
+  final service = RoutingService();
+  ref.onDispose(() { _logInfo('Disposing RoutingService'); service.dispose(); });
+  return service;
+});
+
+final geocodingServiceProvider = Provider<GeocodingService>((ref) {
+  _logInfo('Initializing GeocodingService');
+  final service = GeocodingService();
+  ref.onDispose(() { _logInfo('Disposing GeocodingService'); service.dispose(); });
+  return service;
+});
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  _logInfo('Initializing NotificationService');
+  final service = NotificationService();
+  ref.onDispose(() { _logInfo('Disposing NotificationService'); service.dispose(); });
+  return service;
+});
+
+final audioServiceProvider = Provider<AudioService>((ref) {
+  _logInfo('Initializing AudioService');
+  final service = AudioService();
+  ref.onDispose(() async { _logInfo('Disposing AudioService'); await service.dispose(); });
+  return service;
+});
+
+final speechToTextServiceProvider = Provider<SpeechToTextService>((ref) {
+  _logInfo('Initializing SpeechToTextService');
+  final service = SpeechToTextService();
+  ref.onDispose(() { _logInfo('Disposing SpeechToTextService'); service.dispose(); });
+  return service;
+});
+
+final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
+  _logInfo('Initializing AnalyticsService');
+  return AnalyticsService();
+});
+
+// ============================================================================
+// LEVEL 1
+// ============================================================================
+
+final mediaServiceProvider = Provider<MediaService>((ref) {
+  _logInfo('Initializing MediaService');
+  final cloudinaryService = ref.watch(cloudinaryServiceProvider);
+  final service = MediaService(cloudinaryService);
+  ref.onDispose(() async { _logInfo('Disposing MediaService'); await service.dispose(); });
+  return service;
+});
+
+final geographicGridServiceProvider = Provider<GeographicGridService>((ref) {
+  _logInfo('Initializing GeographicGridService');
+  final service = GeographicGridService(
+    ref.watch(firestoreServiceProvider),
+    ref.watch(wilayaManagerProvider),
+  );
+  ref.onDispose(() { _logInfo('Disposing GeographicGridService'); service.dispose(); });
+  return service;
+});
+
+final authServiceProvider = ChangeNotifierProvider<AuthService>((ref) {
+  _logInfo('Initializing AuthService');
+  final service = AuthService(ref.watch(firestoreServiceProvider));
+  ref.onDispose(() { _logInfo('Disposing AuthService'); service.dispose(); });
+  return service;
+});
+
+// ============================================================================
+// LEVEL 2
+// ============================================================================
+
+final notificationPushServiceProvider = Provider<NotificationPushService>((ref) {
+  _logInfo('Initializing NotificationPushService');
+  final service = NotificationPushService(
+    ref.watch(authServiceProvider),
+    ref.watch(firestoreServiceProvider),
+  );
+  ref.onDispose(() async { _logInfo('Disposing NotificationPushService'); await service.dispose(); });
+  return service;
+});
+
+final realTimeLocationServiceProvider = Provider<RealTimeLocationService>((ref) {
+  _logInfo('Initializing RealTimeLocationService');
+  final service = RealTimeLocationService(
+    ref.watch(authServiceProvider),
+    ref.watch(firestoreServiceProvider),
+  );
+  ref.onDispose(() async { _logInfo('Disposing RealTimeLocationService'); await service.dispose(); });
+  return service;
+});
+
+final serviceRequestServiceProvider = Provider<ServiceRequestService>((ref) {
+  _logInfo('Initializing ServiceRequestService');
+  final service = ServiceRequestService(
+    ref.watch(firestoreServiceProvider),
+    ref.watch(mediaServiceProvider),
+    ref.watch(geographicGridServiceProvider),
+  );
+  ref.onDispose(() { _logInfo('Disposing ServiceRequestService'); service.dispose(); });
+  return service;
+});
+
+final workerBidServiceProvider = Provider<WorkerBidService>((ref) {
+  _logInfo('Initializing WorkerBidService');
+  final service = WorkerBidService(ref.watch(firestoreServiceProvider));
+  ref.onDispose(() { _logInfo('Disposing WorkerBidService'); service.dispose(); });
+  return service;
+});
+
+final smartSearchServiceProvider = Provider<SmartSearchService>((ref) {
+  _logInfo('Initializing SmartSearchService');
+  final service = SmartSearchService(
+    ref.watch(firestoreServiceProvider),
+    ref.watch(geographicGridServiceProvider),
+    ref.watch(wilayaManagerProvider),
+  );
+  ref.onDispose(() { _logInfo('Disposing SmartSearchService'); service.dispose(); });
+  return service;
+});
+
+// ============================================================================
+// LANGUAGE & LOCALE
+// ============================================================================
+
+final currentLocaleProvider = Provider<Locale>((ref) =>
+    ref.watch(languageServiceProvider).currentLocale);
+
+final currentLanguageCodeProvider = Provider<String>((ref) =>
+    ref.watch(currentLocaleProvider).languageCode);
+
+final isRTLProvider = Provider<bool>((ref) =>
+    ref.watch(languageServiceProvider).isRTL);
+
+// ============================================================================
+// PERMISSIONS
+// ============================================================================
+
+final hasLocationPermissionProvider = FutureProvider<bool>((ref) async {
+  try {
+    return await ref.watch(permissionServiceProvider).hasLocationPermission();
+  } catch (e) { _logError('hasLocationPermissionProvider', e); return false; }
+});
+
+final hasAllCriticalPermissionsProvider = FutureProvider<bool>((ref) async {
+  try {
+    return await ref.watch(permissionServiceProvider).areAllCriticalPermissionsGranted();
+  } catch (e) { _logError('hasAllCriticalPermissionsProvider', e); return false; }
+});
+
+// ============================================================================
+// PROFILE PROVIDERS
+// ============================================================================
+
+final userProfileProvider = FutureProvider.family
+    .autoDispose<UserModel?, String>((ref, String userId) async {
+  if (userId.trim().isEmpty) throw ArgumentError('User ID cannot be empty');
+  try {
+    return await ref.watch(firestoreServiceProvider).getUser(userId);
+  } catch (e) { _logError('userProfileProvider($userId)', e); rethrow; }
+});
+
+final workerProfileProvider = FutureProvider.family
+    .autoDispose<WorkerModel?, String>((ref, String workerId) async {
+  if (workerId.trim().isEmpty) throw ArgumentError('Worker ID cannot be empty');
+  try {
+    return await ref.watch(firestoreServiceProvider).getWorker(workerId);
+  } catch (e) { _logError('workerProfileProvider($workerId)', e); rethrow; }
+});
+
+final serviceRequestProvider = FutureProvider.family
+    .autoDispose<ServiceRequestEnhancedModel?, String>((ref, String requestId) async {
+  if (requestId.trim().isEmpty) throw ArgumentError('Request ID cannot be empty');
+  try {
+    return await ref.watch(firestoreServiceProvider).getServiceRequest(requestId);
+  } catch (e) { _logError('serviceRequestProvider($requestId)', e); rethrow; }
+});
+
+// ============================================================================
+// STREAM PROVIDERS
+// ============================================================================
+
+final userServiceRequestsStreamProvider = StreamProvider.family
+    .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String userId) {
+  if (userId.trim().isEmpty)
+    return Stream.error(ArgumentError('User ID cannot be empty'));
+  try {
+    return ref.watch(firestoreServiceProvider).streamUserServiceRequests(userId);
+  } catch (e) { _logError('userServiceRequestsStreamProvider', e); return Stream.error(e); }
+});
+
+final workerServiceRequestsStreamProvider = StreamProvider.family
+    .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String workerId) {
+  if (workerId.trim().isEmpty)
+    return Stream.error(ArgumentError('Worker ID cannot be empty'));
+  try {
+    return ref.watch(firestoreServiceProvider).streamWorkerServiceRequests(workerId);
+  } catch (e) { _logError('workerServiceRequestsStreamProvider', e); return Stream.error(e); }
+});
+
+final serviceRequestStreamProvider = StreamProvider.family
+    .autoDispose<ServiceRequestEnhancedModel?, String>((ref, String requestId) {
+  if (requestId.trim().isEmpty)
+    return Stream.error(ArgumentError('Request ID cannot be empty'));
+  try {
+    return ref.watch(firestoreServiceProvider).streamServiceRequest(requestId);
+  } catch (e) { _logError('serviceRequestStreamProvider', e); return Stream.error(e); }
+});
+
+final bidsStreamProvider = StreamProvider.family
+    .autoDispose<List<WorkerBidModel>, String>((ref, String requestId) {
+  if (requestId.trim().isEmpty)
+    return Stream.error(ArgumentError('Request ID cannot be empty'));
+  try {
+    return ref.watch(workerBidServiceProvider).streamBidsForRequest(requestId);
+  } catch (e) { _logError('bidsStreamProvider', e); return Stream.error(e); }
+});
+
+final availableRequestsStreamProvider = StreamProvider.family.autoDispose<
+    List<ServiceRequestEnhancedModel>,
+    ({int wilayaCode, String serviceType})>((ref, params) {
+  try {
+    return ref.watch(workerBidServiceProvider).streamAvailableRequests(
+        wilayaCode: params.wilayaCode, serviceType: params.serviceType);
+  } catch (e) { _logError('availableRequestsStreamProvider', e); return Stream.error(e); }
+});
+
+final workerActiveJobsStreamProvider = StreamProvider.family
+    .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String workerId) {
+  if (workerId.trim().isEmpty)
+    return Stream.error(ArgumentError('Worker ID cannot be empty'));
+  try {
+    return ref.watch(workerBidServiceProvider).streamWorkerActiveJobs(workerId);
+  } catch (e) { _logError('workerActiveJobsStreamProvider', e); return Stream.error(e); }
+});
+
+final workerBidsStreamProvider = StreamProvider.family
+    .autoDispose<List<WorkerBidModel>, String>((ref, String workerId) {
+  if (workerId.trim().isEmpty)
+    return Stream.error(ArgumentError('Worker ID cannot be empty'));
+  try {
+    return ref.watch(workerBidServiceProvider).streamWorkerBids(workerId);
+  } catch (e) { _logError('workerBidsStreamProvider', e); return Stream.error(e); }
+});
+
+// ============================================================================
+// UTILITY
+// ============================================================================
+
+final servicesInitializedProvider = FutureProvider<bool>((ref) async {
+  try {
+    ref.watch(firestoreServiceProvider);
+    ref.watch(authServiceProvider);
+    ref.watch(languageServiceProvider);
+    _logInfo('All services initialized successfully');
+    return true;
+  } catch (e) { _logError('servicesInitializedProvider', e); return false; }
+});
+
+// ============================================================================
+// PROVIDER OBSERVER
+// ============================================================================
+
+class CoreProviderObserver extends ProviderObserver {
+  const CoreProviderObserver();
+
+  @override
+  void didAddProvider(ProviderBase p, Object? v, ProviderContainer c) {
+    if (kDebugMode) debugPrint('[Provider] Added: ${p.name ?? p.runtimeType}');
+  }
+  @override
+  void didDisposeProvider(ProviderBase p, ProviderContainer c) {
+    if (kDebugMode) debugPrint('[Provider] Disposed: ${p.name ?? p.runtimeType}');
+  }
+  @override
+  void providerDidFail(ProviderBase p, Object e, StackTrace s, ProviderContainer c) {
+    if (kDebugMode) {
+      debugPrint('[Provider] FAILED: ${p.name ?? p.runtimeType}');
+      debugPrint('[Provider] Error: $e');
+    }
+  }
+}
+
+// ============================================================================
+// LOGGING
+// ============================================================================
+
+void _logInfo(String message) {
+  if (kDebugMode) debugPrint('[CoreProviders] INFO: $message');
+}
+void _logError(String provider, dynamic error) {
+  if (kDebugMode) debugPrint('[CoreProviders] ERROR in $provider: $error');
+}
