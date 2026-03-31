@@ -1,22 +1,25 @@
 // lib/services/audio_service.dart
+//
+// CHANGES:
+//   • _formatBytes() private method removed — replaced with FileSizeFormatter.format()
+//     from lib/utils/file_size_formatter.dart
+//   • _logInfo / _logWarning / _logError replaced with AppLogger calls
 
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+import '../utils/file_size_formatter.dart'; // NEW
+import '../utils/logger.dart';               // NEW (replaces private _log* methods)
+
 class AudioServiceException implements Exception {
-  final String message;
+  final String  message;
   final String? code;
   final dynamic originalError;
 
-  AudioServiceException(
-    this.message, {
-    this.code,
-    this.originalError,
-  });
+  AudioServiceException(this.message, {this.code, this.originalError});
 
   @override
   String toString() =>
@@ -24,37 +27,37 @@ class AudioServiceException implements Exception {
 }
 
 class AudioService {
-  static const int maxRecordingDurationMinutes = 10;
-  static const int maxFileSizeMB = 50;
-  static const int minFileSizeBytes = 1000;
-  static const Duration uploadTimeout = Duration(minutes: 5);
-  static const Duration _periodicDurationInterval = Duration(seconds: 1);
+  static const int      maxRecordingDurationMinutes = 10;
+  static const int      maxFileSizeMB               = 50;
+  static const int      minFileSizeBytes             = 1000;
+  static const Duration uploadTimeout               = Duration(minutes: 5);
+  static const Duration _periodicDurationInterval   = Duration(seconds: 1);
 
   final AudioRecorder _recorder = AudioRecorder();
-  final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer   _player   = AudioPlayer();
 
-  bool _isRecording = false;
-  bool _isPlaying = false;
+  bool   _isRecording = false;
+  bool   _isPlaying   = false;
   String? _currentRecordingPath;
-  StreamSubscription<Duration>? _durationSubscription;
+
+  StreamSubscription<Duration>?    _durationSubscription;
   StreamSubscription<PlayerState>? _playerStateSubscription;
 
-  final _recordingStateController = StreamController<bool>.broadcast();
-  final _playingStateController = StreamController<bool>.broadcast();
+  final _recordingStateController   = StreamController<bool>.broadcast();
+  final _playingStateController     = StreamController<bool>.broadcast();
   final _recordingDurationController = StreamController<Duration>.broadcast();
 
-  bool get isRecording => _isRecording;
-  bool get isPlaying => _isPlaying;
-  Stream<bool> get recordingStateStream => _recordingStateController.stream;
-  Stream<bool> get playingStateStream => _playingStateController.stream;
-  Stream<Duration> get recordingDurationStream =>
-      _recordingDurationController.stream;
+  bool           get isRecording        => _isRecording;
+  bool           get isPlaying          => _isPlaying;
+  Stream<bool>   get recordingStateStream  => _recordingStateController.stream;
+  Stream<bool>   get playingStateStream    => _playingStateController.stream;
+  Stream<Duration> get recordingDurationStream => _recordingDurationController.stream;
 
   Future<bool> hasAudioPermission() async {
     try {
       return await _recorder.hasPermission();
     } catch (e) {
-      _logError('hasAudioPermission', e);
+      AppLogger.error('AudioService.hasAudioPermission', e);
       return false;
     }
   }
@@ -70,7 +73,7 @@ class AudioService {
       }
       return true;
     } catch (e) {
-      _logError('requestAudioPermission', e);
+      AppLogger.error('AudioService.requestAudioPermission', e);
       if (e is AudioServiceException) rethrow;
       return false;
     }
@@ -78,10 +81,8 @@ class AudioService {
 
   Future<void> startRecording() async {
     if (_isRecording) {
-      throw AudioServiceException(
-        'Un enregistrement est déjà en cours',
-        code: 'ALREADY_RECORDING',
-      );
+      throw AudioServiceException('Un enregistrement est déjà en cours',
+          code: 'ALREADY_RECORDING');
     }
 
     try {
@@ -100,9 +101,9 @@ class AudioService {
 
       await _recorder.start(
         const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
+          encoder:     AudioEncoder.aacLc,
+          bitRate:     128000,
+          sampleRate:  44100,
           numChannels: 1,
         ),
         path: recordingPath,
@@ -110,14 +111,14 @@ class AudioService {
 
       _setRecordingState(true);
       _startRecordingDurationTimer();
-      _logInfo('Enregistrement démarré: $recordingPath');
+      AppLogger.info('Enregistrement démarré: $recordingPath');
     } catch (e) {
       _setRecordingState(false);
       _currentRecordingPath = null;
-      _logError('startRecording', e);
+      AppLogger.error('AudioService.startRecording', e);
       if (e is AudioServiceException) rethrow;
       throw AudioServiceException(
-        'Erreur lors du démarrage de l\'enregistrement',
+        "Erreur lors du démarrage de l'enregistrement",
         code: 'START_RECORDING_FAILED',
         originalError: e,
       );
@@ -126,7 +127,7 @@ class AudioService {
 
   Future<String?> stopRecording() async {
     if (!_isRecording) {
-      _logWarning('stopRecording appelé mais aucun enregistrement en cours');
+      AppLogger.warning('stopRecording appelé mais aucun enregistrement en cours');
       return null;
     }
 
@@ -137,7 +138,8 @@ class AudioService {
 
       if (path != null) {
         await _validateRecordingFile(path);
-        _logInfo('Enregistrement arrêté: $path (${await _getFileSize(path)})');
+        final size = await _getFileSize(path);
+        AppLogger.info('Enregistrement arrêté: $path ($size)');
         return path;
       }
 
@@ -145,11 +147,11 @@ class AudioService {
     } catch (e) {
       _setRecordingState(false);
       _durationSubscription?.cancel();
-      _logError('stopRecording', e);
+      AppLogger.error('AudioService.stopRecording', e);
       if (e is AudioServiceException) rethrow;
       throw AudioServiceException(
-        'Erreur lors de l\'arrêt de l\'enregistrement',
-        code: 'STOP_RECORDING_FAILED',
+        "Erreur lors de l'arrêt de l'enregistrement",
+        code:          'STOP_RECORDING_FAILED',
         originalError: e,
       );
     } finally {
@@ -170,35 +172,30 @@ class AudioService {
         _currentRecordingPath = null;
       }
     } catch (e) {
-      _logError('cancelRecording', e);
+      AppLogger.error('AudioService.cancelRecording', e);
     }
   }
 
-  Future<void> playAudio(String url, {VoidCallback? onComplete}) async {
+  Future<void> playAudio(String url, {void Function()? onComplete}) async {
     if (url.trim().isEmpty) {
       throw AudioServiceException('URL audio vide', code: 'INVALID_URL');
     }
 
     try {
-      if (_isPlaying) {
-        await stopAudio();
-      }
+      if (_isPlaying) await stopAudio();
 
       final source = await _createAudioSource(url);
       await _player.play(source);
       _setPlayingState(true);
       _setupPlayerStateListener(onComplete);
 
-      _logInfo('Lecture audio démarrée: $url');
+      AppLogger.info('Lecture audio démarrée: $url');
     } catch (e) {
       _setPlayingState(false);
-      _logError('playAudio', e);
+      AppLogger.error('AudioService.playAudio', e);
       if (e is AudioServiceException) rethrow;
-      throw AudioServiceException(
-        'Erreur lors de la lecture audio',
-        code: 'PLAY_AUDIO_FAILED',
-        originalError: e,
-      );
+      throw AudioServiceException('Erreur lors de la lecture audio',
+          code: 'PLAY_AUDIO_FAILED', originalError: e);
     }
   }
 
@@ -206,34 +203,30 @@ class AudioService {
     try {
       await _player.stop();
       _setPlayingState(false);
-      _logInfo('Lecture audio arrêtée');
+      AppLogger.info('Lecture audio arrêtée');
     } catch (e) {
       _setPlayingState(false);
-      _logError('stopAudio', e);
+      AppLogger.error('AudioService.stopAudio', e);
     }
   }
 
   Future<void> pauseAudio() async {
     if (!_isPlaying) return;
-
     try {
       await _player.pause();
       _setPlayingState(false);
-      _logInfo('Lecture audio en pause');
     } catch (e) {
-      _logError('pauseAudio', e);
+      AppLogger.error('AudioService.pauseAudio', e);
     }
   }
 
   Future<void> resumeAudio() async {
     if (_isPlaying) return;
-
     try {
       await _player.resume();
       _setPlayingState(true);
-      _logInfo('Lecture audio reprise');
     } catch (e) {
-      _logError('resumeAudio', e);
+      AppLogger.error('AudioService.resumeAudio', e);
     }
   }
 
@@ -241,7 +234,7 @@ class AudioService {
     try {
       return await _player.getCurrentPosition();
     } catch (e) {
-      _logError('getCurrentPosition', e);
+      AppLogger.error('AudioService.getCurrentPosition', e);
       return null;
     }
   }
@@ -250,7 +243,7 @@ class AudioService {
     try {
       return await _player.getDuration();
     } catch (e) {
-      _logError('getDuration', e);
+      AppLogger.error('AudioService.getDuration', e);
       return null;
     }
   }
@@ -258,9 +251,8 @@ class AudioService {
   Future<void> seek(Duration position) async {
     try {
       await _player.seek(position);
-      _logInfo('Seek to: ${position.inSeconds}s');
     } catch (e) {
-      _logError('seek', e);
+      AppLogger.error('AudioService.seek', e);
     }
   }
 
@@ -283,19 +275,15 @@ class AudioService {
   Future<void> _validateRecordingFile(String path) async {
     final file = File(path);
     if (!await file.exists()) {
-      throw AudioServiceException(
-        'Fichier d\'enregistrement introuvable',
-        code: 'FILE_NOT_FOUND',
-      );
+      throw AudioServiceException("Fichier d'enregistrement introuvable",
+          code: 'FILE_NOT_FOUND');
     }
 
     final fileSize = await file.length();
     if (fileSize < minFileSizeBytes) {
       await file.delete();
-      throw AudioServiceException(
-        'Enregistrement trop court ou invalide',
-        code: 'INVALID_RECORDING',
-      );
+      throw AudioServiceException('Enregistrement trop court ou invalide',
+          code: 'INVALID_RECORDING');
     }
 
     final maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
@@ -312,7 +300,7 @@ class AudioService {
     final file = File(path);
     if (await file.exists()) {
       await file.delete();
-      _logInfo('Enregistrement annulé et fichier supprimé');
+      AppLogger.info('Enregistrement annulé et fichier supprimé');
     }
   }
 
@@ -320,19 +308,13 @@ class AudioService {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return UrlSource(url);
     }
-
     final file = File(url);
-    if (await file.exists()) {
-      return DeviceFileSource(url);
-    }
-
-    throw AudioServiceException(
-      'Fichier audio introuvable',
-      code: 'FILE_NOT_FOUND',
-    );
+    if (await file.exists()) return DeviceFileSource(url);
+    throw AudioServiceException('Fichier audio introuvable',
+        code: 'FILE_NOT_FOUND');
   }
 
-  void _setupPlayerStateListener(VoidCallback? onComplete) {
+  void _setupPlayerStateListener(void Function()? onComplete) {
     _playerStateSubscription?.cancel();
     _playerStateSubscription = _player.onPlayerStateChanged.listen((state) {
       if (state == PlayerState.completed) {
@@ -352,14 +334,9 @@ class AudioService {
       _recordingDurationController.add(duration);
 
       if (duration.inMinutes >= maxRecordingDurationMinutes) {
-        _logWarning('Durée maximale atteinte, arrêt automatique');
-        // FIX (QA P1): stopRecording() is async. Calling it without await or
-        // catchError in a sync Stream.periodic callback means any exception it
-        // throws is silently swallowed, and _isRecording stays true forever —
-        // blocking any future recording attempt.
-        // Fix: attach catchError so failures are logged and state is corrected.
+        AppLogger.warning('Durée maximale atteinte, arrêt automatique');
         stopRecording().catchError((Object e) {
-          _logError('auto-stop-timer', e);
+          AppLogger.error('AudioService.auto-stop-timer', e);
         });
       }
     });
@@ -369,42 +346,23 @@ class AudioService {
     try {
       final directory = await getApplicationDocumentsDirectory();
       if (!await directory.exists()) {
-        throw AudioServiceException(
-          'Répertoire de stockage inaccessible',
-          code: 'STORAGE_UNAVAILABLE',
-        );
+        throw AudioServiceException('Répertoire de stockage inaccessible',
+            code: 'STORAGE_UNAVAILABLE');
       }
     } catch (e) {
-      _logWarning('Could not verify storage space: $e');
+      AppLogger.warning('Could not verify storage space: $e');
     }
   }
 
   Future<String> _getFileSize(String path) async {
     try {
-      final file = File(path);
+      final file  = File(path);
       final bytes = await file.length();
-      return _formatBytes(bytes);
+      // REPLACED: _formatBytes(bytes) → FileSizeFormatter.format(bytes)
+      return FileSizeFormatter.format(bytes);
     } catch (e) {
       return 'unknown';
     }
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
-  void _logInfo(String message) {
-    if (kDebugMode) debugPrint('[AudioService] INFO: $message');
-  }
-
-  void _logWarning(String message) {
-    if (kDebugMode) debugPrint('[AudioService] WARNING: $message');
-  }
-
-  void _logError(String method, dynamic error) {
-    if (kDebugMode) debugPrint('[AudioService] ERROR in $method: $error');
   }
 
   Future<void> dispose() async {

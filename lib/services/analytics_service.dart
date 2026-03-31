@@ -32,6 +32,22 @@ class AnalyticsService {
     _fire('user_registered', {'provider': provider, 'role': role});
   }
 
+  // FIX (Settings Audit P1): SettingsNotifier was calling
+  // FirebaseAnalytics.instance.logEvent directly, bypassing the service layer
+  // and making the notifier untestable. These two methods replace those calls.
+
+  /// Fired when a user successfully signs out.
+  /// [accountType]: 'client' | 'worker'
+  void logUserSignedOut({required String accountType}) {
+    _fire('user_signed_out', {'account_type': accountType});
+  }
+
+  /// Fired when a user permanently deletes their account.
+  /// [accountType]: 'client' | 'worker'
+  void logUserDeletedAccount({required String accountType}) {
+    _fire('user_deleted_account', {'account_type': accountType});
+  }
+
   // ============================================================================
   // SERVICE REQUEST EVENTS
   // ============================================================================
