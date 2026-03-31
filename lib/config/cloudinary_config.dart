@@ -1,41 +1,70 @@
 // lib/config/cloudinary_config.dart
 //
-// MOVED FROM: lib/providers/core_providers.dart
-// REASON: Configuration class has no business living in a provider registry.
-//         Belongs at the config layer, injectable by any service that needs it.
+// SECURITY FIX (Critical): cloudName and uploadPreset were static const String —
+// compiled directly into the APK/IPA binary. Any attacker could run
+// `strings app.apk | grep cloud` or use a decompiler to extract them.
+// With an unsigned upload preset this allows unlimited storage/bandwidth abuse
+// and content injection.
 //
-// FIX (Security P0): apiKey and apiSecret have been removed entirely from this
-// class. The Cloudinary mobile SDK no longer uses signed configuration — it
-// uses an unsigned upload preset instead. Embedding apiSecret in client-side
-// code exposes full Cloudinary account access to anyone who decompiles the
-// APK or IPA. See cloudinary_service.dart for the migration details.
+// FIX: Both values are now served from Firebase Remote Config, exactly
+// like geminiApiKey in AppConfig. The binary no longer contains these strings.
 //
 // HOW TO CONFIGURE:
-//   1. Go to Cloudinary Dashboard → Settings → Upload → Add upload preset
-//   2. Set Mode: Unsigned
-//   3. Copy the preset name into uploadPreset below
-//   4. Replace cloudName with your actual cloud name
+//   1. Firebase Console → Remote Config → Add parameters:
+//        cloudinary_cloud_name   → your cloud name
+//        cloudinary_upload_preset → your unsigned upload preset name
+//   2. Publish the Remote Config changes.
+//   3. AppConfig.initialize() (called in main.dart) will fetch them on launch.
+
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 
 class CloudinaryConfig {
-  static const String cloudName    = 'YOUR_CLOUD_NAME';
-  static const String uploadPreset = 'YOUR_UPLOAD_PRESET';
+  CloudinaryConfig._();
 
-  // FIX: isConfigured now validates only the two fields that still exist.
-  // apiKey and apiSecret are intentionally absent — they must never appear
-  // in client-side code.
-  static bool get isConfigured {
-    return cloudName    != 'YOUR_CLOUD_NAME' &&
-           uploadPreset != 'YOUR_UPLOAD_PRESET';
+  static const String _kCloudName    = 'cloudinary_cloud_name';
+  static const String _kUploadPreset = 'cloudinary_upload_preset';
+
+  static FirebaseRemoteConfig get _rc => FirebaseRemoteConfig.instance;
+
+  /// Cloudinary cloud name — read from Firebase Remote Config at runtime.
+  /// Never compiled into the binary.
+  static String get cloudName {
+    final value = _rc.getString(_kCloudName);
+    if (value.isEmpty) {
+      _logWarning('cloudinary_cloud_name is empty in Remote Config');
+    }
+    return value;
   }
 
+  /// Unsigned upload preset — read from Firebase Remote Config at runtime.
+  /// Never compiled into the binary.
+  static String get uploadPreset {
+    final value = _rc.getString(_kUploadPreset);
+    if (value.isEmpty) {
+      _logWarning('cloudinary_upload_preset is empty in Remote Config');
+    }
+    return value;
+  }
+
+  /// True when both values have been successfully fetched from Remote Config.
+  static bool get isConfigured =>
+      cloudName.isNotEmpty && uploadPreset.isNotEmpty;
+
+  /// Call during app startup (after AppConfig.initialize()) to warn early
+  /// if Remote Config values are missing.
   static void validate() {
     if (!isConfigured) {
-      // ignore: avoid_print
-      print(
-        '[CloudinaryConfig] WARNING: Credentials not configured. '
-        'Please update cloudName and uploadPreset in '
-        'lib/config/cloudinary_config.dart.',
+      _logWarning(
+        '[CloudinaryConfig] WARNING: cloudName or uploadPreset not yet '
+        'available from Remote Config. Uploads will fail until Remote Config '
+        'is fetched. Add cloudinary_cloud_name and cloudinary_upload_preset '
+        'to your Firebase Remote Config and publish.',
       );
     }
+  }
+
+  static void _logWarning(String message) {
+    if (kDebugMode) debugPrint('[CloudinaryConfig] WARNING: $message');
   }
 }
