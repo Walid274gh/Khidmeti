@@ -1,24 +1,20 @@
 // lib/screens/service_request/widgets/service_selection_row.dart
+//
+// CHANGE: _ServiceItem private class removed — replaced with public ServiceItem
+//         imported from lib/models/service_item_model.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../models/service_item_model.dart'; // NEW
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'service_selection_sheet.dart';
 
-// ─── Dimensions — mirrors home_service_grid.dart ──────────────────────────────
 const double _kCardW   = 72.0;
 const double _kCardH   = 80.0;
 const double _kCircleD = 48.0;
-
-// ============================================================================
-// SERVICE SELECTION ROW
-// Horizontal scroll of circular chips identical to HomeServiceGrid.
-// Difference: tapping a chip selects a service type for the form,
-// instead of filtering a worker list.
-// ============================================================================
 
 class ServiceSelectionRow extends StatelessWidget {
   final String? selected;
@@ -34,20 +30,20 @@ class ServiceSelectionRow extends StatelessWidget {
     required this.onServiceSelected,
   });
 
-  List<_ServiceItem> _items(BuildContext context) => [
-        _ServiceItem(ServiceType.plumbing,
+  List<ServiceItem> _items(BuildContext context) => [
+        ServiceItem(ServiceType.plumbing,
             context.tr('services.${ServiceType.plumbing}'), AppIcons.plumbing),
-        _ServiceItem(ServiceType.electrical,
+        ServiceItem(ServiceType.electrical,
             context.tr('services.${ServiceType.electrical}'), AppIcons.electrical),
-        _ServiceItem(ServiceType.cleaning,
+        ServiceItem(ServiceType.cleaning,
             context.tr('services.${ServiceType.cleaning}'), AppIcons.cleaning),
-        _ServiceItem(ServiceType.painting,
+        ServiceItem(ServiceType.painting,
             context.tr('services.${ServiceType.painting}'), AppIcons.painting),
-        _ServiceItem(ServiceType.carpentry,
+        ServiceItem(ServiceType.carpentry,
             context.tr('services.${ServiceType.carpentry}'), AppIcons.carpentry),
-        _ServiceItem(ServiceType.airConditioning,
+        ServiceItem(ServiceType.airConditioning,
             context.tr('services.${ServiceType.airConditioning}'), AppIcons.airConditioning),
-        _ServiceItem(ServiceType.gardening,
+        ServiceItem(ServiceType.gardening,
             context.tr('services.${ServiceType.gardening}'), AppIcons.gardening),
       ];
 
@@ -65,9 +61,9 @@ class ServiceSelectionRow extends StatelessWidget {
             (item) => Padding(
               padding: const EdgeInsets.only(right: 12),
               child: _ServiceChip(
-                item: item,
+                item:     item,
                 isActive: selected == item.type,
-                isDark: isDark,
+                isDark:   isDark,
                 onTap: () {
                   HapticFeedback.selectionClick();
                   onServiceSelected(item.type);
@@ -76,12 +72,11 @@ class ServiceSelectionRow extends StatelessWidget {
             ),
           ),
 
-          // "Tout voir" — opens full sheet with search + complete grid
           _AllServicesChip(
-            isDark: isDark,
-            accentColor: accentColor,
-            selected: selected,
-            onServiceSelected: onServiceSelected,
+            isDark:              isDark,
+            accentColor:         accentColor,
+            selected:            selected,
+            onServiceSelected:   onServiceSelected,
           ),
         ],
       ),
@@ -89,12 +84,10 @@ class ServiceSelectionRow extends StatelessWidget {
   }
 }
 
-// ── Circular service chip ─────────────────────────────────────────────────────
-
 class _ServiceChip extends StatelessWidget {
-  final _ServiceItem item;
-  final bool isActive;
-  final bool isDark;
+  final ServiceItem item; // WAS: _ServiceItem (private)
+  final bool        isActive;
+  final bool        isDark;
   final VoidCallback onTap;
 
   const _ServiceChip({
@@ -109,8 +102,8 @@ class _ServiceChip extends StatelessWidget {
     final color = AppTheme.getProfessionColor(item.type, isDark);
 
     return Semantics(
-      button: true,
-      label: item.label,
+      button:   true,
+      label:    item.label,
       selected: isActive,
       child: GestureDetector(
         onTap: onTap,
@@ -119,12 +112,11 @@ class _ServiceChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ── Circular icon container ───────────────────────────────────
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                width: _kCircleD,
-                height: _kCircleD,
+                curve:    Curves.easeOutCubic,
+                width:    _kCircleD,
+                height:   _kCircleD,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isActive
@@ -147,11 +139,10 @@ class _ServiceChip extends StatelessWidget {
 
               const SizedBox(height: 7),
 
-              // ── Label ─────────────────────────────────────────────────────
               Text(
                 item.label,
                 style: TextStyle(
-                  fontSize: AppConstants.fontSizeXs,
+                  fontSize:   AppConstants.fontSizeXs,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   color: isActive
                       ? color
@@ -161,8 +152,8 @@ class _ServiceChip extends StatelessWidget {
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                maxLines:  2,
+                overflow:  TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -172,12 +163,10 @@ class _ServiceChip extends StatelessWidget {
   }
 }
 
-// ── "Tout voir" chip ──────────────────────────────────────────────────────────
-
 class _AllServicesChip extends StatelessWidget {
-  final bool isDark;
-  final Color accentColor;
-  final String? selected;
+  final bool                 isDark;
+  final Color                accentColor;
+  final String?              selected;
   final ValueChanged<String> onServiceSelected;
 
   const _AllServicesChip({
@@ -191,13 +180,13 @@ class _AllServicesChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: context.tr('home.see_all'),
+      label:  context.tr('home.see_all'),
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
           ServiceSelectionSheet.show(
             context,
-            selected: selected,
+            selected:          selected,
             onServiceSelected: onServiceSelected,
           );
         },
@@ -207,7 +196,7 @@ class _AllServicesChip extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: _kCircleD,
+                width:  _kCircleD,
                 height: _kCircleD,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -225,10 +214,10 @@ class _AllServicesChip extends StatelessWidget {
               Text(
                 context.tr('home.see_all'),
                 style: TextStyle(
-                  fontSize: AppConstants.fontSizeXs,
+                  fontSize:   AppConstants.fontSizeXs,
                   fontWeight: FontWeight.w600,
-                  color: accentColor,
-                  height: 1.2,
+                  color:      accentColor,
+                  height:     1.2,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -238,13 +227,4 @@ class _AllServicesChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Data model ────────────────────────────────────────────────────────────────
-
-class _ServiceItem {
-  final String type;
-  final String label;
-  final IconData icon;
-  const _ServiceItem(this.type, this.label, this.icon);
 }

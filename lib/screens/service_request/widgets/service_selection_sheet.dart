@@ -1,24 +1,19 @@
 // lib/screens/service_request/widgets/service_selection_sheet.dart
+//
+// CHANGE: _ServiceItem private class removed — replaced with public ServiceItem
+//         imported from lib/models/service_item_model.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../models/service_item_model.dart'; // NEW
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/profession_resolver.dart';
 
-// ============================================================================
-// SERVICE SELECTION SHEET
-// Full-screen DraggableScrollableSheet with:
-//   • Search bar (label + ProfessionResolver multilingual match)
-//   • 4-column circular icon grid — mirrors HomeCategoriesSheet
-//   • Selected state: accent ring + checkmark on the active tile
-//   • Single-select: tapping a tile confirms and dismisses
-// ============================================================================
-
 class ServiceSelectionSheet extends StatefulWidget {
-  final String? selected;
+  final String?              selected;
   final ValueChanged<String> onServiceSelected;
 
   const ServiceSelectionSheet({
@@ -29,30 +24,29 @@ class ServiceSelectionSheet extends StatefulWidget {
 
   static void show(
     BuildContext context, {
-    required String? selected,
+    required String?              selected,
     required ValueChanged<String> onServiceSelected,
   }) {
     showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      context:             context,
+      isScrollControlled:  true,
+      backgroundColor:     Colors.transparent,
       builder: (_) => ServiceSelectionSheet(
-        selected: selected,
+        selected:          selected,
         onServiceSelected: onServiceSelected,
       ),
     );
   }
 
   @override
-  State<ServiceSelectionSheet> createState() =>
-      _ServiceSelectionSheetState();
+  State<ServiceSelectionSheet> createState() => _ServiceSelectionSheetState();
 }
 
 class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  late final List<_ServiceItem> _allItems;
+  late final List<ServiceItem> _allItems; // WAS: _ServiceItem (private)
 
   @override
   void didChangeDependencies() {
@@ -66,31 +60,30 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
     super.dispose();
   }
 
-  List<_ServiceItem> _buildAllItems(BuildContext context) => [
-        _ServiceItem(ServiceType.plumbing,
+  List<ServiceItem> _buildAllItems(BuildContext context) => [
+        ServiceItem(ServiceType.plumbing,
             context.tr('services.${ServiceType.plumbing}'), AppIcons.plumbing),
-        _ServiceItem(ServiceType.electrical,
+        ServiceItem(ServiceType.electrical,
             context.tr('services.${ServiceType.electrical}'), AppIcons.electrical),
-        _ServiceItem(ServiceType.cleaning,
+        ServiceItem(ServiceType.cleaning,
             context.tr('services.${ServiceType.cleaning}'), AppIcons.cleaning),
-        _ServiceItem(ServiceType.painting,
+        ServiceItem(ServiceType.painting,
             context.tr('services.${ServiceType.painting}'), AppIcons.painting),
-        _ServiceItem(ServiceType.carpentry,
+        ServiceItem(ServiceType.carpentry,
             context.tr('services.${ServiceType.carpentry}'), AppIcons.carpentry),
-        _ServiceItem(ServiceType.airConditioning,
+        ServiceItem(ServiceType.airConditioning,
             context.tr('services.${ServiceType.airConditioning}'),
             AppIcons.airConditioning),
-        _ServiceItem(ServiceType.gardening,
+        ServiceItem(ServiceType.gardening,
             context.tr('services.${ServiceType.gardening}'), AppIcons.gardening),
-        _ServiceItem(ServiceType.appliances,
+        ServiceItem(ServiceType.appliances,
             context.tr('services.${ServiceType.appliances}'), AppIcons.appliances),
-        _ServiceItem(ServiceType.masonry,
+        ServiceItem(ServiceType.masonry,
             context.tr('request_form.masonry'),
             AppTheme.getProfessionIcon(ServiceType.masonry)),
       ];
 
-  // Two-pass filter — mirrors HomeCategoriesSheet for multilingual support.
-  List<_ServiceItem> get _filtered {
+  List<ServiceItem> get _filtered {
     if (_query.isEmpty) return _allItems;
 
     final q = _query.toLowerCase();
@@ -102,7 +95,7 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
     final resolvedType = ProfessionResolver.resolve(_query);
     final resolverMatches = resolvedType != null
         ? _allItems.where((i) => i.type == resolvedType).toSet()
-        : <_ServiceItem>{};
+        : <ServiceItem>{};
 
     final matchedTypes =
         {...labelMatches, ...resolverMatches}.map((i) => i.type).toSet();
@@ -111,15 +104,15 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
-    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final items = _filtered;
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
+    final isRtl   = Directionality.of(context) == TextDirection.rtl;
+    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final items   = _filtered;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.70,
-      minChildSize: 0.45,
-      maxChildSize: 0.95,
+      minChildSize:     0.45,
+      maxChildSize:     0.95,
       builder: (_, controller) => Container(
         decoration: BoxDecoration(
           color: isDark
@@ -131,48 +124,40 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
         ),
         child: Column(
           children: [
-            // ── Handle ────────────────────────────────────────────────
             const SizedBox(height: AppConstants.spacingSm),
             Container(
-              width: AppConstants.sheetHandleWidth,
+              width:  AppConstants.sheetHandleWidth,
               height: AppConstants.sheetHandleHeight,
               decoration: BoxDecoration(
                 color: isDark
                     ? AppTheme.darkBorder.withOpacity(0.40)
                     : AppTheme.lightBorder,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radiusXs),
+                borderRadius: BorderRadius.circular(AppConstants.radiusXs),
               ),
             ),
             const SizedBox(height: AppConstants.spacingLg),
 
-            // ── Title row ─────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingLg),
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLg),
               child: Row(
-                textDirection:
-                    isRtl ? TextDirection.rtl : TextDirection.ltr,
+                textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                 children: [
                   Expanded(
                     child: Text(
                       context.tr('request_form.section_service'),
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight:    FontWeight.w700,
                             letterSpacing: isRtl ? 0.0 : -0.3,
                           ),
                     ),
                   ),
                   Semantics(
-                    label: context.tr('common.close'),
+                    label:  context.tr('common.close'),
                     button: true,
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        width: AppConstants.iconSizeLg,
+                        width:  AppConstants.iconSizeLg,
                         height: AppConstants.iconSizeLg,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -182,7 +167,7 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
                         ),
                         child: Icon(
                           AppIcons.close,
-                          size: AppConstants.iconSizeSm,
+                          size:  AppConstants.iconSizeSm,
                           color: isDark
                               ? AppTheme.darkSecondaryText
                               : AppTheme.lightSecondaryText,
@@ -196,60 +181,48 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
-            // ── Search bar ────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingLg),
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLg),
               child: Container(
                 height: AppConstants.searchBarHeight,
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppTheme.darkSurface.withOpacity(0.60)
                       : AppTheme.lightSurfaceVariant,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusMd),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                 ),
                 child: Row(
                   children: [
                     const SizedBox(width: AppConstants.spacingMd),
-                    Icon(
-                      AppIcons.search,
-                      size: AppConstants.iconSizeSm,
-                      color: isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
+                    Icon(AppIcons.search,
+                        size:  AppConstants.iconSizeSm,
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText),
                     const SizedBox(width: AppConstants.spacingSm),
                     Expanded(
                       child: TextField(
                         controller: _searchCtrl,
-                        onChanged: (v) => setState(() => _query = v),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(
+                        onChanged:  (v) => setState(() => _query = v),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: isDark
                                   ? AppTheme.darkText
                                   : AppTheme.lightText,
                             ),
                         decoration: InputDecoration(
-                          border: InputBorder.none,
+                          border:        InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          hintText:
-                              context.tr('home.search_service'),
-                          hintStyle: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
+                          hintText:      context.tr('home.search_service'),
+                          hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: isDark
                                     ? AppTheme.darkSecondaryText
                                     : AppTheme.lightSecondaryText,
                               ),
-                          isDense: true,
+                          isDense:        true,
                           contentPadding: EdgeInsets.zero,
-                          filled: true,
-                          fillColor: Colors.transparent,
+                          filled:         true,
+                          fillColor:      Colors.transparent,
                         ),
                       ),
                     ),
@@ -260,18 +233,16 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
-            // ── Category grid ─────────────────────────────────────────
             Expanded(
               child: items.isEmpty
                   ? Center(
                       child: Text(
                         context.tr('home.no_service_found'),
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? AppTheme.darkSecondaryText
-                                      : AppTheme.lightSecondaryText,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isDark
+                                  ? AppTheme.darkSecondaryText
+                                  : AppTheme.lightSecondaryText,
+                            ),
                       ),
                     )
                   : GridView.builder(
@@ -284,18 +255,17 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
                       ),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        mainAxisSpacing: AppConstants.spacingMd,
+                        crossAxisCount:   4,
+                        mainAxisSpacing:  AppConstants.spacingMd,
                         crossAxisSpacing: AppConstants.spacingMd,
                         childAspectRatio: 0.82,
                       ),
-                      itemCount: items.length,
+                      itemCount:   items.length,
                       itemBuilder: (_, i) => _ServiceTile(
-                        item: items[i],
-                        isSelected:
-                            widget.selected == items[i].type,
-                        isDark: isDark,
-                        accent: accent,
+                        item:       items[i],
+                        isSelected: widget.selected == items[i].type,
+                        isDark:     isDark,
+                        accent:     accent,
                         onTap: () {
                           HapticFeedback.lightImpact();
                           widget.onServiceSelected(items[i].type);
@@ -311,17 +281,11 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
   }
 }
 
-// ============================================================================
-// SERVICE TILE
-// Mirrors _CategoryTile from HomeCategoriesSheet.
-// Adds: selected ring + checkmark badge on the circle.
-// ============================================================================
-
 class _ServiceTile extends StatelessWidget {
-  final _ServiceItem item;
-  final bool isSelected;
-  final bool isDark;
-  final Color accent;
+  final ServiceItem  item; // WAS: _ServiceItem (private)
+  final bool         isSelected;
+  final bool         isDark;
+  final Color        accent;
   final VoidCallback onTap;
 
   const _ServiceTile({
@@ -337,22 +301,21 @@ class _ServiceTile extends StatelessWidget {
     final color = AppTheme.getProfessionColor(item.type, isDark);
 
     return Semantics(
-      button: true,
-      label: item.label,
+      button:   true,
+      label:    item.label,
       selected: isSelected,
       child: GestureDetector(
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Circle — with optional selection ring ─────────────────
             Stack(
               clipBehavior: Clip.none,
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: AppConstants.categoryTileIconSize,
-                  height: AppConstants.categoryTileIconSize,
+                  width:    AppConstants.categoryTileIconSize,
+                  height:   AppConstants.categoryTileIconSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isSelected
@@ -374,13 +337,12 @@ class _ServiceTile extends StatelessWidget {
                   ),
                 ),
 
-                // Checkmark badge
                 if (isSelected)
                   Positioned(
                     bottom: -2,
-                    right: -2,
+                    right:  -2,
                     child: Container(
-                      width: 16,
+                      width:  16,
                       height: 16,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -392,11 +354,8 @@ class _ServiceTile extends StatelessWidget {
                           width: 1.5,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.check_rounded,
-                        size: 9,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.check_rounded,
+                          size: 9, color: Colors.white),
                     ),
                   ),
               ],
@@ -404,7 +363,6 @@ class _ServiceTile extends StatelessWidget {
 
             SizedBox(height: AppConstants.spacingXs + 3),
 
-            // ── Label ─────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingXs),
@@ -422,8 +380,8 @@ class _ServiceTile extends StatelessWidget {
                       height: 1.2,
                     ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                maxLines:  2,
+                overflow:  TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -431,13 +389,4 @@ class _ServiceTile extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Data model ────────────────────────────────────────────────────────────────
-
-class _ServiceItem {
-  final String type;
-  final String label;
-  final IconData icon;
-  const _ServiceItem(this.type, this.label, this.icon);
 }
