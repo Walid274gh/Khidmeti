@@ -17,10 +17,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
   ServiceRequestFirestoreRepository(super.firestore);
 
-  // FIX (Engineer P1 → now fully resolved): Base class renamed from
-  // `_logTag` (library-private, cannot be overridden across files) to
-  // `logTag` (public). This override now works correctly and all log
-  // messages from this repository will include the `[ServiceRequestRepo]` tag.
   @override
   String get logTag => '[ServiceRequestRepo]';
 
@@ -152,6 +148,11 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             _parseRequestList(s.docs, 'streamUserServiceRequests'));
   }
 
+  /// FIX (Critical): subscriptions moved into onListen/onCancel to prevent
+  /// subscription leak when the returned stream is disposed before any
+  /// listener subscribes.
+  /// FIX (Critical): status strings changed from .toString() → .name so
+  /// the query matches documents written by ServiceRequestEnhancedModel.toMap().
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerServiceRequests(
       String workerId) {
     if (workerId.trim().isEmpty) {
@@ -160,11 +161,12 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
       return Stream.value([]);
     }
 
-    final controller =
-        StreamController<List<ServiceRequestEnhancedModel>>.broadcast();
-
     List<ServiceRequestEnhancedModel> assignedJobs = [];
     List<ServiceRequestEnhancedModel> openJobs = [];
+    StreamSubscription? assignedSub;
+    StreamSubscription? openSub;
+
+    late StreamController<List<ServiceRequestEnhancedModel>> controller;
 
     void emit() {
       if (controller.isClosed) return;
@@ -175,51 +177,57 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
       controller.add(dedup.values.toList());
     }
 
-    final assignedSub = firestore
-        .collection(serviceRequestsCollection)
-        .where('workerId', isEqualTo: workerId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (s) {
-        assignedJobs =
-            _parseRequestList(s.docs, 'workerAssigned');
-        emit();
+    controller = StreamController<List<ServiceRequestEnhancedModel>>.broadcast(
+      onListen: () {
+        assignedSub = firestore
+            .collection(serviceRequestsCollection)
+            .where('workerId', isEqualTo: workerId)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen(
+          (s) {
+            assignedJobs =
+                _parseRequestList(s.docs, 'workerAssigned');
+            emit();
+          },
+          onError: (e) {
+            logError('streamWorkerServiceRequests.assigned', e);
+            if (!controller.isClosed) controller.addError(e);
+          },
+        );
+
+        openSub = firestore
+            .collection(serviceRequestsCollection)
+            // FIX: use .name format ('open', 'awaitingSelection') to match
+            // what ServiceRequestEnhancedModel.toMap() writes.
+            .where('status', whereIn: [
+              ServiceStatus.open.name,
+              ServiceStatus.awaitingSelection.name,
+            ])
+            .where('workerId', isNull: true)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen(
+          (s) {
+            openJobs = _parseRequestList(s.docs, 'workerOpen');
+            emit();
+          },
+          onError: (e) {
+            logError('streamWorkerServiceRequests.open', e);
+            if (!controller.isClosed) controller.addError(e);
+          },
+        );
       },
-      onError: (e) {
-        logError('streamWorkerServiceRequests.assigned', e);
-        if (!controller.isClosed) controller.addError(e);
+      onCancel: () {
+        assignedSub?.cancel();
+        openSub?.cancel();
       },
     );
-
-    final openSub = firestore
-        .collection(serviceRequestsCollection)
-        .where('status', whereIn: [
-          ServiceStatus.open.toString(),
-          ServiceStatus.awaitingSelection.toString(),
-        ])
-        .where('workerId', isNull: true)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (s) {
-        openJobs = _parseRequestList(s.docs, 'workerOpen');
-        emit();
-      },
-      onError: (e) {
-        logError('streamWorkerServiceRequests.open', e);
-        if (!controller.isClosed) controller.addError(e);
-      },
-    );
-
-    controller.onCancel = () {
-      assignedSub.cancel();
-      openSub.cancel();
-    };
 
     return controller.stream;
   }
 
+  /// FIX (Critical): status strings changed from .toString() → .name.
   Stream<List<ServiceRequestEnhancedModel>> streamAvailableRequests({
     required int wilayaCode,
     required String serviceType,
@@ -228,9 +236,10 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         .collection(serviceRequestsCollection)
         .where('wilayaCode', isEqualTo: wilayaCode)
         .where('serviceType', isEqualTo: serviceType)
+        // FIX: .name format ('open', 'awaitingSelection')
         .where('status', whereIn: [
-          ServiceStatus.open.toString(),
-          ServiceStatus.awaitingSelection.toString(),
+          ServiceStatus.open.name,
+          ServiceStatus.awaitingSelection.name,
         ])
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -239,6 +248,7 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             _parseRequestList(s.docs, 'streamAvailableRequests'));
   }
 
+  /// FIX (Critical): status strings changed from .toString() → .name.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerActiveJobs(
       String workerId) {
     if (workerId.trim().isEmpty) {
@@ -248,9 +258,10 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     return firestore
         .collection(serviceRequestsCollection)
         .where('workerId', isEqualTo: workerId)
+        // FIX: .name format ('bidSelected', 'inProgress')
         .where('status', whereIn: [
-          ServiceStatus.bidSelected.toString(),
-          ServiceStatus.inProgress.toString(),
+          ServiceStatus.bidSelected.name,
+          ServiceStatus.inProgress.name,
         ])
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -318,6 +329,8 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // BID LIFECYCLE
   // --------------------------------------------------------------------------
 
+  /// FIX (Critical): status writes use .name format to match what
+  /// ServiceRequestEnhancedModel.toMap() writes.
   Future<void> acceptBidTransaction({
     required String requestId,
     required String bidId,
@@ -348,15 +361,17 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             code: 'INVALID_REQUEST_STATE',
           );
         }
+        // FIX: BidStatus.accepted.name → 'accepted'
         tx.update(
           firestore.collection(workerBidsCollection).doc(bidId),
           {
-            'status': BidStatus.accepted.toString(),
-            'acceptedAt': Timestamp.now()
+            'status': BidStatus.accepted.name,
+            'acceptedAt': Timestamp.now(),
           },
         );
+        // FIX: ServiceStatus.bidSelected.name → 'bidSelected'
         tx.update(requestRef, {
-          'status': ServiceStatus.bidSelected.toString(),
+          'status': ServiceStatus.bidSelected.name,
           'selectedBidId': bidId,
           'workerId': workerId,
           'workerName': workerName,
@@ -366,20 +381,21 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
       }).timeout(const Duration(seconds: 20));
 
       // Decline all other pending bids (outside the transaction — eventual
-      // consistency is acceptable here since the request is already locked to
-      // bidSelected and competing bids can no longer be accepted).
+      // consistency is acceptable here since the request is already locked).
       final others = await firestore
           .collection(workerBidsCollection)
           .where('serviceRequestId', isEqualTo: requestId)
-          .where('status', isEqualTo: BidStatus.pending.toString())
+          // FIX: BidStatus.pending.name → 'pending'
+          .where('status', isEqualTo: BidStatus.pending.name)
           .get()
           .timeout(FirestoreRepositoryBase.operationTimeout);
 
       final batch = firestore.batch();
       for (final doc in others.docs) {
         if (doc.id != bidId) {
-          batch.update(
-              doc.reference, {'status': BidStatus.declined.toString()});
+          // FIX: BidStatus.declined.name → 'declined'
+          batch.update(doc.reference,
+              {'status': BidStatus.declined.name});
         }
       }
       if (others.docs.isNotEmpty) {
@@ -418,7 +434,8 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
               'Can only withdraw pending bids',
               code: 'INVALID_BID_STATE');
         }
-        tx.update(bidRef, {'status': BidStatus.withdrawn.toString()});
+        // FIX: BidStatus.withdrawn.name → 'withdrawn'
+        tx.update(bidRef, {'status': BidStatus.withdrawn.name});
         tx.update(
           firestore
               .collection(serviceRequestsCollection)
@@ -467,6 +484,9 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     logInfo('Request cancelled: $requestId');
   }
 
+  /// FIX (Critical): use .name instead of .toString() so the written value
+  /// matches what ServiceRequestEnhancedModel.toMap() writes and what
+  /// streamAvailableRequests queries for.
   Future<void> _updateRequestStatus(
     String requestId,
     ServiceStatus status, {
@@ -478,10 +498,11 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     }
     await retryOperation(() async {
       try {
+        // FIX: status.name instead of status.toString()
         await firestore
             .collection(serviceRequestsCollection)
             .doc(requestId)
-            .update({'status': status.toString(), ...extras})
+            .update({'status': status.name, ...extras})
             .timeout(FirestoreRepositoryBase.operationTimeout);
       } catch (e) {
         logError('_updateRequestStatus', e);
@@ -495,24 +516,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // RATING
   // --------------------------------------------------------------------------
 
-  // FIX (Backend P0 + P1):
-  //
-  // Previous implementation issues:
-  //   1. Non-transactional read-then-batch: between the get() and batch.commit()
-  //      the request document could be modified or deleted, corrupting data.
-  //   2. Wrote `lastRating` and `lastRatedAt` to the worker document — fields
-  //      that do NOT exist in WorkerModel. These were write-only ghost fields.
-  //   3. Did not update `averageRating` or `ratingCount` on the worker, so
-  //      ratings submitted by clients were never reflected in the worker's
-  //      displayed score on bids.
-  //
-  // Fix: use a single Firestore transaction that:
-  //   - Reads both the service request and the worker document atomically.
-  //   - Updates the request with `clientRating` and optional `reviewComment`.
-  //   - Recalculates `averageRating` using the running weighted mean formula:
-  //       newAvg = (oldAvg * oldCount + stars) / (oldCount + 1)
-  //   - Increments `ratingCount` so the next rating is weighted correctly.
-  //   - Also writes `lastRating` and `lastRatedAt` for display convenience.
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
@@ -531,7 +534,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
     try {
       await firestore.runTransaction((tx) async {
-        // Read the service request inside the transaction for atomicity.
         final reqRef = firestore
             .collection(serviceRequestsCollection)
             .doc(requestId);
@@ -546,21 +548,17 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         final req = ServiceRequestEnhancedModel.fromMap(
             reqSnap.data()!, reqSnap.id);
 
-        // Update the service request with the rating.
         tx.update(reqRef, {
           'clientRating': stars,
           if (comment != null && comment.isNotEmpty)
             'reviewComment': comment,
         });
 
-        // Update worker stats if a worker is assigned.
         if (req.workerId != null && req.workerId!.isNotEmpty) {
           final workerRef =
               firestore.collection('workers').doc(req.workerId!);
           final workerSnap = await tx.get(workerRef);
 
-          // Compute the new running average from existing stored values.
-          // Gracefully handle workers who have no rating history yet.
           final oldCount =
               workerSnap.data()?['ratingCount'] as int? ?? 0;
           final oldAvg =

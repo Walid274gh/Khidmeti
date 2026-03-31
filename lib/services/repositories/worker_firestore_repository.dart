@@ -19,8 +19,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
           tag: '[WorkerRepo]',
         );
 
-  // FIX: renamed from `_logTag` (library-private) to `logTag` (public).
-  // See firestore_repository_base.dart for the full explanation.
   @override
   String get logTag => '[WorkerRepo]';
 
@@ -74,8 +72,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         .collection(workersCollection)
         .doc(workerId)
         .snapshots()
-        // Re-propagate errors so consumers can show a proper error state
-        // instead of silently displaying nothing.
         .handleError((Object error, StackTrace stack) {
           logError('streamWorker', error);
           throw error;
@@ -93,6 +89,9 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         });
   }
 
+  /// FIX: added .limit(50) to prevent unbounded reads on large datasets.
+  /// Algiers (wilaya 16) alone could have hundreds of workers — reading
+  /// them all in a single call causes Firestore cost explosion.
   Future<List<WorkerModel>> getWorkersInCell({
     required String cellId,
     String? serviceType,
@@ -114,7 +113,9 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         }
         if (onlineOnly) query = query.where('isOnline', isEqualTo: true);
 
+        // FIX: cap at 50 to prevent Firestore cost explosion on dense cells.
         final snapshot = await query
+            .limit(50)
             .get()
             .timeout(FirestoreRepositoryBase.operationTimeout);
         return snapshot.docs
@@ -136,6 +137,7 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
     });
   }
 
+  /// FIX: added .limit(50) to prevent unbounded reads on large wilayas.
   Future<List<WorkerModel>> getWorkersInWilaya({
     required int wilayaCode,
     String? serviceType,
@@ -153,7 +155,9 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         }
         if (onlineOnly) query = query.where('isOnline', isEqualTo: true);
 
+        // FIX: cap at 50 to prevent Firestore cost explosion on dense wilayas.
         final snapshot = await query
+            .limit(50)
             .get()
             .timeout(FirestoreRepositoryBase.operationTimeout);
         return snapshot.docs
@@ -286,9 +290,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
   Future<void> updateWorkerOnlineStatus(String workerId, bool isOnline) =>
       updateWorkerStatus(workerId, isOnline);
 
-  // FIX (Backend Audit): UserFirestoreRepository had this method but
-  // WorkerFirestoreRepository did not. Workers receive service-request push
-  // notifications — the token must be kept up to date on their document.
   Future<void> updateFcmToken(String workerId, String token) async {
     ensureNotDisposed();
     validateWorkerId(workerId);
