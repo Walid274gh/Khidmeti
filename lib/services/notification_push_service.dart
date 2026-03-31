@@ -117,19 +117,6 @@ class NotificationPushService {
         );
       }
 
-      // FIX (QA P0): On the first launch of a freshly installed app, the
-      // system permission dialog has not yet been shown to the user and the
-      // status is `notDetermined`. Previously this threw an exception, causing
-      // the entire push notification service to fail permanently for this
-      // installation — no FCM token was saved, and all push-dependent features
-      // (bid notifications, job updates, chat messages) silently stopped
-      // working for the lifetime of the install.
-      //
-      // Treatment: log a warning and return without throwing. The
-      // `_initializeToken()` call that follows will still attempt a token
-      // fetch. When the user later grants permissions, the `onTokenRefresh`
-      // stream will deliver a fresh token which is saved via
-      // `_setupTokenRefreshListener()`.
       if (settings.authorizationStatus ==
           AuthorizationStatus.notDetermined) {
         _logWarning(
@@ -198,6 +185,10 @@ class NotificationPushService {
     }
   }
 
+  /// FIX (Critical): writes FCM token to both the `users` collection and,
+  /// if the authenticated user is a worker, to the `workers` collection.
+  /// Workers will now receive push notifications for bids, job starts, and
+  /// completions.
   Future<void> _saveFcmToken(String token) async {
     if (token.trim().isEmpty) {
       _logWarning('Attempted to save empty FCM token');
@@ -211,8 +202,16 @@ class NotificationPushService {
         return;
       }
 
+      // Always update the users collection.
       await firestoreService.updateFcmToken(user.uid, token);
       _logInfo('FCM token saved for user: ${user.uid}');
+
+      // FIX: also update the workers collection if the user is a worker.
+      final worker = await firestoreService.getWorker(user.uid);
+      if (worker != null) {
+        await firestoreService.updateWorkerFcmToken(user.uid, token);
+        _logInfo('FCM token saved for worker: ${user.uid}');
+      }
     } catch (e) {
       _logError('_saveFcmToken', e);
     }

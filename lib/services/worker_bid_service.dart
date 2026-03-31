@@ -1,6 +1,7 @@
 // lib/services/worker_bid_service.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/service_request_enhanced_model.dart';
@@ -17,24 +18,6 @@ class WorkerBidService {
   final FirestoreService _firestore;
   bool _isDisposed = false;
 
-  // Collection that holds one "pending bid marker" per (worker, request) pair.
-  // Document ID: `{workerId}_{requestId}` — deterministic, collision-free,
-  // used as an atomic lock inside Firestore transactions.
-  //
-  // FIX (QA P0): The previous duplicate-bid check was a non-atomic
-  // client-side query → create sequence:
-  //   1. Query: "do I already have a pending bid on this request?"
-  //   2. Create bid if query returns 0 results.
-  //
-  // Two devices submitting in the same millisecond both pass step 1 before
-  // either completes step 2 → two duplicate bids are created silently.
-  //
-  // Fix: use a Firestore transaction that reads a deterministic marker document
-  // (`pending_bid_markers/{workerId}_{requestId}`). The transaction either:
-  //   - Finds the marker → aborts with DUPLICATE_BID.
-  //   - Finds nothing  → atomically creates the marker + the bid document.
-  //
-  // Marker documents are deleted when the bid is withdrawn, expired, or accepted.
   static const String _pendingBidMarkersCollection = 'pending_bid_markers';
 
   WorkerBidService(this._firestore);
@@ -71,13 +54,11 @@ class WorkerBidService {
   // BID SUBMISSION
   // =========================================================================
 
-  /// Submit a bid on an open request.
-  ///
-  /// Validates:
-  ///   - proposedPrice > 0
-  ///   - estimatedMinutes > 0
-  ///   - worker has not already bid on this request — **checked atomically**
-  ///     via a Firestore transaction on a deterministic marker document.
+  /// FIX (Security): verify caller identity before submitting.
+  /// FIX (Critical): status check supports both .name and legacy .toString()
+  ///   formats for backward compatibility with existing Firestore documents.
+  /// FIX (Critical): status write uses .name ('awaitingSelection') to match
+  ///   what ServiceRequestEnhancedModel.toMap() writes.
   Future<WorkerBidModel> submitBid({
     required String requestId,
     required WorkerModel worker,
@@ -87,6 +68,15 @@ class WorkerBidService {
     String? message,
   }) async {
     _ensureNotDisposed();
+
+    // FIX: Verify the caller is actually the worker they claim to be.
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid == null || currentUid != worker.id) {
+      throw WorkerBidServiceException(
+        'Cannot submit bid: authenticated user does not match worker identity',
+        code: 'AUTH_MISMATCH',
+      );
+    }
 
     if (proposedPrice <= 0) {
       throw WorkerBidServiceException(
@@ -112,13 +102,6 @@ class WorkerBidService {
       workerId: worker.id,
       workerName: worker.name,
       workerAverageRating: worker.averageRating,
-      // FIX (Marketplace P2): `workerJobsCompleted` is now mapped from a
-      // dedicated `jobsCompleted` field on WorkerModel if available, falling
-      // back to `ratingCount` for backward compat with existing documents that
-      // do not yet have the field. After the rating Cloud Function is deployed,
-      // WorkerModel should gain a `jobsCompleted: int` field updated on
-      // ServiceStatus.completed — separate from `ratingCount` which only
-      // increments when a rating is submitted.
       workerJobsCompleted: worker.ratingCount,
       workerProfileImageUrl: worker.profileImageUrl,
       proposedPrice: proposedPrice,
@@ -130,7 +113,6 @@ class WorkerBidService {
       expiresAt: deadline,
     );
 
-    // Atomic duplicate check + bid creation via Firestore transaction.
     final markerDocId = '${worker.id}_$requestId';
     final markerRef = _firestore.firestore
         .collection(_pendingBidMarkersCollection)
@@ -144,7 +126,6 @@ class WorkerBidService {
 
     try {
       await _firestore.firestore.runTransaction((tx) async {
-        // 1. Read the marker document — atomic with the write below.
         final markerSnap = await tx.get(markerRef);
         if (markerSnap.exists) {
           throw WorkerBidServiceException(
@@ -153,7 +134,6 @@ class WorkerBidService {
           );
         }
 
-        // 2. Read the request to verify it is still accepting bids.
         final reqSnap = await tx.get(requestRef);
         if (!reqSnap.exists || reqSnap.data() == null) {
           throw WorkerBidServiceException(
@@ -161,10 +141,20 @@ class WorkerBidService {
             code: 'REQUEST_NOT_FOUND',
           );
         }
+
         final reqData = reqSnap.data()!;
         final statusStr = reqData['status'] as String? ?? '';
-        final isOpen = statusStr == ServiceStatus.open.toString() ||
+
+        // FIX: accept both .name ('open', 'awaitingSelection') and legacy
+        // .toString() ('ServiceStatus.open', 'ServiceStatus.awaitingSelection')
+        // formats so the check works regardless of which write path created
+        // the document.
+        final isOpen =
+            statusStr == ServiceStatus.open.name ||
+            statusStr == ServiceStatus.awaitingSelection.name ||
+            statusStr == ServiceStatus.open.toString() ||
             statusStr == ServiceStatus.awaitingSelection.toString();
+
         if (!isOpen) {
           throw WorkerBidServiceException(
             'Request is no longer accepting bids',
@@ -172,7 +162,6 @@ class WorkerBidService {
           );
         }
 
-        // 3. Atomically create the marker + bid + increment bidCount.
         tx.set(markerRef, {
           'workerId': worker.id,
           'requestId': requestId,
@@ -182,8 +171,8 @@ class WorkerBidService {
         tx.set(bidRef, bid.toMap());
         tx.update(requestRef, {
           'bidCount': FieldValue.increment(1),
-          // Transition request to awaitingSelection once it has at least 1 bid.
-          'status': ServiceStatus.awaitingSelection.toString(),
+          // FIX: use .name ('awaitingSelection') not .toString()
+          'status': ServiceStatus.awaitingSelection.name,
         });
       }).timeout(const Duration(seconds: 15));
 
@@ -219,8 +208,6 @@ class WorkerBidService {
       agreedPrice: bid.proposedPrice,
     );
 
-    // Clean up the marker for the accepted bid's worker so they could
-    // theoretically bid on the same request again if it were re-opened.
     await _deleteMarker(bid.workerId, requestId);
 
     _logInfo('Bid accepted: ${bid.id} — worker ${bid.workerId} on $requestId');
@@ -236,7 +223,6 @@ class WorkerBidService {
   }) async {
     _ensureNotDisposed();
 
-    // Get workerId before withdrawing so we can clean up the marker.
     String? workerId;
     try {
       final snap = await _firestore.firestore
@@ -323,8 +309,6 @@ class WorkerBidService {
   // HELPERS
   // =========================================================================
 
-  /// Deletes the pending bid marker for (workerId, requestId).
-  /// Best-effort — failure is logged but not rethrown.
   Future<void> _deleteMarker(String workerId, String requestId) async {
     try {
       final markerDocId = '${workerId}_$requestId';
