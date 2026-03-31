@@ -1,4 +1,10 @@
 // lib/screens/worker_jobs/job_detail_screen.dart
+//
+// CHANGES:
+//   • JobServiceDetailsContent, JobScheduleContent, JobTimelineContent:
+//     context: parameter removed (field deleted from their constructors)
+//   • JobCompletedBadge, JobAcceptDeclineRow, JobCompleteBtn:
+//     context: parameter removed
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -15,6 +21,7 @@ import '../../models/service_request_enhanced_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart'; // NEW import
 import '../../providers/worker_jobs_controller.dart';
 import '../../providers/available_requests_controller.dart';
 import '../../providers/core_providers.dart';
@@ -46,8 +53,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark       = Theme.of(context).brightness == Brightness.dark;
-    // FIX (Designer): was AppTheme.darkAccent without isDark guard further
-    // down. Now derived here and used consistently throughout.
     final accentColor  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final jobsState    = ref.watch(workerJobsControllerProvider);
     final ctrl         = ref.read(workerJobsControllerProvider.notifier);
@@ -65,9 +70,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         appBar: AppBar(
           leading: IconButton(
-            // FIX (Engineer): was Icons.arrow_back_rounded → AppIcons.back.
-            icon: const Icon(AppIcons.back),
-            // FIX (Cross-Screen Flow): was Navigator.pop → context.pop.
+            icon:      const Icon(AppIcons.back),
             onPressed: () => context.pop(),
           ),
         ),
@@ -81,21 +84,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     final isLoading    = actionStatus == JobActionStatus.loading;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                      Colors.transparent,
-        statusBarIconBrightness:             isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:                 isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:            Colors.transparent,
-        systemNavigationBarDividerColor:     Colors.transparent,
-        systemNavigationBarIconBrightness:   isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark), // REPLACED inline block
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         body: CustomScrollView(
           slivers: [
-            // ── Sliver App Bar ────────────────────────────────────────
             SliverAppBar(
               expandedHeight: 220,
               pinned:         true,
@@ -108,7 +102,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   button: true,
                   label:  context.tr('common.back'),
                   child: GestureDetector(
-                    // FIX (Cross-Screen Flow): was Navigator.pop → context.pop.
                     onTap: () => context.pop(),
                     child: Container(
                       decoration: BoxDecoration(
@@ -118,7 +111,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        // FIX (Engineer): was Icons.arrow_back_rounded → AppIcons.back.
                         AppIcons.back,
                         color: isDark ? Colors.white : Colors.black,
                         size:  20,
@@ -145,7 +137,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
               ),
             ),
 
-            // ── Content ───────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -159,34 +150,28 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status + Priority row
                     JobStatusPriorityRow(job: job, isDark: isDark),
                     const SizedBox(height: AppConstants.spacingLg),
 
-                    // Client Info
                     JobSectionCard(
                       title:     context.tr('worker_jobs.client_info'),
                       icon:      Icons.person_rounded,
                       iconColor: AppTheme.cyanBlue,
                       isDark:    isDark,
-                      child: JobClientInfoContent(
-                          job: job, isDark: isDark),
+                      child:     JobClientInfoContent(job: job, isDark: isDark),
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
 
-                    // Service Details
                     JobSectionCard(
                       title:     context.tr('worker_jobs.service_details'),
                       icon:      AppTheme.getProfessionIcon(job.serviceType),
-                      iconColor: AppTheme.getProfessionColor(
-                          job.serviceType, isDark),
-                      isDark: isDark,
-                      child: JobServiceDetailsContent(
-                          job: job, isDark: isDark, context: context),
+                      iconColor: AppTheme.getProfessionColor(job.serviceType, isDark),
+                      isDark:    isDark,
+                      // CHANGE: context: removed
+                      child: JobServiceDetailsContent(job: job, isDark: isDark),
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
 
-                    // Description
                     JobSectionCard(
                       title:     context.tr('worker_jobs.description'),
                       icon:      Icons.description_outlined,
@@ -211,7 +196,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
 
-                    // Media Gallery
                     if (job.mediaUrls.isNotEmpty) ...[
                       JobSectionCard(
                         title:     context.tr('worker_jobs.media_gallery'),
@@ -227,20 +211,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       const SizedBox(height: AppConstants.spacingMd),
                     ],
 
-                    // Schedule
-                    // FIX (Designer): was AppTheme.darkAccent without isDark
-                    // guard — in light mode renders dark indigo on white card.
                     JobSectionCard(
                       title:     context.tr('worker_jobs.schedule'),
                       icon:      Icons.calendar_today_rounded,
                       iconColor: accentColor,
                       isDark:    isDark,
-                      child: JobScheduleContent(
-                          job: job, isDark: isDark, context: context),
+                      // CHANGE: context: removed
+                      child: JobScheduleContent(job: job, isDark: isDark),
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
 
-                    // Location Map Preview
                     JobSectionCard(
                       title:     context.tr('worker_jobs.location'),
                       icon:      AppIcons.location,
@@ -260,30 +240,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       ),
                     ),
 
-                    // Pricing Info (if available)
-                    if (job.estimatedPrice != null ||
-                        job.finalPrice != null) ...[
+                    if (job.estimatedPrice != null || job.finalPrice != null) ...[
                       const SizedBox(height: AppConstants.spacingMd),
                       JobSectionCard(
                         title:     context.tr('worker_jobs.pricing'),
                         icon:      Icons.payments_rounded,
                         iconColor: accentColor,
                         isDark:    isDark,
-                        child: JobPricingContent(
-                            job: job, isDark: isDark),
+                        child:     JobPricingContent(job: job, isDark: isDark),
                       ),
                     ],
 
-                    // Timeline
                     const SizedBox(height: AppConstants.spacingMd),
                     JobSectionCard(
                       title:     context.tr('worker_jobs.timeline'),
                       icon:      Icons.timeline_rounded,
                       iconColor: AppTheme.cyanBlue,
                       isDark:    isDark,
-                      // FIX: JobTimelineContent takes `context:` not `accentColor:`.
-                      child: JobTimelineContent(
-                          job: job, isDark: isDark, context: context),
+                      // CHANGE: context: removed
+                      child: JobTimelineContent(job: job, isDark: isDark),
                     ),
                   ],
                 ),
@@ -292,11 +267,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
           ],
         ),
 
-        // ── Floating action row ───────────────────────────────────────
         floatingActionButtonLocation:
             FloatingActionButtonLocation.centerFloat,
-        // FIX: JobDetailFabRow takes userPhone/onAccept/onDecline/onComplete —
-        // not `ctrl` or `onLocation`. The two helpers below own the dialogs.
         floatingActionButton: JobDetailFabRow(
           job:         job,
           isLoading:   isLoading,
@@ -310,8 +282,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       ),
     );
   }
-
-  // ── Private helpers ─────────────────────────────────────────────────────
 
   Future<void> _showCompleteDialog(
     BuildContext context,
@@ -330,23 +300,21 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     WorkerJobsController ctrl,
     String jobId,
   ) async {
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor:
             isDark ? AppTheme.darkSurface : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(AppConstants.radiusXl),
+          borderRadius: BorderRadius.circular(AppConstants.radiusXl),
         ),
         title:   Text(context.tr('worker_jobs.decline_confirm_title')),
         content: Text(context.tr('worker_jobs.decline_confirm_message')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('common.cancel')),
+            child:     Text(context.tr('common.cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
