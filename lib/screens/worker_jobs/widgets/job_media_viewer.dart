@@ -1,4 +1,9 @@
 // lib/screens/worker_jobs/widgets/job_media_viewer.dart
+//
+// CHANGE: JobVideoPlaceholder(url: url, isDark: true, context: context)
+//         → JobVideoPlaceholder(url: url, isDark: true)
+//   context: field was removed from JobVideoPlaceholder constructor as part
+//   of the BuildContext-in-constructor fix (P1 — Engineer).
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -15,7 +20,7 @@ import 'job_video_placeholder.dart';
 
 class JobMediaViewer extends StatefulWidget {
   final List<String> mediaUrls;
-  final int initialIndex;
+  final int          initialIndex;
 
   const JobMediaViewer({
     super.key,
@@ -30,16 +35,16 @@ class JobMediaViewer extends StatefulWidget {
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black87,
+        opaque:           false,
+        barrierColor:     Colors.black87,
         pageBuilder: (_, __, ___) => JobMediaViewer(
-          mediaUrls: mediaUrls,
+          mediaUrls:    mediaUrls,
           initialIndex: initialIndex,
         ),
         transitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (_, anim, __, child) => FadeTransition(
           opacity: anim,
-          child: child,
+          child:   child,
         ),
       ),
     );
@@ -51,20 +56,20 @@ class JobMediaViewer extends StatefulWidget {
 
 class _JobMediaViewerState extends State<JobMediaViewer>
     with SingleTickerProviderStateMixin {
-  late PageController _pageCtrl;
-  late int _currentIndex;
-  bool _showUI = true;
-  late AnimationController _uiCtrl;
+  late PageController        _pageCtrl;
+  late int                   _currentIndex;
+  bool                       _showUI = true;
+  late AnimationController   _uiCtrl;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _pageCtrl = PageController(initialPage: widget.initialIndex);
-    _uiCtrl = AnimationController(
-      vsync: this,
+    _pageCtrl     = PageController(initialPage: widget.initialIndex);
+    _uiCtrl       = AnimationController(
+      vsync:    this,
       duration: const Duration(milliseconds: 200),
-      value: 1.0,
+      value:    1.0,
     );
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
@@ -106,26 +111,26 @@ class _JobMediaViewerState extends State<JobMediaViewer>
           children: [
             // Page view
             PageView.builder(
-              controller: _pageCtrl,
-              itemCount: widget.mediaUrls.length,
+              controller:  _pageCtrl,
+              itemCount:   widget.mediaUrls.length,
               onPageChanged: (i) => setState(() => _currentIndex = i),
               itemBuilder: (context, i) {
                 final url = widget.mediaUrls[i];
                 if (_isVideo(url)) {
-                  return JobVideoPlaceholder(
-                      url: url, isDark: true, context: context);
+                  // CHANGE: removed context: context parameter
+                  return JobVideoPlaceholder(url: url, isDark: true);
                 }
                 return InteractiveViewer(
                   minScale: 0.7,
                   maxScale: 4.0,
                   child: Hero(
-                    tag: 'media_${url}_$i',
+                    tag:   'media_${url}_$i',
                     child: CachedNetworkImage(
                       imageUrl: url,
-                      fit: BoxFit.contain,
+                      fit:      BoxFit.contain,
                       placeholder: (context, url) => const Center(
                         child: CircularProgressIndicator(
-                          color: Colors.white54,
+                          color:       Colors.white54,
                           strokeWidth: 2,
                         ),
                       ),
@@ -157,16 +162,14 @@ class _JobMediaViewerState extends State<JobMediaViewer>
                 ignoring: !_showUI,
                 child: Column(
                   children: [
-                    // Top bar
                     JobMediaTopBar(
                       currentIndex: _currentIndex,
-                      total: widget.mediaUrls.length,
-                      onClose: () => Navigator.pop(context),
+                      total:        widget.mediaUrls.length,
+                      onClose:      () => Navigator.pop(context),
                     ),
 
                     const Spacer(),
 
-                    // Prev/Next arrows
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppConstants.paddingMd),
@@ -175,12 +178,11 @@ class _JobMediaViewerState extends State<JobMediaViewer>
                         children: [
                           if (_currentIndex > 0)
                             JobMediaNavArrow(
-                              icon: Icons.chevron_left_rounded,
+                              icon:  Icons.chevron_left_rounded,
                               onTap: () {
                                 _pageCtrl.previousPage(
-                                  duration:
-                                      const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve:    Curves.easeOutCubic,
                                 );
                               },
                             )
@@ -188,12 +190,11 @@ class _JobMediaViewerState extends State<JobMediaViewer>
                             const SizedBox(width: 48),
                           if (_currentIndex < widget.mediaUrls.length - 1)
                             JobMediaNavArrow(
-                              icon: Icons.chevron_right_rounded,
+                              icon:  Icons.chevron_right_rounded,
                               onTap: () {
                                 _pageCtrl.nextPage(
-                                  duration:
-                                      const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve:    Curves.easeOutCubic,
                                 );
                               },
                             )
@@ -205,10 +206,9 @@ class _JobMediaViewerState extends State<JobMediaViewer>
 
                     const SizedBox(height: AppConstants.spacingMd),
 
-                    // Dot indicators
                     if (widget.mediaUrls.length > 1)
                       JobMediaDotIndicators(
-                        count: widget.mediaUrls.length,
+                        count:   widget.mediaUrls.length,
                         current: _currentIndex,
                       ),
 
@@ -224,4 +224,3 @@ class _JobMediaViewerState extends State<JobMediaViewer>
     );
   }
 }
-

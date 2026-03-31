@@ -6,6 +6,7 @@ import '../../../models/message_enums.dart';
 import '../../../models/service_request_enhanced_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/localization.dart'; // ADDED — required for context.tr()
 import 'job_accept_decline_row.dart';
 import 'job_complete_btn.dart';
 import 'job_completed_badge.dart';
