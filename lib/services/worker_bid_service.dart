@@ -1,4 +1,21 @@
 // lib/services/worker_bid_service.dart
+//
+// SECURITY FIX (Critical — withdrawBid):
+//   withdrawBid() previously read the bid to find workerId but NEVER verified
+//   the caller was that worker. Any authenticated user who knew a bidId could
+//   withdraw another worker's bid.
+//
+//   Fix: fetch the bid FIRST, verify bid.workerId == currentUid, then withdraw.
+//   If the check fails, throw WorkerBidServiceException('AUTH_MISMATCH').
+//
+// SECURITY FIX (Warning — bid message length):
+//   submitBid accepted message with no length cap. A malicious worker could
+//   submit a 1 MB string causing UI render issues or Firestore document size
+//   violations (1 MB document limit).
+//
+//   Fix: enforce _maxMessageLength = 500 chars.
+
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,6 +36,10 @@ class WorkerBidService {
   bool _isDisposed = false;
 
   static const String _pendingBidMarkersCollection = 'pending_bid_markers';
+
+  // SECURITY FIX: maximum allowed bid message length.
+  // Prevents 1 MB strings from hitting Firestore's 1 MB document limit.
+  static const int _maxMessageLength = 500;
 
   WorkerBidService(this._firestore);
 
@@ -59,6 +80,7 @@ class WorkerBidService {
   ///   formats for backward compatibility with existing Firestore documents.
   /// FIX (Critical): status write uses .name ('awaitingSelection') to match
   ///   what ServiceRequestEnhancedModel.toMap() writes.
+  /// FIX (Warning): message length capped at _maxMessageLength = 500 chars.
   Future<WorkerBidModel> submitBid({
     required String requestId,
     required WorkerModel worker,
@@ -91,6 +113,13 @@ class WorkerBidService {
       );
     }
 
+    // FIX: Sanitize and cap message length to prevent oversized Firestore docs.
+    String? sanitizedMessage;
+    if (message != null && message.trim().isNotEmpty) {
+      final trimmed = message.trim();
+      sanitizedMessage = trimmed.substring(0, min(trimmed.length, _maxMessageLength));
+    }
+
     final bidId = const Uuid().v4();
     final deadline = DateTime.now().add(
       const Duration(minutes: AppConstants.biddingDeadlineMinutes),
@@ -107,7 +136,7 @@ class WorkerBidService {
       proposedPrice: proposedPrice,
       estimatedMinutes: estimatedMinutes,
       availableFrom: availableFrom,
-      message: message?.trim().isEmpty ?? true ? null : message!.trim(),
+      message: sanitizedMessage,
       status: BidStatus.pending,
       createdAt: DateTime.now(),
       expiresAt: deadline,
@@ -145,10 +174,8 @@ class WorkerBidService {
         final reqData = reqSnap.data()!;
         final statusStr = reqData['status'] as String? ?? '';
 
-        // FIX: accept both .name ('open', 'awaitingSelection') and legacy
-        // .toString() ('ServiceStatus.open', 'ServiceStatus.awaitingSelection')
-        // formats so the check works regardless of which write path created
-        // the document.
+        // Accept both .name ('open', 'awaitingSelection') and legacy
+        // .toString() ('ServiceStatus.open', etc.) formats.
         final isOpen =
             statusStr == ServiceStatus.open.name ||
             statusStr == ServiceStatus.awaitingSelection.name ||
@@ -171,7 +198,6 @@ class WorkerBidService {
         tx.set(bidRef, bid.toMap());
         tx.update(requestRef, {
           'bidCount': FieldValue.increment(1),
-          // FIX: use .name ('awaitingSelection') not .toString()
           'status': ServiceStatus.awaitingSelection.name,
         });
       }).timeout(const Duration(seconds: 15));
@@ -217,31 +243,60 @@ class WorkerBidService {
   // BID WITHDRAWAL (worker action)
   // =========================================================================
 
+  /// SECURITY FIX: verify the caller owns this bid before withdrawing.
+  ///
+  /// Previously: any authenticated user who knew a bidId could call this
+  /// method and withdraw another worker's bid — there was no auth check.
+  ///
+  /// Fix:
+  ///   1. Fetch the bid document.
+  ///   2. Compare bid.workerId with FirebaseAuth.instance.currentUser?.uid.
+  ///   3. Throw AUTH_MISMATCH if they differ.
+  ///   4. Only then call _firestore.withdrawBid().
   Future<void> withdrawBid({
     required String bidId,
     required String requestId,
   }) async {
     _ensureNotDisposed();
 
-    String? workerId;
-    try {
-      final snap = await _firestore.firestore
-          .collection(FirestoreService.workerBidsCollection)
-          .doc(bidId)
-          .get()
-          .timeout(const Duration(seconds: 10));
-      workerId = snap.data()?['workerId'] as String?;
-    } catch (_) {
-      // Non-fatal: marker cleanup is best-effort.
+    // SECURITY FIX: verify the caller is the bid owner.
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid == null) {
+      throw WorkerBidServiceException(
+        'Not authenticated',
+        code: 'UNAUTHENTICATED',
+      );
     }
 
+    // Fetch bid and verify ownership BEFORE withdrawing.
+    final snap = await _firestore.firestore
+        .collection(FirestoreService.workerBidsCollection)
+        .doc(bidId)
+        .get()
+        .timeout(const Duration(seconds: 10));
+
+    if (!snap.exists || snap.data() == null) {
+      throw WorkerBidServiceException(
+        'Bid not found: $bidId',
+        code: 'BID_NOT_FOUND',
+      );
+    }
+
+    final bidData = snap.data()!;
+    final bidOwnerId = bidData['workerId'] as String?;
+
+    if (bidOwnerId == null || bidOwnerId != currentUid) {
+      throw WorkerBidServiceException(
+        'Cannot withdraw bid owned by another worker',
+        code: 'AUTH_MISMATCH',
+      );
+    }
+
+    // Identity verified — safe to proceed.
     await _firestore.withdrawBid(bidId: bidId, requestId: requestId);
+    await _deleteMarker(currentUid, requestId);
 
-    if (workerId != null) {
-      await _deleteMarker(workerId, requestId);
-    }
-
-    _logInfo('Bid withdrawn: $bidId');
+    _logInfo('Bid withdrawn: $bidId by $currentUid');
   }
 
   // =========================================================================
@@ -280,8 +335,7 @@ class WorkerBidService {
           ..sort((a, b) {
             final priceCmp = a.proposedPrice.compareTo(b.proposedPrice);
             if (priceCmp != 0) return priceCmp;
-            return b.workerAverageRating
-                .compareTo(a.workerAverageRating);
+            return b.workerAverageRating.compareTo(a.workerAverageRating);
           });
         return sorted;
       },

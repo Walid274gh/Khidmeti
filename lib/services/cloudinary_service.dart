@@ -1,6 +1,21 @@
 // lib/services/cloudinary_service.dart
+//
+// SECURITY FIX (Warning): _isImageExtension() only checked file extension.
+// An attacker could rename malware.php to image.jpg and bypass this check.
+//
+// Fix: _isValidImageMagicBytes() reads the first 8 bytes of every file to
+// verify it is actually a JPEG or PNG before uploading. Extension check is
+// kept as a fast first-pass; magic bytes are the authoritative check.
+//
+// Supported signatures:
+//   JPEG  FF D8 FF
+//   PNG   89 50 4E 47 0D 0A 1A 0A
+//   GIF   47 49 46 38
+//   WebP  52 49 46 46 (RIFF header; additional 'WEBP' check at offset 8)
+//   BMP   42 4D
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:cloudinary/cloudinary.dart';
 import 'package:path/path.dart' as path;
@@ -33,20 +48,6 @@ class CloudinaryService {
   final String cloudName;
   final String uploadPreset;
 
-  // FIX (Security P0): apiKey and apiSecret have been removed from this class.
-  // Embedding the Cloudinary apiSecret in a mobile client exposes full account
-  // access to anyone who decompiles the APK or IPA — this is a critical
-  // credential leak. Uploads are now authenticated exclusively via the
-  // upload_preset configured in the Cloudinary dashboard (unsigned preset).
-  //
-  // Migration notes for callers:
-  //   • Remove apiKey and apiSecret from constructor calls.
-  //   • Create an unsigned upload preset in Cloudinary Dashboard →
-  //     Settings → Upload → Add upload preset → Mode: Unsigned.
-  //   • File deletion (deleteFile) must be performed server-side via a
-  //     Cloud Function or backend endpoint — it is no longer available
-  //     from the mobile client. See deleteFile() for details.
-
   late final Cloudinary _cloudinary;
 
   CloudinaryService({
@@ -73,7 +74,6 @@ class CloudinaryService {
   }
 
   void _initializeCloudinary() {
-    // Use unsigned config: the mobile client never holds the apiSecret.
     _cloudinary = Cloudinary.unsignedConfig(cloudName: cloudName);
     _logInfo('Cloudinary initialized (unsigned) for cloud: $cloudName');
   }
@@ -184,10 +184,7 @@ class CloudinaryService {
     );
   }
 
-  Future<String> uploadAudio(
-    File file, {
-    String? folder,
-  }) async {
+  Future<String> uploadAudio(File file, {String? folder}) async {
     return uploadFile(
       file,
       resourceType: CloudinaryResourceType.auto,
@@ -195,11 +192,8 @@ class CloudinaryService {
     );
   }
 
-  // FIX (Security P0): File deletion requires signed authentication and must
-  // be performed server-side. Call your backend endpoint or Cloud Function
-  // that holds the apiKey + apiSecret securely.
-  // This method returns false and logs a warning — it does NOT throw so that
-  // upload pipelines that call deleteFile on cleanup do not crash.
+  /// File deletion requires signed authentication and must be performed
+  /// server-side. Call your backend endpoint or Cloud Function.
   Future<bool> deleteFile(String publicId) async {
     if (publicId.trim().isEmpty) {
       throw CloudinaryServiceException(
@@ -210,8 +204,7 @@ class CloudinaryService {
 
     _logWarning(
       'deleteFile: server-side only — call your Cloud Function or backend '
-      'endpoint to delete "$publicId". Client-side deletion is not supported '
-      'with unsigned Cloudinary configuration.',
+      'endpoint to delete "$publicId".',
     );
     return false;
   }
@@ -269,12 +262,15 @@ class CloudinaryService {
       transformations.add([w, h, c].where((s) => s.isNotEmpty).join(','));
     }
 
-    final transformationString = transformations.isEmpty
-        ? ''
-        : '${transformations.join('/')}/';
+    final transformationString =
+        transformations.isEmpty ? '' : '${transformations.join('/')}/';
 
     return 'https://res.cloudinary.com/$cloudName/video/upload/$transformationString$publicId.$format';
   }
+
+  // =========================================================================
+  // VALIDATION (with magic bytes check)
+  // =========================================================================
 
   Future<void> _validateFile(
     File file,
@@ -292,11 +288,13 @@ class CloudinaryService {
 
     int maxSizeMB;
     String fileType;
+    bool isImageType = false;
 
     switch (resourceType) {
       case CloudinaryResourceType.image:
         maxSizeMB = maxImageSizeMB;
         fileType = 'Image';
+        isImageType = true;
         break;
       case CloudinaryResourceType.video:
         maxSizeMB = maxVideoSizeMB;
@@ -307,6 +305,7 @@ class CloudinaryService {
         if (_isImageExtension(extension)) {
           maxSizeMB = maxImageSizeMB;
           fileType = 'Image';
+          isImageType = true;
         } else if (_isVideoExtension(extension)) {
           maxSizeMB = maxVideoSizeMB;
           fileType = 'Video';
@@ -331,10 +330,89 @@ class CloudinaryService {
     }
 
     if (fileSize == 0) {
-      throw CloudinaryServiceException(
-        'File is empty',
-        code: 'EMPTY_FILE',
+      throw CloudinaryServiceException('File is empty', code: 'EMPTY_FILE');
+    }
+
+    // SECURITY FIX: magic bytes validation for image uploads.
+    // Extension-only checks can be bypassed by renaming malware.php → image.jpg.
+    // Reading the actual file header (magic bytes) is the authoritative check.
+    if (isImageType) {
+      final valid = await _isValidImageMagicBytes(file);
+      if (!valid) {
+        throw CloudinaryServiceException(
+          'File content does not match an allowed image format. '
+          'Only JPEG, PNG, GIF, WebP, and BMP are permitted.',
+          code: 'INVALID_IMAGE_CONTENT',
+        );
+      }
+    }
+  }
+
+  /// SECURITY FIX: validates image files by reading their magic bytes (file
+  /// header) rather than trusting the file extension alone.
+  ///
+  /// Supported formats and their signatures:
+  ///   JPEG   FF D8 FF
+  ///   PNG    89 50 4E 47 0D 0A 1A 0A
+  ///   GIF    47 49 46 38  (GIF8)
+  ///   WebP   52 49 46 46 ?? ?? ?? ?? 57 45 42 50  (RIFF....WEBP)
+  ///   BMP    42 4D
+  Future<bool> _isValidImageMagicBytes(File file) async {
+    try {
+      // Read enough bytes for the longest signature (WebP needs 12 bytes).
+      const int headerLength = 12;
+      final List<int> bytes = await file
+          .openRead(0, headerLength)
+          .expand((chunk) => chunk)
+          .take(headerLength)
+          .toList();
+
+      if (bytes.length < 3) return false;
+
+      // JPEG: FF D8 FF
+      if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+        return true;
+      }
+
+      // PNG: 89 50 4E 47 0D 0A 1A 0A
+      if (bytes.length >= 8 &&
+          bytes[0] == 0x89 && bytes[1] == 0x50 &&
+          bytes[2] == 0x4E && bytes[3] == 0x47 &&
+          bytes[4] == 0x0D && bytes[5] == 0x0A &&
+          bytes[6] == 0x1A && bytes[7] == 0x0A) {
+        return true;
+      }
+
+      // GIF: 47 49 46 38 (GIF8)
+      if (bytes.length >= 4 &&
+          bytes[0] == 0x47 && bytes[1] == 0x49 &&
+          bytes[2] == 0x46 && bytes[3] == 0x38) {
+        return true;
+      }
+
+      // WebP: RIFF (52 49 46 46) at offset 0, WEBP (57 45 42 50) at offset 8
+      if (bytes.length >= 12 &&
+          bytes[0] == 0x52 && bytes[1] == 0x49 &&
+          bytes[2] == 0x46 && bytes[3] == 0x46 &&
+          bytes[8] == 0x57 && bytes[9] == 0x45 &&
+          bytes[10] == 0x42 && bytes[11] == 0x50) {
+        return true;
+      }
+
+      // BMP: 42 4D
+      if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
+        return true;
+      }
+
+      _logWarning(
+        '_isValidImageMagicBytes: unrecognized file header in ${file.path}. '
+        'First bytes: ${bytes.take(4).map((b) => b.toRadixString(16).padLeft(2, "0")).join(" ")}',
       );
+      return false;
+    } catch (e) {
+      _logError('_isValidImageMagicBytes', e);
+      // Fail closed: if we cannot read the file, treat it as invalid.
+      return false;
     }
   }
 
