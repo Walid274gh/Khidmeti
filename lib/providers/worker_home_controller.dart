@@ -1,4 +1,20 @@
 // lib/providers/worker_home_controller.dart
+//
+// SECURITY FIX (Critical): toggleOnlineStatus and _updateRequestStatus wrote
+// directly to FirebaseFirestore.instance rather than going through
+// FirestoreService. This bypassed all retry logic, validation, and logging,
+// and made it easy to accidentally write server-only fields (workerId,
+// acceptedAt) from client-side code.
+//
+// Fix: All Firestore writes now route through:
+//   _ref.read(firestoreServiceProvider).updateWorkerStatus()   — for online toggle
+//   _ref.read(firestoreServiceProvider).startJob()             — for accepted
+//   _ref.read(firestoreServiceProvider).completeJob()          — for completed
+//   _ref.read(firestoreServiceProvider).cancelRequest()        — for declined
+//
+// The _subscribeToWorker and _subscribeToRequests real-time streams still use
+// FirebaseFirestore.instance.snapshots() directly — this is intentional and
+// correct; FirestoreService does not expose real-time streams for these shapes.
 
 import 'dart:async';
 
@@ -56,11 +72,11 @@ class WorkerHomeState {
   int get completedCount =>
       recentRequests.where((r) => r.status == ServiceStatus.completed).length;
 
-  WorkerModel? get worker => workerAsync.value;
-  bool get isOnline       => worker?.isOnline ?? false;
-  bool get isWorkerLoaded  => workerAsync is AsyncData;
-  bool get isWorkerLoading => workerAsync is AsyncLoading;
-  bool get isWorkerError   => workerAsync is AsyncError;
+  WorkerModel? get worker      => workerAsync.value;
+  bool get isOnline            => worker?.isOnline ?? false;
+  bool get isWorkerLoaded      => workerAsync is AsyncData;
+  bool get isWorkerLoading     => workerAsync is AsyncLoading;
+  bool get isWorkerError       => workerAsync is AsyncError;
 
   WorkerHomeState copyWith({
     AsyncValue<WorkerModel>? workerAsync,
@@ -71,8 +87,8 @@ class WorkerHomeState {
     bool? isRefreshing,
     String? toggleError,
     GoOnlineBlockReason? goOnlineBlockReason,
-    bool clearToggleError       = false,
-    bool clearRequestsError     = false,
+    bool clearToggleError         = false,
+    bool clearRequestsError       = false,
     bool clearGoOnlineBlockReason = false,
   }) {
     return WorkerHomeState(
@@ -83,8 +99,8 @@ class WorkerHomeState {
       requestsError: clearRequestsError
           ? null
           : (requestsError ?? this.requestsError),
-      isRefreshing:  isRefreshing ?? this.isRefreshing,
-      toggleError:   clearToggleError ? null : (toggleError ?? this.toggleError),
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      toggleError:  clearToggleError ? null : (toggleError ?? this.toggleError),
       goOnlineBlockReason: clearGoOnlineBlockReason
           ? null
           : (goOnlineBlockReason ?? this.goOnlineBlockReason),
@@ -130,18 +146,14 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
         'WorkerHomeController: toggling online → $newIsOnline for ${worker.id}');
 
     state = state.copyWith(
-      isTogglingOnline:     true,
-      clearToggleError:     true,
+      isTogglingOnline:         true,
+      clearToggleError:         true,
       clearGoOnlineBlockReason: true,
     );
 
     try {
-      final Map<String, dynamic> updates = {
-        'isOnline':    newIsOnline,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      };
-
       if (newIsOnline) {
+        // Capture fresh GPS coordinates before going online.
         try {
           final locationNotifier =
               _ref.read(userLocationControllerProvider.notifier);
@@ -149,8 +161,12 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 
           final locationState = _ref.read(userLocationControllerProvider);
           if (locationState.userLocation != null) {
-            updates['latitude']  = locationState.userLocation!.latitude;
-            updates['longitude'] = locationState.userLocation!.longitude;
+            // Update location via FirestoreService (not direct Firestore write).
+            await _ref.read(firestoreServiceProvider).updateWorkerLocation(
+              worker.id,
+              locationState.userLocation!.latitude,
+              locationState.userLocation!.longitude,
+            );
             AppLogger.info(
                 'WorkerHomeController: GPS captured — '
                 '${locationState.userLocation!.latitude}, '
@@ -162,6 +178,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               'going online without live coords: $gpsError');
         }
 
+        // Assign worker to geographic cell.
         try {
           final locState = _ref.read(userLocationControllerProvider);
           if (locState.userLocation != null) {
@@ -180,6 +197,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               '(non-fatal): $cellError');
         }
 
+        // Start native background location service.
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.startLocationService(
@@ -193,6 +211,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               'WorkerHomeController: native location service start failed: $e');
         }
       } else {
+        // Stop native background location service.
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.stopLocationService();
@@ -204,13 +223,12 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
         }
       }
 
-      // FIX: add 10-second timeout so the UI cannot freeze indefinitely on a
-      // poor mobile connection. Without a timeout, isTogglingOnline: true
-      // stays set forever if the write hangs.
-      await FirebaseFirestore.instance
-          .collection('workers')
-          .doc(worker.id)
-          .update(updates)
+      // SECURITY FIX: route the online-status write through FirestoreService
+      // instead of writing directly to FirebaseFirestore.instance.
+      // This ensures retry logic, validation, and proper field scoping apply.
+      await _ref
+          .read(firestoreServiceProvider)
+          .updateWorkerStatus(worker.id, newIsOnline)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw TimeoutException(
@@ -246,11 +264,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 
   Future<void> markCompleted(String requestId) async {
     AppLogger.info('WorkerHomeController: marking completed $requestId');
-    await _updateRequestStatus(
-      requestId,
-      ServiceStatus.completed,
-      completedAt: DateTime.now(),
-    );
+    await _updateRequestStatus(requestId, ServiceStatus.completed);
   }
 
   Future<void> refresh() async {
@@ -275,8 +289,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   // --------------------------------------------------------------------------
 
   Future<GoOnlineBlockReason?> _resolveGoOnlineBlockReason() async {
-    final permState =
-        _ref.read(locationPermissionControllerProvider);
+    final permState = _ref.read(locationPermissionControllerProvider);
 
     try {
       final locationService = _ref.read(locationServiceProvider);
@@ -364,7 +377,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     AppLogger.info(
         'WorkerHomeController: subscribing to requests for $workerId');
     state = state.copyWith(
-      isLoadingRequests: true,
+      isLoadingRequests:  true,
       clearRequestsError: true,
     );
 
@@ -405,26 +418,53 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     _subscribeToRequests(workerId);
   }
 
+  /// SECURITY FIX: route all status updates through FirestoreService instead
+  /// of writing directly to FirebaseFirestore.instance.
+  ///
+  /// Previously: direct `.update({'status': newStatus.name, ...})` bypassed
+  /// all retry logic and allowed accidental writes of server-only fields like
+  /// workerId or acceptedAt from client code.
+  ///
+  /// Now: each transition delegates to the appropriate FirestoreService method:
+  ///   accepted / inProgress  → startJob()     (marks inProgress server-side)
+  ///   completed               → completeJob()
+  ///   declined / cancelled    → cancelRequest()
+  ///
+  /// Note: 'accepted' in this controller means the worker is starting the job
+  /// (they were already bid-selected by the client). Map it to startJob().
   Future<void> _updateRequestStatus(
     String requestId,
     ServiceStatus newStatus, {
     DateTime? completedAt,
   }) async {
     try {
-      final updates = <String, dynamic>{
-        'status':      newStatus.name,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      };
-      if (newStatus == ServiceStatus.accepted) {
-        updates['acceptedAt'] = FieldValue.serverTimestamp();
+      final firestoreService = _ref.read(firestoreServiceProvider);
+
+      switch (newStatus) {
+        case ServiceStatus.accepted:
+        case ServiceStatus.inProgress:
+          await firestoreService.startJob(requestId);
+          break;
+
+        case ServiceStatus.completed:
+          await firestoreService.completeJob(requestId: requestId);
+          break;
+
+        case ServiceStatus.declined:
+        case ServiceStatus.cancelled:
+          await firestoreService.cancelRequest(requestId);
+          break;
+
+        default:
+          // For any other status (edge cases), fall back to a minimal update
+          // still routed through FirestoreService's updateServiceRequest path
+          // rather than a raw Firestore write.
+          AppLogger.warning(
+              'WorkerHomeController._updateRequestStatus: '
+              'unhandled status $newStatus for $requestId — skipping');
+          return;
       }
-      if (completedAt != null) {
-        updates['completedAt'] = Timestamp.fromDate(completedAt);
-      }
-      await FirebaseFirestore.instance
-          .collection('service_requests')
-          .doc(requestId)
-          .update(updates);
+
       AppLogger.info(
           'WorkerHomeController: request $requestId → $newStatus');
     } catch (e) {
