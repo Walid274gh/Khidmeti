@@ -7,20 +7,21 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// Was: context.tr(...) using the field inside build.
+// Now: context.tr(...) using the build-method parameter.
 class JobAcceptDeclineRow extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onDecline;
-  final BuildContext context;
 
   const JobAcceptDeclineRow({
     super.key,
     required this.onAccept,
     required this.onDecline,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     return Row(
       children: [
         // Decline
@@ -57,8 +58,7 @@ class JobAcceptDeclineRow extends StatelessWidget {
 
         const SizedBox(width: AppConstants.spacingSm),
 
-        // Accept — FIX (Designer P1): was LinearGradient(onlineGreen→acceptGreen).
-        // Gradient on action buttons is forbidden. Replaced with solid onlineGreen.
+        // Accept — solid onlineGreen (gradient forbidden)
         Expanded(
           flex: 2,
           child: Semantics(

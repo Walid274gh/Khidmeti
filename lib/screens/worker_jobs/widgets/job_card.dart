@@ -11,9 +11,13 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'job_action_buttons.dart';
 import 'job_card_header.dart';
+import 'job_location_map_sheet.dart';
+import 'job_media_viewer.dart';
 import 'job_meta_chip.dart';
 import 'job_urgent_badge.dart';
 
+// CHANGES:
+//   • JobCardHeader call: context: parameter removed (field deleted from constructor)
 class JobCard extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final JobActionStatus             actionStatus;
@@ -81,7 +85,7 @@ class JobCard extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              // Status accent bar (left edge — uses accentBarWidth token)
+              // Status accent bar
               Positioned(
                 left: 0, top: 16, bottom: 16,
                 child: Container(
@@ -100,19 +104,18 @@ class JobCard extends StatelessWidget {
                 ),
               ),
 
-              // Main content
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // CHANGE: context: removed from JobCardHeader
                     JobCardHeader(
                       job:          job,
                       serviceColor: serviceColor,
                       statusColor:  statusColor,
                       accentColor:  accentColor,
                       isDark:       isDark,
-                      context:      context,
                     ),
 
                     const SizedBox(height: 10),
@@ -185,7 +188,8 @@ class JobCard extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Icon(AppIcons.error, size: 14, color: AppTheme.signOutRed),
+                            Icon(AppIcons.error, size: 14,
+                                color: AppTheme.signOutRed),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -211,7 +215,6 @@ class JobCard extends StatelessWidget {
                       onAccept:    onAccept,
                       onComplete:  onComplete,
                       onDecline:   onDecline,
-                      onChat:      onChat,
                       onLocation: () => JobLocationMapSheet.show(
                         context,
                         latitude:   job.userLatitude,
@@ -228,7 +231,6 @@ class JobCard extends StatelessWidget {
                 ),
               ),
 
-              // Loading overlay — flat, no BackdropFilter
               if (isLoading)
                 Positioned.fill(
                   child: ClipRRect(
@@ -246,7 +248,6 @@ class JobCard extends StatelessWidget {
                   ),
                 ),
 
-              // Success overlay — unchanged (no glass needed)
               if (isSuccess)
                 Positioned.fill(
                   child: ClipRRect(
@@ -272,13 +273,13 @@ class JobCard extends StatelessWidget {
 
   String _statusLabel(BuildContext context, ServiceStatus status) {
     switch (status) {
-      case ServiceStatus.pending:     return context.tr('worker_jobs.status_pending');
-      case ServiceStatus.accepted:    return context.tr('worker_jobs.status_accepted');
-      case ServiceStatus.inProgress:  return context.tr('worker_jobs.status_in_progress');
-      case ServiceStatus.completed:   return context.tr('worker_jobs.status_completed');
-      case ServiceStatus.cancelled:   return context.tr('worker_jobs.status_cancelled');
-      case ServiceStatus.declined:    return context.tr('worker_jobs.status_declined');
-      default:                        return '';
+      case ServiceStatus.pending:    return context.tr('worker_jobs.status_pending');
+      case ServiceStatus.accepted:   return context.tr('worker_jobs.status_accepted');
+      case ServiceStatus.inProgress: return context.tr('worker_jobs.status_in_progress');
+      case ServiceStatus.completed:  return context.tr('worker_jobs.status_completed');
+      case ServiceStatus.cancelled:  return context.tr('worker_jobs.status_cancelled');
+      case ServiceStatus.declined:   return context.tr('worker_jobs.status_declined');
+      default:                       return '';
     }
   }
 }

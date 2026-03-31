@@ -8,46 +8,48 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'job_info_row.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// Storing BuildContext as a field is unsafe — it can go stale between
+// builds. The context from build(BuildContext context) is always safe.
 class JobScheduleContent extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool isDark;
-  final BuildContext context;
 
   const JobScheduleContent({
     super.key,
     required this.job,
     required this.isDark,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     final date = DateFormat('EEEE, MMMM d, yyyy').format(job.scheduledDate);
     final time =
         '${job.scheduledTime.hour.toString().padLeft(2, '0')}:${job.scheduledTime.minute.toString().padLeft(2, '0')}';
+
     return Padding(
       padding: const EdgeInsets.only(top: AppConstants.spacingMd),
       child: Column(
         children: [
           JobInfoRow(
-            icon: Icons.calendar_today_rounded,
-            label: ctx.tr('requests.scheduled_date'),
-            value: date,
+            icon:   Icons.calendar_today_rounded,
+            label:  context.tr('requests.scheduled_date'),
+            value:  date,
             isDark: isDark,
           ),
           const SizedBox(height: AppConstants.spacingSm),
           JobInfoRow(
-            icon: Icons.access_time_rounded,
-            label: ctx.tr('requests.scheduled_time'),
-            value: time,
+            icon:   Icons.access_time_rounded,
+            label:  context.tr('requests.scheduled_time'),
+            value:  time,
             isDark: isDark,
           ),
           if (job.estimatedDuration != null) ...[
             const SizedBox(height: AppConstants.spacingSm),
             JobInfoRow(
-              icon: Icons.timer_rounded,
-              label: ctx.tr('worker_jobs.estimated_duration'),
-              value: '${job.estimatedDuration} min',
+              icon:   Icons.timer_rounded,
+              label:  context.tr('worker_jobs.estimated_duration'),
+              value:  '${job.estimatedDuration} min',
               isDark: isDark,
             ),
           ],
@@ -56,4 +58,3 @@ class JobScheduleContent extends StatelessWidget {
     );
   }
 }
-

@@ -8,41 +8,41 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'job_info_row.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// Storing BuildContext as a field is unsafe — it can go stale between
+// builds. The context from build(BuildContext context) is always safe.
 class JobServiceDetailsContent extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool isDark;
-  final BuildContext context;
 
   const JobServiceDetailsContent({
     super.key,
     required this.job,
     required this.isDark,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: AppConstants.spacingMd),
       child: Column(
         children: [
           JobInfoRow(
-            icon: AppTheme.getProfessionIcon(job.serviceType),
-            label: ctx.tr('worker_jobs.service_type'),
-            value: ctx.tr('services.${job.serviceType}'),
+            icon:   AppTheme.getProfessionIcon(job.serviceType),
+            label:  context.tr('worker_jobs.service_type'),
+            value:  context.tr('services.${job.serviceType}'),
             isDark: isDark,
           ),
           const SizedBox(height: AppConstants.spacingSm),
           JobInfoRow(
-            icon: Icons.tag_rounded,
-            label: ctx.tr('worker_jobs.request_id'),
-            value: '#${job.id.substring(0, 8).toUpperCase()}',
+            icon:   Icons.tag_rounded,
+            label:  context.tr('worker_jobs.request_id'),
+            value:  '#${job.id.substring(0, 8).toUpperCase()}',
             isDark: isDark,
-            mono: true,
+            mono:   true,
           ),
         ],
       ),
     );
   }
 }
-

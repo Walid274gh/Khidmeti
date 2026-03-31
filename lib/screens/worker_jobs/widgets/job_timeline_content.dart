@@ -9,50 +9,52 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'job_timeline_step.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// Storing BuildContext as a field is unsafe — it can go stale between
+// builds. The context from build(BuildContext context) is always safe.
 class JobTimelineContent extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool isDark;
-  final BuildContext context;
 
   const JobTimelineContent({
     super.key,
     required this.job,
     required this.isDark,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MMM d, HH:mm');
+
     return Padding(
       padding: const EdgeInsets.only(top: AppConstants.spacingMd),
       child: Column(
         children: [
           JobTimelineStep(
-            label: ctx.tr('worker_jobs.status_pending'),
-            date: dateFormatter.format(job.createdAt),
+            label:       context.tr('worker_jobs.status_pending'),
+            date:        dateFormatter.format(job.createdAt),
             isCompleted: true,
-            color: AppTheme.cyanBlue,
-            isDark: isDark,
+            color:       AppTheme.cyanBlue,
+            isDark:      isDark,
           ),
           JobTimelineStep(
-            label: ctx.tr('worker_jobs.status_accepted'),
-            date: job.acceptedAt != null
+            label:       context.tr('worker_jobs.status_accepted'),
+            date:        job.acceptedAt != null
                 ? dateFormatter.format(job.acceptedAt!)
                 : '—',
             isCompleted: job.acceptedAt != null,
-            color: AppTheme.onlineGreen,
-            isDark: isDark,
+            color:       AppTheme.onlineGreen,
+            isDark:      isDark,
           ),
           JobTimelineStep(
-            label: ctx.tr('worker_jobs.status_completed'),
-            date: job.completedAt != null
+            label:       context.tr('worker_jobs.status_completed'),
+            date:        job.completedAt != null
                 ? dateFormatter.format(job.completedAt!)
                 : '—',
             isCompleted: job.completedAt != null,
-            color: AppTheme.darkAccent,
-            isDark: isDark,
-            isLast: true,
+            color:       AppTheme.darkAccent,
+            isDark:      isDark,
+            isLast:      true,
           ),
         ],
       ),

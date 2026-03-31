@@ -6,15 +6,19 @@ import '../../../models/message_enums.dart';
 import '../../../models/service_request_enhanced_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
-import '../../../utils/localization.dart';
-import '../../../utils/whatsapp_launcher.dart';
+import 'job_accept_decline_row.dart';
 import 'job_complete_btn.dart';
 import 'job_completed_badge.dart';
 import 'job_loading_btn.dart';
-import 'job_accept_decline_row.dart';
+import 'whatsapp_circle_btn.dart'; // REPLACED: inline _WhatsAppCircleBtn
 
 // ============================================================================
 // JOB DETAIL FAB ROW — flat surface, no BackdropFilter
+//
+// CHANGES:
+//   • _WhatsAppCircleBtn extracted to WhatsAppCircleBtn (whatsapp_circle_btn.dart)
+//   • context: removed from JobAcceptDeclineRow, JobCompleteBtn, JobCompletedBadge
+//     (those widgets now obtain context from their own build() parameter)
 // ============================================================================
 
 class JobDetailFabRow extends StatelessWidget {
@@ -67,10 +71,12 @@ class JobDetailFabRow extends StatelessWidget {
         child: Row(
           children: [
             // ── WhatsApp circle (always visible) ─────────────────────
-            _WhatsAppCircleBtn(
-              phone:  userPhone,
-              isDark: isDark,
-              label:  context.tr('worker_jobs.chat_with_client'),
+            // REPLACED: inline _WhatsAppCircleBtn → shared WhatsAppCircleBtn
+            WhatsAppCircleBtn(
+              phone:    userPhone,
+              isDark:   isDark,
+              label:    context.tr('worker_jobs.chat_with_client'),
+              size:     46, // FAB-row variant: larger with glow
             ),
 
             const SizedBox(width: AppConstants.spacingMd),
@@ -80,118 +86,24 @@ class JobDetailFabRow extends StatelessWidget {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 child: _isTerminal
-                    ? JobCompletedBadge(isDark: isDark, context: context)
+                    ? JobCompletedBadge(isDark: isDark)         // context: removed
                     : isLoading
                         ? JobLoadingBtn(accentColor: accentColor)
                         : job.status == ServiceStatus.pending
-                            ? JobAcceptDeclineRow(
-                                context:   context,
+                            ? JobAcceptDeclineRow(               // context: removed
                                 onAccept:  onAccept,
                                 onDecline: onDecline,
                               )
                             : (job.status == ServiceStatus.accepted ||
                                     job.status == ServiceStatus.inProgress)
-                                ? JobCompleteBtn(
+                                ? JobCompleteBtn(               // context: removed
                                     accentColor: accentColor,
                                     onTap:       onComplete,
-                                    context:     context,
                                   )
                                 : const SizedBox.shrink(),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// _WhatsAppCircleBtn
-// White circle with green border — icon is the natural-colour WhatsApp PNG.
-// ============================================================================
-
-class _WhatsAppCircleBtn extends StatefulWidget {
-  final String phone;
-  final bool   isDark;
-  final String label;
-
-  const _WhatsAppCircleBtn({
-    required this.phone,
-    required this.isDark,
-    required this.label,
-  });
-
-  @override
-  State<_WhatsAppCircleBtn> createState() => _WhatsAppCircleBtnState();
-}
-
-class _WhatsAppCircleBtnState extends State<_WhatsAppCircleBtn> {
-  bool _busy = false;
-
-  Future<void> _launch() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final msg = context.tr('whatsapp.contact_message');
-      final ok  = await launchWhatsApp(phone: widget.phone, message: msg);
-      if (!ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('whatsapp.open_failed')),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label:  widget.label,
-      child: GestureDetector(
-        onTap: _busy ? null : _launch,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
-          opacity:  _busy ? 0.5 : 1.0,
-          child: Container(
-            width:  46,
-            height: 46,
-            decoration: BoxDecoration(
-              // White/dark background → icon colours are clearly visible
-              color:  widget.isDark
-                  ? const Color(0xFF1B2B1B)
-                  : Colors.white,
-              shape:  BoxShape.circle,
-              border: Border.all(
-                color: kWhatsAppGreen.withOpacity(0.55),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color:      kWhatsAppGreen.withOpacity(0.15),
-                  blurRadius: 8,
-                  offset:     const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: _busy
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color:       kWhatsAppGreen,
-                    ),
-                  )
-                : Center(
-                    // Natural icon — NO color tint
-                    child: WhatsAppIcon(size: 24),
-                  ),
-          ),
         ),
       ),
     );

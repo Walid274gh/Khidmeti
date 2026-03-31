@@ -1,4 +1,9 @@
-// lib/screens/worker/widgets/job_timeline_step.dart
+// lib/screens/worker_jobs/widgets/job_timeline_step.dart
+//
+// FIX (path comment): was incorrectly declared as
+//   lib/screens/worker/ widgets/job_timeline_step.dart
+// Corrected to:
+//   lib/screens/worker_jobs/widgets/job_timeline_step.dart
 
 import 'package:flutter/material.dart';
 
@@ -8,10 +13,10 @@ import '../../../utils/constants.dart';
 class JobTimelineStep extends StatelessWidget {
   final String label;
   final String date;
-  final bool isCompleted;
-  final Color color;
-  final bool isDark;
-  final bool isLast;
+  final bool   isCompleted;
+  final Color  color;
+  final bool   isDark;
+  final bool   isLast;
 
   const JobTimelineStep({
     super.key,
@@ -34,13 +39,13 @@ class JobTimelineStep extends StatelessWidget {
             child: Column(
               children: [
                 Container(
-                  width: 20,
+                  width:  20,
                   height: 20,
                   decoration: BoxDecoration(
                     color: isCompleted
                         ? color
                         : color.withOpacity(0.2),
-                    shape: BoxShape.circle,
+                    shape:  BoxShape.circle,
                     border: Border.all(
                         color: color.withOpacity(0.5), width: 1.5),
                   ),
@@ -52,10 +57,9 @@ class JobTimelineStep extends StatelessWidget {
                 if (!isLast)
                   Expanded(
                     child: Container(
-                      width: 1.5,
-                      margin:
-                          const EdgeInsets.symmetric(vertical: 3),
-                      color: (isDark ? Colors.white : Colors.black)
+                      width:  1.5,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      color:  (isDark ? Colors.white : Colors.black)
                           .withOpacity(0.1),
                     ),
                   ),
@@ -73,29 +77,27 @@ class JobTimelineStep extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style:
-                        Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: isCompleted
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isCompleted
-                                  ? (isDark
-                                      ? AppTheme.darkText
-                                      : AppTheme.lightText)
-                                  : (isDark
-                                      ? AppTheme.darkSecondaryText
-                                      : AppTheme.lightSecondaryText),
-                            ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: isCompleted
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isCompleted
+                              ? (isDark
+                                  ? AppTheme.darkText
+                                  : AppTheme.lightText)
+                              : (isDark
+                                  ? AppTheme.darkSecondaryText
+                                  : AppTheme.lightSecondaryText),
+                        ),
                   ),
                   Text(
                     date,
-                    style:
-                        Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark
-                                  ? AppTheme.darkSecondaryText
-                                  : AppTheme.lightSecondaryText,
-                              fontSize: 11,
-                            ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                          fontSize: 11,
+                        ),
                   ),
                 ],
               ),

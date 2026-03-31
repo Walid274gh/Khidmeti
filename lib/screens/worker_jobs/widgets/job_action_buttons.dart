@@ -8,11 +8,14 @@ import '../../../models/service_request_enhanced_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
-import '../../../utils/whatsapp_launcher.dart';
 import 'job_icon_btn.dart';
 import 'job_text_btn.dart';
 import 'job_primary_btn.dart';
+import 'whatsapp_circle_btn.dart'; // REPLACED: inline _WhatsAppIconBtn
 
+// CHANGES:
+//   • _WhatsAppIconBtn removed — replaced by shared WhatsAppCircleBtn
+//     (whatsapp_circle_btn.dart) with size: 40
 class JobActionButtons extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool      isLoading;
@@ -49,11 +52,13 @@ class JobActionButtons extends StatelessWidget {
     return Row(
       children: [
         // ── WhatsApp contact button ───────────────────────────────────
-        _WhatsAppIconBtn(
-          phone:     job.userPhone,
-          isDark:    isDark,
-          disabled:  isLoading,
-          label:     context.tr('worker_jobs.chat_with_client'),
+        // REPLACED: inline _WhatsAppIconBtn → shared WhatsAppCircleBtn
+        WhatsAppCircleBtn(
+          phone:    job.userPhone,
+          isDark:   isDark,
+          disabled: isLoading,
+          label:    context.tr('worker_jobs.chat_with_client'),
+          size:     40, // inline-row variant: smaller, no glow
         ),
         const SizedBox(width: AppConstants.spacingXs),
 
@@ -116,92 +121,6 @@ class JobActionButtons extends StatelessWidget {
           ],
         ],
       ],
-    );
-  }
-}
-
-// ============================================================================
-// _WhatsAppIconBtn
-// Matches the size/shape of JobIconBtn but uses the WhatsApp icon.
-// White background so the coloured PNG is clearly visible.
-// ============================================================================
-
-class _WhatsAppIconBtn extends StatefulWidget {
-  final String phone;
-  final bool   isDark;
-  final bool   disabled;
-  final String label;
-
-  const _WhatsAppIconBtn({
-    required this.phone,
-    required this.isDark,
-    required this.disabled,
-    required this.label,
-  });
-
-  @override
-  State<_WhatsAppIconBtn> createState() => _WhatsAppIconBtnState();
-}
-
-class _WhatsAppIconBtnState extends State<_WhatsAppIconBtn> {
-  bool _busy = false;
-
-  Future<void> _launch() async {
-    if (_busy || widget.disabled) return;
-    setState(() => _busy = true);
-    try {
-      final msg = context.tr('whatsapp.contact_message');
-      final ok  = await launchWhatsApp(phone: widget.phone, message: msg);
-      if (!ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:  Text(context.tr('whatsapp.open_failed')),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDisabled = widget.disabled || _busy;
-
-    return Semantics(
-      button: true,
-      label:  widget.label,
-      child: GestureDetector(
-        onTap: isDisabled ? null : _launch,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
-          opacity:  isDisabled ? 0.45 : 1.0,
-          child: Container(
-            width:  40,
-            height: 40,
-            decoration: BoxDecoration(
-              color:  widget.isDark
-                  ? const Color(0xFF1B2B1B)
-                  : Colors.white,
-              shape:  BoxShape.circle,
-              border: Border.all(
-                color: kWhatsAppGreen.withOpacity(0.50),
-                width: 1.2,
-              ),
-            ),
-            child: _busy
-                ? const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color:       kWhatsAppGreen,
-                    ),
-                  )
-                : Center(child: WhatsAppIcon(size: 20)),
-          ),
-        ),
-      ),
     );
   }
 }

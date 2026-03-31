@@ -5,22 +5,23 @@ import 'package:flutter/material.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// Was: context.tr('worker_jobs.complete_job') using the field.
+// Now: context.tr('worker_jobs.complete_job') using the build parameter.
+// FIX (Designer P1): was LinearGradient(accentColor → accentColor.withOpacity(0.7)).
+// Gradient on action buttons is forbidden. Replaced with solid accent.
 class JobCompleteBtn extends StatelessWidget {
   final Color        accentColor;
   final VoidCallback onTap;
-  final BuildContext context;
 
   const JobCompleteBtn({
     super.key,
     required this.accentColor,
     required this.onTap,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
-    // FIX (Designer P1): was LinearGradient(accentColor → accentColor.withOpacity(0.7)).
-    // Gradient on action buttons is forbidden. Replaced with solid accent.
+  Widget build(BuildContext context) {
     return Semantics(
       button: true,
       label:  context.tr('worker_jobs.complete_job'),

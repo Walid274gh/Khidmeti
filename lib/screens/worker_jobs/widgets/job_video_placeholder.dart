@@ -4,26 +4,27 @@ import 'package:flutter/material.dart';
 
 import '../../../utils/localization.dart';
 
+// FIX (P1 — Engineer): BuildContext context removed from constructor.
+// The field was stored but the build method already used ctx.tr() (the
+// parameter) consistently. Field removal is purely dead-code cleanup.
 class JobVideoPlaceholder extends StatelessWidget {
   final String url;
-  final bool isDark;
-  final BuildContext context;
+  final bool   isDark;
 
   const JobVideoPlaceholder({
     super.key,
     required this.url,
     required this.isDark,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
+            width:  80,
             height: 80,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
@@ -32,14 +33,14 @@ class JobVideoPlaceholder extends StatelessWidget {
             child: const Icon(
               Icons.play_circle_outline_rounded,
               color: Colors.white70,
-              size: 44,
+              size:  44,
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            ctx.tr('worker_jobs.video_preview_unavailable'),
+            context.tr('worker_jobs.video_preview_unavailable'),
             style: const TextStyle(
-              color: Colors.white60,
+              color:    Colors.white60,
               fontSize: 14,
             ),
           ),
@@ -48,4 +49,3 @@ class JobVideoPlaceholder extends StatelessWidget {
     );
   }
 }
-
