@@ -367,7 +367,10 @@ class AppRoutes {
 
   // REMOVED (dead — not registered in app_router.dart):
   //   messages, workerMessages, chat, mediaViewer, becomeWorker,
-  //   serviceRequestDetails, workerHome
+  //   serviceRequestDetails
+  //
+  // KEPT — used only in app_router.dart redirect logic (not a registered route):
+  static const String workerHome = '/worker-home';
 }
 
 class PrefKeys {
