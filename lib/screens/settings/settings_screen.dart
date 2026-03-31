@@ -1,4 +1,6 @@
 // lib/screens/settings/settings_screen.dart
+//
+// CHANGE: settings_provider.dart import updated from local path to lib/providers/.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,25 +10,10 @@ import 'package:go_router/go_router.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/app_theme.dart';
-import 'settings_provider.dart';
+import '../../utils/system_ui_overlay.dart'; // NEW
+import '../../providers/settings_provider.dart'; // CHANGED: was './settings_provider.dart'
 import 'widgets/settings_error_view.dart';
 import 'widgets/settings_content.dart';
-
-// FIX (Engineer): removed `export 'settings_provider.dart'` — a screen file
-// must not serve as a barrel exporter for its own provider. Consumers that
-// need SettingsState / SettingsNotifier must import settings_provider.dart
-// directly to avoid implicit transitive exposure of internal types.
-
-// ============================================================================
-// SETTINGS SCREEN
-// ============================================================================
-//
-// CHANGES:
-//   • SettingsSkeletonLoader removed as a body state — the screen no longer
-//     freezes entirely during loading. Only the ProfileCard shimmer appears
-//     inside SettingsContent while status == loading; tiles are immediately
-//     usable.
-//   • export directive removed — screens are not barrels.
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -37,15 +24,7 @@ class SettingsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark), // REPLACED inline block
       child: Scaffold(
         backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         extendBodyBehindAppBar: true,
@@ -71,16 +50,10 @@ class SettingsScreen extends ConsumerWidget {
               : null,
         ),
         body: switch (state.status) {
-
-          // Full error view — no content to show at all.
           SettingsStatus.error => SettingsErrorView(
               errorMessage: state.errorMessage,
               onRetry: () => ref.read(settingsProvider.notifier).retry(),
             ),
-
-          // Loading OR idle: always render SettingsContent.
-          // The ProfileCard inside SettingsContent handles its own shimmer
-          // while status == loading, so tiles are immediately usable.
           _ => Stack(
               children: [
                 SettingsContent(state: state),
@@ -94,19 +67,13 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-// ============================================================================
-// PRIVATE — FULL-SCREEN BLOCKING OVERLAY
-// Shown during sign-out and account deletion. Lightweight: no skeleton, no
-// list rebuild — just a scrim with a spinner.
-// ============================================================================
-
 class _FullScreenOverlay extends StatelessWidget {
   const _FullScreenOverlay();
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: context.tr('common.loading'),
+      label:      context.tr('common.loading'),
       liveRegion: true,
       child: Container(
         color: Theme.of(context).colorScheme.scrim.withOpacity(0.35),
