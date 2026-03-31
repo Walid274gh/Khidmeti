@@ -1,0 +1,579 @@
+// lib/screens/home/widgets/home_worker_section.dart
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../models/message_enums.dart';
+import '../../../models/service_request_enhanced_model.dart';
+import '../../../providers/worker_home_controller.dart';
+import '../../../providers/worker_jobs_controller.dart';
+import '../../../utils/app_theme.dart';
+import '../../../utils/constants.dart';
+import '../../../utils/localization.dart';
+
+// ── Local constants ────────────────────────────────────────────────────────────
+const double _kSectionDividerH = 0.5;
+const int    _kMaxNearbyJobs   = 3;
+
+// ============================================================================
+// HOME WORKER SECTION
+// ============================================================================
+
+class HomeWorkerSection extends ConsumerWidget {
+  const HomeWorkerSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark       = Theme.of(context).brightness == Brightness.dark;
+    final workerState  = ref.watch(workerHomeControllerProvider);
+    final jobsState    = ref.watch(workerJobsControllerProvider);
+
+    // Still loading — show nothing to avoid flash
+    if (workerState.isWorkerLoading) return const SizedBox.shrink();
+    if (workerState.isWorkerError)   return const SizedBox.shrink();
+
+    final worker = workerState.worker;
+    if (worker == null) return const SizedBox.shrink();
+
+    final isOnline = workerState.isOnline;
+    final rating     = worker.averageRating;
+    final pending    = jobsState.jobs
+        .where((j) => j.status == ServiceStatus.open)
+        .take(_kMaxNearbyJobs)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Divider
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingLg),
+          child: Container(
+            height: _kSectionDividerH,
+            color:  isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          ),
+        ),
+
+        const SizedBox(height: AppConstants.spacingMd),
+
+        // ① Availability toggle
+        _AvailabilityToggle(
+          isDark:   isDark,
+          isOnline: isOnline,
+          onToggle: () {
+            HapticFeedback.mediumImpact();
+            ref
+                .read(workerHomeControllerProvider.notifier)
+                .toggleOnlineStatus();
+          },
+        ),
+
+        const SizedBox(height: AppConstants.spacingSm),
+
+        // ② ROI metrics strip
+        _RoiStrip(
+          isDark:       isDark,
+          rating:       rating,
+          monthlyCount: jobsState.jobs.length,
+        ),
+
+        const SizedBox(height: AppConstants.spacingSm),
+
+        // ③ Demand bar
+        _DemandBar(
+          isDark:       isDark,
+          pendingCount: pending.length,
+        ),
+
+        // ④ Nearby jobs — only when online and there are open jobs
+        if (isOnline && pending.isNotEmpty) ...[
+          const SizedBox(height: AppConstants.spacingSm),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingLg),
+            child: Text(
+              context.tr('worker_home.nearby_jobs'),
+              style: TextStyle(
+                fontSize:      AppConstants.fontSizeXs,
+                fontWeight:    FontWeight.w700,
+                color:         isDark
+                    ? AppTheme.darkSecondaryText
+                    : AppTheme.lightSecondaryText,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppConstants.spacingXs),
+          ...pending.map(
+            (job) => _NearbyJobTile(job: job, isDark: isDark),
+          ),
+        ],
+
+        const SizedBox(height: AppConstants.spacingMd),
+      ],
+    );
+  }
+}
+
+// ── ① Availability toggle ─────────────────────────────────────────────────────
+
+class _AvailabilityToggle extends StatelessWidget {
+  final bool       isDark;
+  final bool       isOnline;
+  final VoidCallback onToggle;
+
+  const _AvailabilityToggle({
+    required this.isDark,
+    required this.isOnline,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent    = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final onColor   = AppTheme.onlineGreen;
+    final offColor  = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final dotColor  = isOnline ? onColor : offColor;
+    final subtext   = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingLg),
+      child: GestureDetector(
+        onTap: onToggle,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingMd,
+            vertical:   AppConstants.spacingSm + 2,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+            borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+            border: Border.all(
+              color: isOnline
+                  ? onColor.withOpacity(0.30)
+                  : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Status dot
+              Container(
+                width:  8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: dotColor,
+                ),
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              // Labels
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isOnline
+                          ? context.tr('worker_home.status_online')
+                          : context.tr('worker_home.status_offline'),
+                      style: TextStyle(
+                        fontSize:   AppConstants.fontSizeSm,
+                        fontWeight: FontWeight.w700,
+                        color:      isOnline
+                            ? onColor
+                            : (isDark
+                                ? AppTheme.darkText
+                                : AppTheme.lightText),
+                      ),
+                    ),
+                    Text(
+                      isOnline
+                          ? context.tr('worker_home.status_online_sub')
+                          : context.tr('worker_home.status_offline_sub'),
+                      style: TextStyle(
+                        fontSize: AppConstants.fontSizeXs,
+                        color:    subtext,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Toggle switch
+              _ToggleSwitch(isOn: isOnline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleSwitch extends StatelessWidget {
+  final bool isOn;
+  const _ToggleSwitch({required this.isOn});
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = AppTheme.onlineGreen;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width:  38,
+      height: 20,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: isOn ? onColor : const Color(0xFF3A3550),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 200),
+        curve:    Curves.easeInOut,
+        alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width:  16,
+          height: 16,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── ② ROI metrics strip ────────────────────────────────────────────────────────
+
+class _RoiStrip extends StatelessWidget {
+  final bool   isDark;
+  final double rating;
+  final int    monthlyCount;
+
+  const _RoiStrip({
+    required this.isDark,
+    required this.rating,
+    required this.monthlyCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final surface = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+    final border  = isDark ? AppTheme.darkBorder  : AppTheme.lightBorder;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingLg),
+      child: Row(
+        children: [
+          _RoiCard(
+            isDark:  isDark,
+            value:   '$monthlyCount',
+            label:   context.tr('worker_home.roi_requests'),
+            accent:  accent,
+          ),
+          const SizedBox(width: AppConstants.spacingXs),
+          _RoiCard(
+            isDark:  isDark,
+            value:   rating.toStringAsFixed(1),
+            label:   context.tr('worker_home.roi_rating'),
+            accent:  accent,
+          ),
+          const SizedBox(width: AppConstants.spacingXs),
+          _RoiCard(
+            isDark:  isDark,
+            value:   '#1',     // Static placeholder — rank from Firestore in v2
+            label:   context.tr('worker_home.roi_rank'),
+            accent:  accent,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoiCard extends StatelessWidget {
+  final bool   isDark;
+  final String value;
+  final String label;
+  final Color  accent;
+
+  const _RoiCard({
+    required this.isDark,
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.spacingSm,
+          vertical:   AppConstants.spacingXs + 4,
+        ),
+        decoration: BoxDecoration(
+          color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+          borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize:   AppConstants.fontSizeXl,
+                fontWeight: FontWeight.w700,
+                color:      accent,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: AppConstants.fontSizeXs,
+                color:    isDark
+                    ? AppTheme.darkSecondaryText
+                    : AppTheme.lightSecondaryText,
+                height:   1.2,
+              ),
+              textAlign: TextAlign.center,
+              maxLines:  2,
+              overflow:  TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── ③ Demand bar ─────────────────────────────────────────────────────────────
+
+class _DemandBar extends StatelessWidget {
+  final bool isDark;
+  final int  pendingCount;
+
+  const _DemandBar({required this.isDark, required this.pendingCount});
+
+  @override
+  Widget build(BuildContext context) {
+    // Demand level: 0 = low, 1-3 = medium, 4+ = high
+    final isHigh   = pendingCount >= 4;
+    final isMedium = pendingCount >= 1 && pendingCount < 4;
+    final barColor = isHigh
+        ? AppTheme.recordingRed
+        : isMedium
+            ? AppTheme.darkAccent
+            : AppTheme.darkSecondaryText;
+    final fillRatio = (pendingCount / 8.0).clamp(0.0, 1.0);
+    final label = isHigh
+        ? context.tr('worker_home.demand_high')
+        : isMedium
+            ? context.tr('worker_home.demand_medium')
+            : context.tr('worker_home.demand_low');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingLg),
+      child: Container(
+        padding: const EdgeInsets.all(AppConstants.paddingMd),
+        decoration: BoxDecoration(
+          color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr('worker_home.demand_title'),
+                    style: TextStyle(
+                      fontSize:   AppConstants.fontSizeSm,
+                      fontWeight: FontWeight.w700,
+                      color:      isDark
+                          ? AppTheme.darkText
+                          : AppTheme.lightText,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.spacingSm,
+                    vertical:   AppConstants.spacingXs,
+                  ),
+                  decoration: BoxDecoration(
+                    color:        barColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize:   AppConstants.fontSizeXs,
+                      fontWeight: FontWeight.w700,
+                      color:      barColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingXs + 2),
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 4,
+                    color:  isDark
+                        ? AppTheme.darkBorder
+                        : AppTheme.lightBorder,
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: fillRatio,
+                    child: Container(height: 4, color: barColor),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppConstants.spacingXs),
+            Text(
+              '$pendingCount ${context.tr('worker_home.demand_sub')}',
+              style: TextStyle(
+                fontSize: AppConstants.fontSizeXs,
+                color:    isDark
+                    ? AppTheme.darkSecondaryText
+                    : AppTheme.lightSecondaryText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── ④ Nearby job tile ─────────────────────────────────────────────────────────
+
+class _NearbyJobTile extends StatelessWidget {
+  // FIX (P0 — Engineer): was `final dynamic job` — lost all type safety.
+  // All field accesses (job.profession, job.location?.address, etc.) were
+  // untyped; a field rename would cause a silent runtime crash.
+  final ServiceRequestEnhancedModel job;
+  final bool                         isDark;
+
+  const _NearbyJobTile({required this.job, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final surface = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.paddingLg,
+        0,
+        AppConstants.paddingLg,
+        AppConstants.spacingXs,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingMd,
+          vertical:   AppConstants.spacingSm + 2,
+        ),
+        decoration: BoxDecoration(
+          color:        surface,
+          borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+          border: Border.all(
+            color: accent.withOpacity(0.20),
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Icon square
+            Container(
+              width:  32,
+              height: 32,
+              decoration: BoxDecoration(
+                color:        accent.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+              ),
+              child: Icon(AppIcons.requests, color: accent, size: 16),
+            ),
+            const SizedBox(width: AppConstants.spacingSm),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    // FIX (Compiler): was job.profession — field doesn't exist.
+                    // ServiceRequestEnhancedModel uses serviceType.
+                    job.serviceType.isNotEmpty
+                        ? job.serviceType
+                        : context.tr('home.filter_all'),
+                    style: TextStyle(
+                      fontSize:   AppConstants.fontSizeSm,
+                      fontWeight: FontWeight.w700,
+                      color:      isDark
+                          ? AppTheme.darkText
+                          : AppTheme.lightText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    // FIX (Compiler): was job.location?.address — field doesn't exist.
+                    // ServiceRequestEnhancedModel uses userAddress.
+                    job.userAddress.isNotEmpty
+                        ? job.userAddress
+                        : context.tr('worker_home.location_unknown'),
+                    style: TextStyle(
+                      fontSize: AppConstants.fontSizeXs,
+                      color:    isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            // NEW badge
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.spacingXs + 2,
+                vertical:   2,
+              ),
+              decoration: BoxDecoration(
+                color:        AppTheme.recordingRed,
+                borderRadius: BorderRadius.circular(AppConstants.radiusSm),
+              ),
+              child: Text(
+                context.tr('worker_home.badge_new'),
+                style: const TextStyle(
+                  fontSize:   8,
+                  fontWeight: FontWeight.w700,
+                  color:      Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
