@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -34,15 +35,20 @@ void main() async {
     await Firebase.initializeApp();
     AppLogger.success('Firebase initialized');
 
+    // FIX: Enable Firestore offline persistence explicitly.
+    // On Android this is already enabled by default; on iOS it is disabled
+    // by default, meaning iOS users get no offline capability without this.
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
+    AppLogger.info('Firestore offline persistence enabled');
+
     await AppConfig.initialize();
     AppLogger.success('Remote Config initialized');
 
     // One-time migration: remove deprecated PrefKeys.viewMode key.
-    // The preference was renamed; stale values cause the theme provider to
-    // read garbage on first launch after upgrade. Safe to run every startup —
-    // SharedPreferences.remove() is a no-op if the key doesn't exist.
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('viewMode'); // one-time migration — PrefKeys.viewMode déprécié
+    await prefs.remove('viewMode');
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -51,8 +57,6 @@ void main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    // Edge-to-edge: شريط الهاتف السفلي شفاف بالكامل على مستوى Android Activity.
-    // يجب استدعاؤه هنا مرة واحدة قبل runApp حتى لا يتمكن أي screen من تجاوزه.
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -150,7 +154,6 @@ class _KhidmetiAppState extends ConsumerState<KhidmetiApp>
   Widget build(BuildContext context) {
     final router = ref.watch(goRouterProvider);
     final languageService = ref.watch(languageServiceProvider);
-    // ✅ Read persisted theme mode instead of hardcoded ThemeMode.system
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
