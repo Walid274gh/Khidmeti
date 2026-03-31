@@ -1,4 +1,12 @@
 // lib/utils/constants.dart
+//
+// CHANGES (Cleanliness §7 — Dead Code):
+//   • 7 dead AppRoutes constants removed:
+//       messages, workerMessages, chat, mediaViewer, becomeWorker,
+//       serviceRequestDetails, workerHome
+//     (none of these are registered in app_router.dart)
+//   • AppIcons.info2 removed — duplicate of AppIcons.info, both mapped to
+//     Icons.info_outline_rounded. Dead code.
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -14,9 +22,8 @@ class AppConstants {
   static const int defaultPageSize = 20;
   static const int maxPageSize     = 100;
 
-  // FIX (README4): WCAG & UX constants for worker jobs screen.
-  static const double fabClearance  = 80.0; // clearance for FAB row in JobDetailScreen
-  static const double maxBidPrice   = 500000.0; // max bid price validation
+  static const double fabClearance = 80.0;
+  static const double maxBidPrice  = 500000.0;
 
   static const Duration defaultTimeout = Duration(seconds: 30);
   static const Duration longTimeout    = Duration(minutes: 2);
@@ -26,6 +33,7 @@ class AppConstants {
   static const int maxPendingBidsPerWorker = 5;
 
   // Spacing
+  static const double spacingXxs  = 2.0;
   static const double spacingXs   = 4.0;
   static const double spacingSm   = 8.0;
   static const double spacingMd   = 16.0;
@@ -54,7 +62,6 @@ class AppConstants {
   // Buttons
   static const double buttonHeight   = 54.0;
   static const double buttonHeightMd = 48.0;
-  // FIX (README4 WCAG): 44dp tap-target minimum — was 40.0.
   static const double buttonHeightSm = 44.0;
 
   // Cards
@@ -85,20 +92,15 @@ class AppConstants {
   // Sections
   static const double sectionLabelMB = 12.0;
   static const double sectionMT      = 22.0;
-  static const double sectionCardGap  = 10.0;
+  static const double sectionCardGap = 10.0;
 
-  // Badges / chips
-  // FIX (README3): gap horizontal interne des tuiles (icône → texte).
-  // Remplace SizedBox(width: 14) hardcodé dans SettingsTile, SignOutTile, SheetOption.
+  // Badges / chips / tile gaps
   static const double spacingTileInner = 14.0;
-
-  // FIX (README3): padding des badges pill sur fond accent.
-  static const double badgePaddingH = 10.0;
-  static const double badgePaddingV = 3.0;
-
-  static const double chipRadius   = 8.0;
-  static const double chipPaddingH = 10.0;
-  static const double chipPaddingV = 5.0;
+  static const double badgePaddingH    = 10.0;
+  static const double badgePaddingV    = 3.0;
+  static const double chipRadius       = 8.0;
+  static const double chipPaddingH     = 10.0;
+  static const double chipPaddingV     = 5.0;
 
   // Wordmark
   static const double wordmarkDotSize  = 8.0;
@@ -124,13 +126,11 @@ class AppConstants {
   static const double iconSizeLg = 32.0;
   static const double iconSizeXl = 48.0;
 
-  // FIX (README5): container sizes for AI search sheet icons.
-  // Replaces magic numbers 28, 32, 36 in ai_search_sheet.dart.
-  static const double spacingXxs        = 2.0;
-  static const double iconContainerSm   = 28.0;
-  static const double iconContainerMd   = 32.0;
-  static const double iconContainerLg   = 36.0;
-  static const double buttonIconSize     = 20.0;
+  // Container sizes
+  static const double iconContainerSm  = 28.0;
+  static const double iconContainerMd  = 32.0;
+  static const double iconContainerLg  = 36.0;
+  static const double buttonIconSize   = 20.0;
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
   static const double locationDotMarker  = 38.0;
@@ -292,8 +292,9 @@ class AppIcons {
   static const IconData notificationsActive = Icons.notifications_active_rounded;
   static const IconData help                = Icons.help_outline_rounded;
   static const IconData info                = Icons.info_outline_rounded;
+  // REMOVED: info2 — identical to info (dead duplicate)
   static const IconData logout              = Icons.logout_rounded;
-  static const IconData deleteAccount  = Icons.no_accounts_outlined;
+  static const IconData deleteAccount       = Icons.no_accounts_outlined;
 
   // Map
   static const IconData location         = Icons.location_on_rounded;
@@ -301,24 +302,16 @@ class AppIcons {
   static const IconData myLocation       = Icons.my_location_rounded;
   static const IconData directions       = Icons.directions_rounded;
   static const IconData map              = Icons.map_outlined;
-
-  // NEW — map interaction icons
-  /// Used in LocationMapPicker drag-hint badge (replaced Icons.open_with_rounded)
-  static const IconData openWith = Icons.open_with_rounded;
-
-  /// Used in LocationMapPicker address footer (replaced Icons.location_searching_rounded)
-  static const IconData locationSearch = Icons.location_searching_rounded;
-
-  /// Used in LocationVisual _CentralPin for failed state (replaced Icons.location_off_rounded)
-  static const IconData locationOff = Icons.location_off_rounded;
+  static const IconData openWith         = Icons.open_with_rounded;
+  static const IconData locationSearch   = Icons.location_searching_rounded;
+  static const IconData locationOff      = Icons.location_off_rounded;
 
   // Feedback
   static const IconData error   = Icons.error_outline_rounded;
   static const IconData warning = Icons.warning_amber_rounded;
   static const IconData success = Icons.check_circle_outline_rounded;
-  static const IconData info2   = Icons.info_outline_rounded;
 
-  // Chat
+  // Chat / media
   static const IconData send     = Icons.send_rounded;
   static const IconData attach   = Icons.attach_file_rounded;
   static const IconData image    = Icons.image_outlined;
@@ -339,50 +332,42 @@ class AppIcons {
   static const IconData ai         = Icons.auto_awesome_rounded;
   static const IconData aiOutlined = Icons.auto_awesome_outlined;
 
-  // NEW — form / step icons
-  /// Used in DescriptionCard footer (replaced Icons.edit_note_rounded)
-  static const IconData editNote = Icons.edit_note_rounded;
-
-  /// Used in StepServiceType schedule pills (replaced Icons.wb_twilight_rounded)
-  static const IconData twilight = Icons.wb_twilight_rounded;
-
-  /// Used in StepServiceType / DateTimePickerPill (replaced Icons.calendar_today_rounded)
+  // Form / step
+  static const IconData editNote      = Icons.edit_note_rounded;
+  static const IconData twilight      = Icons.wb_twilight_rounded;
   static const IconData calendarToday = Icons.calendar_today_rounded;
 }
 
 class AppRoutes {
   AppRoutes._();
 
-  static const String splash               = '/';
-  static const String login                = '/login';
-  static const String register             = '/register';
-  static const String forgotPassword       = '/forgot-password';
-  static const String emailVerification    = '/verify-email';
-  static const String home                 = '/home';
-  static const String search               = '/search';
-  static const String requests             = '/requests';
-  static const String messages             = '/messages';
-  static const String profile              = '/profile';
-  static const String workerHome           = '/worker-home';
-  static const String workerJobs           = '/worker-jobs';
-  static const String workerMessages       = '/worker-messages';
-  static const String workerSettings       = '/worker-settings';
-  static const String serviceRequest       = '/service-request';
-  static const String mediaViewer          = '/media-viewer';
-  static const String serviceRequestDetails = '/service-request/:id';
-  static const String workerProfile        = '/worker/:id';
-  static const String chat                 = '/chat/:id';
-  static const String settings             = '/settings';
-  static const String becomeWorker         = '/become-worker';
-  static const String editProfile          = '/edit-profile';
-  static const String notifications        = '/notifications';
-  static const String help                 = '/help';
-  static const String about                = '/about';
-  static const String bidsListScreen       = '/service-request/:id/bids';
-  static const String requestTracking      = '/service-request/:id/tracking';
-  static const String clientRating         = '/service-request/:id/rating';
-  static const String submitBid            = '/worker/jobs/:id/bid';
-  static const String workerJobDetail      = '/worker/jobs/:id';
+  static const String splash            = '/';
+  static const String login             = '/login';
+  static const String register          = '/register';
+  static const String forgotPassword    = '/forgot-password';
+  static const String emailVerification = '/verify-email';
+  static const String home              = '/home';
+  static const String search            = '/search';
+  static const String requests          = '/requests';
+  static const String profile           = '/profile';
+  static const String workerJobs        = '/worker-jobs';
+  static const String workerSettings    = '/worker-settings';
+  static const String serviceRequest    = '/service-request';
+  static const String workerProfile     = '/worker/:id';
+  static const String settings          = '/settings';
+  static const String editProfile       = '/edit-profile';
+  static const String notifications     = '/notifications';
+  static const String help              = '/help';
+  static const String about             = '/about';
+  static const String bidsListScreen    = '/service-request/:id/bids';
+  static const String requestTracking   = '/service-request/:id/tracking';
+  static const String clientRating      = '/service-request/:id/rating';
+  static const String submitBid         = '/worker/jobs/:id/bid';
+  static const String workerJobDetail   = '/worker/jobs/:id';
+
+  // REMOVED (dead — not registered in app_router.dart):
+  //   messages, workerMessages, chat, mediaViewer, becomeWorker,
+  //   serviceRequestDetails, workerHome
 }
 
 class PrefKeys {
