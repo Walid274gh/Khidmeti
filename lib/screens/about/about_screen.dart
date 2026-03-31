@@ -1,4 +1,7 @@
 // lib/screens/about/about_screen.dart
+//
+// CHANGE: Replaced 14-line inline AnnotatedRegion block with
+//         systemOverlayStyle(isDark) from lib/utils/system_ui_overlay.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,29 +11,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart'; // NEW
 import '../../widgets/app_section_header.dart';
-
-// ============================================================================
-// ABOUT SCREEN
-// CHANGES:
-//   • AppBar → SliverAppBar.medium  — عنوان يتحرك مع الشاشة (Material 3)
-//   • extendBodyBehindAppBar removed — لم يعد ضرورياً مع SliverAppBar
-//   • top-padding calculation removed — SliverAppBar يتولّاها تلقائياً
-//   • radiusLg token (12) بدلاً من hardcoded 20 على حاوية الأيقونة (P3 fix)
-//   • backgroundColor موحّد على darkBackground/lightBackground (P1 fix)
-// ============================================================================
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  static BoxDecoration _surface(bool isDark, {double radius = 16}) => BoxDecoration(
-    color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-      color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-      width: 0.5,
-    ),
-  );
+  static BoxDecoration _surface(bool isDark, {double radius = 16}) =>
+      BoxDecoration(
+        color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+          width: 0.5,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -40,30 +35,11 @@ class AboutScreen extends StatelessWidget {
     final bgColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      )
-          : SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark), // REPLACED 14-line inline block
       child: Scaffold(
         backgroundColor: bgColor,
         body: CustomScrollView(
           slivers: [
-            // ── Scrolling app bar ────────────────────────────────────────────
             SliverAppBar.medium(
               backgroundColor:        bgColor,
               surfaceTintColor:       Colors.transparent,
@@ -83,7 +59,6 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
 
-            // ── Content ──────────────────────────────────────────────────────
             SliverPadding(
               padding: EdgeInsetsDirectional.only(
                 top:    AppConstants.spacingMd,
@@ -94,7 +69,6 @@ class AboutScreen extends StatelessWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
 
-                  // ── App identity ───────────────────────────────────────────
                   Center(
                     child: Column(
                       children: [
@@ -102,9 +76,8 @@ class AboutScreen extends StatelessWidget {
                           width:  80,
                           height: 80,
                           decoration: BoxDecoration(
-                            // FIX (P3): was hardcoded 20 — now uses AppConstants token
                             borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-                            color: accent,
+                            color:        accent,
                             boxShadow: [
                               BoxShadow(
                                 color:      accent.withOpacity(0.40),
@@ -136,9 +109,8 @@ class AboutScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppConstants.spacingXl),
 
-                  // ── Description ────────────────────────────────────────────
                   Container(
-                    padding: const EdgeInsets.all(AppConstants.paddingMd),
+                    padding:    const EdgeInsets.all(AppConstants.paddingMd),
                     decoration: _surface(isDark),
                     child: Text(
                       context.tr('about.description'),
@@ -148,47 +120,32 @@ class AboutScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppConstants.spacingLg),
 
-                  // ── Legal ──────────────────────────────────────────────────
                   AppSectionHeader(label: context.tr('about.legal')),
                   const SizedBox(height: AppConstants.spacingSm),
 
-                  _LinkTile(
-                    isDark:    isDark,
-                    icon:      Icons.privacy_tip_outlined,
-                    iconColor: AppTheme.iconIndigo,
-                    label:     context.tr('about.privacy_policy'),
-                    url:       'https://khidmeti.app/privacy',
-                  ),
-                  _LinkTile(
-                    isDark:    isDark,
-                    icon:      Icons.gavel_rounded,
-                    iconColor: AppTheme.iconIndigo,
-                    label:     context.tr('about.terms'),
-                    url:       'https://khidmeti.app/terms',
-                  ),
-                  _LinkTile(
-                    isDark:    isDark,
-                    icon:      Icons.code_rounded,
-                    iconColor: AppTheme.iconViolet,
-                    label:     context.tr('about.open_source'),
-                    url:       'https://khidmeti.app/licenses',
-                  ),
+                  _LinkTile(isDark: isDark, icon: Icons.privacy_tip_outlined,
+                      iconColor: AppTheme.iconIndigo,
+                      label: context.tr('about.privacy_policy'),
+                      url: 'https://khidmeti.app/privacy'),
+                  _LinkTile(isDark: isDark, icon: Icons.gavel_rounded,
+                      iconColor: AppTheme.iconIndigo,
+                      label: context.tr('about.terms'),
+                      url: 'https://khidmeti.app/terms'),
+                  _LinkTile(isDark: isDark, icon: Icons.code_rounded,
+                      iconColor: AppTheme.iconViolet,
+                      label: context.tr('about.open_source'),
+                      url: 'https://khidmeti.app/licenses'),
                   const SizedBox(height: AppConstants.spacingMdLg),
 
-                  // ── Contact ────────────────────────────────────────────────
                   AppSectionHeader(label: context.tr('about.contact')),
                   const SizedBox(height: AppConstants.spacingSm),
 
-                  _LinkTile(
-                    isDark:    isDark,
-                    icon:      AppIcons.email,
-                    iconColor: AppTheme.iconEmerald,
-                    label:     context.tr('about.contact_email'),
-                    url:       'mailto:support@khidmeti.app',
-                  ),
+                  _LinkTile(isDark: isDark, icon: AppIcons.email,
+                      iconColor: AppTheme.iconEmerald,
+                      label: context.tr('about.contact_email'),
+                      url: 'mailto:support@khidmeti.app'),
                   const SizedBox(height: AppConstants.spacingXl),
 
-                  // ── Footer ─────────────────────────────────────────────────
                   Center(
                     child: Text(
                       context.tr('about.copyright'),
@@ -196,7 +153,6 @@ class AboutScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
-
                 ]),
               ),
             ),
@@ -206,10 +162,6 @@ class AboutScreen extends StatelessWidget {
     );
   }
 }
-
-// ============================================================================
-// PRIVATE — LINK TILE (unchanged)
-// ============================================================================
 
 class _LinkTile extends StatelessWidget {
   final bool     isDark;
@@ -248,10 +200,9 @@ class _LinkTile extends StatelessWidget {
             onTap:        _launch,
             borderRadius: BorderRadius.circular(AppConstants.radiusTile),
             child: Container(
-              height: 64,
+              height:  64,
               padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: AppConstants.paddingMd,
-              ),
+                  horizontal: AppConstants.paddingMd),
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
                 borderRadius: BorderRadius.circular(AppConstants.radiusTile),
@@ -281,7 +232,8 @@ class _LinkTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Icon(Icons.open_in_new_rounded, size: 18, color: theme.colorScheme.outline),
+                  Icon(Icons.open_in_new_rounded,
+                      size: 18, color: theme.colorScheme.outline),
                 ],
               ),
             ),
