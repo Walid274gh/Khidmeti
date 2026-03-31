@@ -17,14 +17,9 @@ import '../utils/logger.dart';
 // WORKER HOME STATE
 // ============================================================================
 
-/// Reason the "Go Online" action was blocked.
-/// Exposed so the UI can show the specific corrective dialog.
 enum GoOnlineBlockReason {
-  /// Location app-permission is denied (not permanently).
   permissionDenied,
-  /// Location app-permission is permanently denied — user must open Settings.
   permissionPermanentlyDenied,
-  /// GPS hardware is switched off — user must enable it in device settings.
   gpsHardwareDisabled,
 }
 
@@ -36,7 +31,6 @@ class WorkerHomeState {
   final String? requestsError;
   final bool isRefreshing;
   final String? toggleError;
-  /// Non-null when Go Online was blocked due to GPS/permission issues.
   final GoOnlineBlockReason? goOnlineBlockReason;
 
   const WorkerHomeState({
@@ -50,7 +44,6 @@ class WorkerHomeState {
     this.goOnlineBlockReason,
   });
 
-  // Convenience getters.
   int get pendingCount =>
       recentRequests.where((r) => r.status == ServiceStatus.pending).length;
 
@@ -116,14 +109,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   // Public API
   // --------------------------------------------------------------------------
 
-  /// Attempts to toggle the worker's online status.
-  ///
-  /// **Enterprise GPS enforcement** — the toggle is COMPLETELY ABORTED if:
-  ///   1. The GPS hardware (physical switch) is off.
-  ///   2. The app location permission is denied or permanently denied.
-  ///
-  /// The block reason is stored in [WorkerHomeState.goOnlineBlockReason] so
-  /// the UI can show the appropriate dialog ("Turn on GPS" vs "Open Settings").
   Future<void> toggleOnlineStatus() async {
     if (state.isTogglingOnline) return;
     final worker = state.worker;
@@ -131,7 +116,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 
     final newIsOnline = !worker.isOnline;
 
-    // ── GPS / Permission enforcement (only relevant when going ONLINE) ─────
     if (newIsOnline) {
       final blockReason = await _resolveGoOnlineBlockReason();
       if (blockReason != null) {
@@ -158,9 +142,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
       };
 
       if (newIsOnline) {
-        // ── Capture fresh GPS coordinates ────────────────────────────────────
-        // Force a GPS refresh so the position stored in Firestore reflects
-        // where the worker actually is right now, not a stale cached value.
         try {
           final locationNotifier =
               _ref.read(userLocationControllerProvider.notifier);
@@ -176,14 +157,11 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
                 '${locationState.userLocation!.longitude}');
           }
         } catch (gpsError) {
-          // Non-fatal: going online without live coords is still allowed;
-          // the native background service will update them shortly.
           AppLogger.warning(
               'WorkerHomeController: GPS refresh failed — '
               'going online without live coords: $gpsError');
         }
 
-        // ── Assign to geographic cell (updates cellId / wilayaCode) ─────────
         try {
           final locState = _ref.read(userLocationControllerProvider);
           if (locState.userLocation != null) {
@@ -202,7 +180,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               '(non-fatal): $cellError');
         }
 
-        // ── Start native background location service ─────────────────────────
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.startLocationService(
@@ -216,7 +193,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               'WorkerHomeController: native location service start failed: $e');
         }
       } else {
-        // ── Stop native background location service ──────────────────────────
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.stopLocationService();
@@ -228,10 +204,19 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
         }
       }
 
+      // FIX: add 10-second timeout so the UI cannot freeze indefinitely on a
+      // poor mobile connection. Without a timeout, isTogglingOnline: true
+      // stays set forever if the write hangs.
       await FirebaseFirestore.instance
           .collection('workers')
           .doc(worker.id)
-          .update(updates);
+          .update(updates)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException(
+              'Worker status update timed out after 10 seconds',
+            ),
+          );
 
       AppLogger.info(
           'WorkerHomeController: online status updated → $newIsOnline');
@@ -289,25 +274,14 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   // Private — GPS / permission gate
   // --------------------------------------------------------------------------
 
-  /// Returns the [GoOnlineBlockReason] if the current device state prevents
-  /// going online, or null if everything is clear.
-  ///
-  /// Checks are ordered from most-restrictive to least so the returned reason
-  /// always reflects the most actionable thing for the user to fix.
   Future<GoOnlineBlockReason?> _resolveGoOnlineBlockReason() async {
-    // Re-read latest permission state (it's already reactive, so this is fast).
     final permState =
         _ref.read(locationPermissionControllerProvider);
 
-    // ── Check 1: GPS hardware ────────────────────────────────────────────────
-    // We do a live hardware check here rather than relying solely on cached
-    // permission-controller state, because the user might have toggled GPS
-    // between the last poll and this moment.
     try {
       final locationService = _ref.read(locationServiceProvider);
       final gpsOn = await locationService.isLocationServiceEnabled();
       if (!gpsOn) {
-        // Also update the permission controller so its state is coherent.
         _ref
             .read(locationPermissionControllerProvider.notifier)
             .recheck();
@@ -320,7 +294,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
       return GoOnlineBlockReason.gpsHardwareDisabled;
     }
 
-    // ── Check 2: App permission ──────────────────────────────────────────────
     if (permState.needsSettings) {
       return GoOnlineBlockReason.permissionPermanentlyDenied;
     }
@@ -328,7 +301,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
       return GoOnlineBlockReason.permissionDenied;
     }
 
-    return null; // All clear.
+    return null;
   }
 
   // --------------------------------------------------------------------------
@@ -386,7 +359,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   }
 
   void _subscribeToRequests(String workerId) {
-    if (_requestsSub != null) return; // Already subscribed.
+    if (_requestsSub != null) return;
 
     AppLogger.info(
         'WorkerHomeController: subscribing to requests for $workerId');
@@ -439,7 +412,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   }) async {
     try {
       final updates = <String, dynamic>{
-        'status':      newStatus.toString(),
+        'status':      newStatus.name,
         'lastUpdated': FieldValue.serverTimestamp(),
       };
       if (newStatus == ServiceStatus.accepted) {
@@ -473,9 +446,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 // PROVIDER
 // ============================================================================
 
-// keepAlive() prevents Firestore stream disposal on tab switch.
-// The KeepAliveLink is released on sign-out to cancel streams and free
-// resources, ensuring a clean state for the next session.
 final workerHomeControllerProvider =
     StateNotifierProvider.autoDispose<WorkerHomeController, WorkerHomeState>(
   (ref) {
