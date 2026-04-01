@@ -11,6 +11,7 @@ import '../../providers/core_providers.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart';
 import 'widgets/tracking_body.dart';
 
 
@@ -54,15 +55,7 @@ class _RequestTrackingScreenState
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                      Colors.transparent,
-        statusBarIconBrightness:             isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:                 isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:            Colors.transparent,
-        systemNavigationBarDividerColor:     Colors.transparent,
-        systemNavigationBarIconBrightness:   isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
