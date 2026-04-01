@@ -13,6 +13,7 @@ import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/logger.dart';
 import '../../utils/snack_utils.dart';
+import '../../utils/system_ui_overlay.dart';
 import 'widgets/auth_background.dart';
 
 // ============================================================================
@@ -152,15 +153,7 @@ class _EmailVerificationScreenState
     final isAnyBusy = _checkingVerification || _resending || _signingOut;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                      Colors.transparent,
-        statusBarIconBrightness:             isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:                 isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:            Colors.transparent,
-        systemNavigationBarDividerColor:     Colors.transparent,
-        systemNavigationBarIconBrightness:   isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,

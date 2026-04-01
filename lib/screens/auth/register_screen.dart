@@ -13,6 +13,7 @@ import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/logger.dart';
 import '../../utils/snack_utils.dart';
+import '../../utils/system_ui_overlay.dart';
 import 'widgets/auth_background.dart';
 import 'widgets/register_form_card.dart';
 import 'widgets/register_header.dart';
@@ -200,15 +201,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     final isBusy = state.isLoading || _socialLoading != null;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                      Colors.transparent,
-        statusBarIconBrightness:             isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:                 isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:            Colors.transparent,
-        systemNavigationBarDividerColor:     Colors.transparent,
-        systemNavigationBarIconBrightness:   isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
