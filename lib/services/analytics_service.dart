@@ -183,6 +183,23 @@ class AnalyticsService {
   }
 
   // ============================================================================
+  // PROFILE EVENTS
+  // ============================================================================
+
+  /// Fired when a user successfully updates their profile.
+  /// [accountType]: 'client' | 'worker'
+  /// [imageChanged]: whether a new profile photo was uploaded.
+  void logProfileUpdated({
+    required String accountType,
+    required bool   imageChanged,
+  }) {
+    _fire('profile_updated', {
+      'account_type':  accountType,
+      'image_changed': imageChanged,
+    });
+  }
+
+  // ============================================================================
   // BROWSE / DISCOVERY EVENTS
   // ============================================================================
 
