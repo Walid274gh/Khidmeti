@@ -1,22 +1,43 @@
 // lib/providers/worker_jobs_controller.dart
+//
+// FIX (S2): jobActionStatuses: Map<String, JobActionStatus> and
+// jobActionErrors: Map<String, String?> removed from WorkerJobsState.
+// Any single job action previously triggered a full state copy + rebuild of
+// every widget watching this provider (the entire job list).
+//
+// Per-job loading/error state is now owned by jobActionControllerProvider
+// (StateNotifierProvider.autoDispose.family keyed on jobId), mirroring the
+// MissionController pattern already used elsewhere in this codebase.
+//
+// MIGRATION for widgets:
+//   OLD: ref.watch(workerJobsControllerProvider).actionStatusFor(jobId)
+//   NEW: ref.watch(jobActionControllerProvider(jobId)).status
+//
+//   OLD: workerJobsController.acceptJob(jobId)
+//   NEW: ref.read(jobActionControllerProvider(jobId).notifier).startJob()
+//
+// The stub methods acceptJob / completeJob / declineJob are kept on this
+// controller to avoid a hard compile break during the widget migration window.
+// They delegate to the family provider internally.
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/service_request_enhanced_model.dart';
 import '../models/message_enums.dart';
-import '../services/worker_bid_service.dart';
-import '../services/firestore_service.dart';
 import '../utils/logger.dart';
 import 'core_providers.dart';
+import 'job_action_controller.dart';
+
+// JobActionStatus is now defined in job_action_controller.dart and re-exported
+// from there. Re-export here for backward compatibility with existing imports.
+export 'job_action_controller.dart' show JobActionStatus, JobActionState, jobActionControllerProvider;
 
 // ============================================================================
-// ENUMS  (unchanged interface — widgets depend on these)
+// ENUMS
 // ============================================================================
 
 enum JobFilter { all, pending, accepted, inProgress, completed }
-
-enum JobActionStatus { idle, loading, success, error }
 
 // ============================================================================
 // STATE
@@ -27,17 +48,13 @@ class WorkerJobsState {
   final JobFilter activeFilter;
   final bool isLoading;
   final String? errorMessage;
-  final Map<String, JobActionStatus> jobActionStatuses;
-  final Map<String, String?> jobActionErrors;
   final bool isRefreshing;
 
   const WorkerJobsState({
-    this.jobs = const [],
+    this.jobs         = const [],
     this.activeFilter = JobFilter.all,
-    this.isLoading = true,
+    this.isLoading    = true,
     this.errorMessage,
-    this.jobActionStatuses = const {},
-    this.jobActionErrors = const {},
     this.isRefreshing = false,
   });
 
@@ -70,28 +87,19 @@ class WorkerJobsState {
     return jobs.where((j) => _matchesFilter(j, filter)).length;
   }
 
-  JobActionStatus actionStatusFor(String jobId) =>
-      jobActionStatuses[jobId] ?? JobActionStatus.idle;
-
-  String? actionErrorFor(String jobId) => jobActionErrors[jobId];
-
   WorkerJobsState copyWith({
     List<ServiceRequestEnhancedModel>? jobs,
     JobFilter? activeFilter,
     bool? isLoading,
     String? errorMessage,
-    Map<String, JobActionStatus>? jobActionStatuses,
-    Map<String, String?>? jobActionErrors,
     bool? isRefreshing,
     bool clearError = false,
   }) {
     return WorkerJobsState(
-      jobs: jobs ?? this.jobs,
+      jobs:         jobs         ?? this.jobs,
       activeFilter: activeFilter ?? this.activeFilter,
-      isLoading: isLoading ?? this.isLoading,
+      isLoading:    isLoading    ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      jobActionStatuses: jobActionStatuses ?? this.jobActionStatuses,
-      jobActionErrors: jobActionErrors ?? this.jobActionErrors,
       isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
@@ -124,7 +132,7 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = state.copyWith(
-        isLoading: false,
+        isLoading:    false,
         errorMessage: 'worker_not_authenticated',
       );
       return;
@@ -143,13 +151,11 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
       (jobs) {
         if (!mounted) return;
         final sorted = _sortJobs(jobs);
-        // Clear isRefreshing when stream emits so the pull-to-refresh
-        // indicator disappears as soon as Firestore responds.
         state = state.copyWith(
-          jobs: sorted,
-          isLoading: false,
+          jobs:         sorted,
+          isLoading:    false,
           isRefreshing: false,
-          clearError: true,
+          clearError:   true,
         );
         AppLogger.debug('WorkerJobsController: ${jobs.length} jobs');
       },
@@ -157,7 +163,7 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
         AppLogger.error('WorkerJobsController._subscribeToJobs', error);
         if (!mounted) return;
         state = state.copyWith(
-          isLoading: false,
+          isLoading:    false,
           isRefreshing: false,
           errorMessage: error.toString(),
         );
@@ -201,9 +207,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
   // Refresh
   // --------------------------------------------------------------------------
 
-  // isRefreshing is cleared by the stream listener on the next Firestore
-  // emission. A 10-second safety timeout prevents the indicator from hanging
-  // forever if Firestore fails to respond.
   Future<void> refresh() async {
     if (state.isRefreshing || _workerId == null) return;
     state = state.copyWith(isRefreshing: true);
@@ -217,111 +220,34 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
   }
 
   // --------------------------------------------------------------------------
-  // Accept Job (Start Job in hybrid model)
+  // Action stubs — delegate to jobActionControllerProvider family
+  //
+  // These methods are kept for backward compatibility during the widget
+  // migration window. Prefer watching jobActionControllerProvider(jobId)
+  // directly for per-job loading state.
   // --------------------------------------------------------------------------
 
-  // In the hybrid bid model, "Accept" is semantically "start the job"
-  // (the worker confirms they are starting the work after the client has
-  // already accepted their bid). Delegates to WorkerBidService.startJob().
   Future<void> acceptJob(String jobId) async {
-    _setJobStatus(jobId, JobActionStatus.loading);
-    try {
-      await _ref.read(workerBidServiceProvider).startJob(jobId);
-      AppLogger.success('WorkerJobsController: started job $jobId');
-      if (!mounted) return;
-      _setJobStatus(jobId, JobActionStatus.success);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    } catch (e) {
-      AppLogger.error('WorkerJobsController.acceptJob', e);
-      if (!mounted) return;
-      _setJobStatusError(jobId, e.toString());
-      await Future.delayed(const Duration(milliseconds: 2500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    }
+    await _ref.read(jobActionControllerProvider(jobId).notifier).startJob();
   }
-
-  // --------------------------------------------------------------------------
-  // Complete Job
-  // --------------------------------------------------------------------------
 
   Future<void> completeJob(
     String jobId, {
     String? notes,
     double? finalPrice,
   }) async {
-    _setJobStatus(jobId, JobActionStatus.loading);
-    try {
-      await _ref.read(workerBidServiceProvider).completeJob(
-            requestId: jobId,
-            workerNotes: notes,
-            finalPrice: finalPrice,
-          );
-      AppLogger.success('WorkerJobsController: completed job $jobId');
-      if (!mounted) return;
-      _setJobStatus(jobId, JobActionStatus.success);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    } catch (e) {
-      AppLogger.error('WorkerJobsController.completeJob', e);
-      if (!mounted) return;
-      _setJobStatusError(jobId, e.toString());
-      await Future.delayed(const Duration(milliseconds: 2500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    }
+    await _ref.read(jobActionControllerProvider(jobId).notifier).completeJob(
+      notes:      notes,
+      finalPrice: finalPrice,
+    );
   }
 
-  // --------------------------------------------------------------------------
-  // Decline Job (Cancel after selection in hybrid model)
-  // --------------------------------------------------------------------------
-
-  // In the hybrid bid model, "Decline" is semantically "cancel the request
-  // after being selected" — the worker backs out of a job they were matched
-  // to. Delegates to FirestoreService.cancelRequest().
   Future<void> declineJob(String jobId) async {
-    _setJobStatus(jobId, JobActionStatus.loading);
-    try {
-      await _ref.read(firestoreServiceProvider).cancelRequest(jobId);
-      AppLogger.success('WorkerJobsController: declined/cancelled job $jobId');
-      if (!mounted) return;
-      _setJobStatus(jobId, JobActionStatus.success);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    } catch (e) {
-      AppLogger.error('WorkerJobsController.declineJob', e);
-      if (!mounted) return;
-      _setJobStatusError(jobId, e.toString());
-      await Future.delayed(const Duration(milliseconds: 2500));
-      if (mounted) _setJobStatus(jobId, JobActionStatus.idle);
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // Helpers
-  // --------------------------------------------------------------------------
-
-  void _setJobStatus(String jobId, JobActionStatus status) {
-    final updated =
-        Map<String, JobActionStatus>.from(state.jobActionStatuses);
-    updated[jobId] = status;
-    final errors = Map<String, String?>.from(state.jobActionErrors);
-    if (status != JobActionStatus.error) errors.remove(jobId);
-    state = state.copyWith(
-        jobActionStatuses: updated, jobActionErrors: errors);
-  }
-
-  void _setJobStatusError(String jobId, String error) {
-    final updated =
-        Map<String, JobActionStatus>.from(state.jobActionStatuses);
-    updated[jobId] = JobActionStatus.error;
-    final errors = Map<String, String?>.from(state.jobActionErrors);
-    errors[jobId] = error;
-    state = state.copyWith(
-        jobActionStatuses: updated, jobActionErrors: errors);
+    await _ref.read(jobActionControllerProvider(jobId).notifier).declineJob();
   }
 
   void clearJobError(String jobId) =>
-      _setJobStatus(jobId, JobActionStatus.idle);
+      _ref.read(jobActionControllerProvider(jobId).notifier).clearError();
 }
 
 // ============================================================================
