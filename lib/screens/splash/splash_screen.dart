@@ -40,7 +40,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       FlutterNativeSplash.remove();
-      ref.read(splashControllerProvider).initialize();
+      ref.read(splashControllerProvider.notifier).initialize();
     });
   }
 
@@ -51,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     _brandingAnimationDone = true;
     // Delegate directly — the controller now owns the full gate logic
     // (animation done AND min duration elapsed AND auth checked).
-    ref.read(splashControllerProvider).onAnimationComplete();
+    ref.read(splashControllerProvider.notifier).onAnimationComplete();
   }
 
   void _resetGate() {
@@ -70,9 +70,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final backgroundColor =
         isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
 
-    ref.listen<SplashController>(splashControllerProvider, (prev, next) {
-      if (prev?.state == SplashState.error &&
-          next.state  == SplashState.initializing &&
+    ref.listen<SplashState>(splashControllerProvider, (prev, next) {
+      if (prev?.phase == SplashPhase.error &&
+          next.phase  == SplashPhase.initializing &&
           mounted) {
         _resetGate();
       }
@@ -99,7 +99,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     duration:       const Duration(milliseconds: 300),
                     switchInCurve:  Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
-                    child: controller.state == SplashState.error
+                    child: controller.phase == SplashPhase.error
                         ? SplashErrorIcon(
                             isDark:    isDark,
                             errorType: controller.errorType,
@@ -149,7 +149,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         controller: controller,
                         isDark:     isDark,
                         onRetry:    () =>
-                            ref.read(splashControllerProvider).retry(),
+                            ref.read(splashControllerProvider.notifier).retry(),
                       ),
                     ),
                   ),
