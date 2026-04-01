@@ -10,6 +10,7 @@ import '../../providers/core_providers.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart';
 import '../../utils/whatsapp_launcher.dart';
 import '../../widgets/app_user_avatar.dart';
 
@@ -28,25 +29,7 @@ class WorkerProfileScreen extends ConsumerWidget {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      )
-          : SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:        Theme.of(context).colorScheme.surface,
         extendBodyBehindAppBar: true,
