@@ -80,8 +80,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       );
     }
 
-    final actionStatus = jobsState.actionStatusFor(job.id);
-    final isLoading    = actionStatus == JobActionStatus.loading;
+    final actionStatus = ref.watch(jobActionControllerProvider(job.id));
+    final isLoading    = actionStatus.isLoading;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemOverlayStyle(isDark), // REPLACED inline block
