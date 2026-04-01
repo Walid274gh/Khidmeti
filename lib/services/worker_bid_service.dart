@@ -14,6 +14,12 @@
 //   violations (1 MB document limit).
 //
 //   Fix: enforce _maxMessageLength = 500 chars.
+//
+// B1 FIX (Critical — withdrawBid try/catch):
+//   The Firestore read + downstream calls in withdrawBid() had no try/catch.
+//   A network error would silently propagate to callers with no error state set.
+//   Fix: wrap from the auth-check forward in try/catch; rethrow as
+//   WorkerBidServiceException like submitBid() does.
 
 import 'dart:math';
 
@@ -248,11 +254,14 @@ class WorkerBidService {
   /// Previously: any authenticated user who knew a bidId could call this
   /// method and withdraw another worker's bid — there was no auth check.
   ///
+  /// B1 FIX: wrap all operations from uid-check forward in try/catch and
+  /// rethrow as WorkerBidServiceException, consistent with submitBid().
+  ///
   /// Fix:
-  ///   1. Fetch the bid document.
-  ///   2. Compare bid.workerId with FirebaseAuth.instance.currentUser?.uid.
-  ///   3. Throw AUTH_MISMATCH if they differ.
-  ///   4. Only then call _firestore.withdrawBid().
+  ///   1. Verify currentUid is non-null (UNAUTHENTICATED guard).
+  ///   2. Fetch the bid document inside try/catch.
+  ///   3. Compare bid.workerId with currentUid (AUTH_MISMATCH guard).
+  ///   4. Only then call _firestore.withdrawBid() and _deleteMarker().
   Future<void> withdrawBid({
     required String bidId,
     required String requestId,
@@ -268,35 +277,49 @@ class WorkerBidService {
       );
     }
 
-    // Fetch bid and verify ownership BEFORE withdrawing.
-    final snap = await _firestore.firestore
-        .collection(FirestoreService.workerBidsCollection)
-        .doc(bidId)
-        .get()
-        .timeout(const Duration(seconds: 10));
+    // B1 FIX: wrap Firestore read + downstream calls in try/catch so that
+    // network errors surface as typed exceptions rather than silently
+    // propagating to callers.
+    try {
+      // Fetch bid and verify ownership BEFORE withdrawing.
+      final snap = await _firestore.firestore
+          .collection(FirestoreService.workerBidsCollection)
+          .doc(bidId)
+          .get()
+          .timeout(const Duration(seconds: 10));
 
-    if (!snap.exists || snap.data() == null) {
+      if (!snap.exists || snap.data() == null) {
+        throw WorkerBidServiceException(
+          'Bid not found: $bidId',
+          code: 'BID_NOT_FOUND',
+        );
+      }
+
+      final bidData = snap.data()!;
+      final bidOwnerId = bidData['workerId'] as String?;
+
+      if (bidOwnerId == null || bidOwnerId != currentUid) {
+        throw WorkerBidServiceException(
+          'Cannot withdraw bid owned by another worker',
+          code: 'AUTH_MISMATCH',
+        );
+      }
+
+      // Identity verified — safe to proceed.
+      await _firestore.withdrawBid(bidId: bidId, requestId: requestId);
+      await _deleteMarker(currentUid, requestId);
+
+      _logInfo('Bid withdrawn: $bidId by $currentUid');
+    } on WorkerBidServiceException {
+      rethrow;
+    } catch (e) {
+      _logError('withdrawBid', e);
       throw WorkerBidServiceException(
-        'Bid not found: $bidId',
-        code: 'BID_NOT_FOUND',
+        'Failed to withdraw bid',
+        code: 'WITHDRAW_BID_FAILED',
+        originalError: e,
       );
     }
-
-    final bidData = snap.data()!;
-    final bidOwnerId = bidData['workerId'] as String?;
-
-    if (bidOwnerId == null || bidOwnerId != currentUid) {
-      throw WorkerBidServiceException(
-        'Cannot withdraw bid owned by another worker',
-        code: 'AUTH_MISMATCH',
-      );
-    }
-
-    // Identity verified — safe to proceed.
-    await _firestore.withdrawBid(bidId: bidId, requestId: requestId);
-    await _deleteMarker(currentUid, requestId);
-
-    _logInfo('Bid withdrawn: $bidId by $currentUid');
   }
 
   // =========================================================================
