@@ -15,6 +15,12 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   static const String workerBidsCollection = 'worker_bids';
   static const String notificationsCollection = 'notifications';
 
+  // B3 FIX: cap for the "decline other pending bids" query in
+  // acceptBidTransaction(). 50 is more than enough given
+  // AppConstants.maxPendingBidsPerWorker and prevents runaway reads on
+  // popular requests.
+  static const int _maxBidsToDecline = 50;
+
   ServiceRequestFirestoreRepository(super.firestore);
 
   @override
@@ -148,11 +154,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             _parseRequestList(s.docs, 'streamUserServiceRequests'));
   }
 
-  /// FIX (Critical): subscriptions moved into onListen/onCancel to prevent
-  /// subscription leak when the returned stream is disposed before any
-  /// listener subscribes.
-  /// FIX (Critical): status strings changed from .toString() → .name so
-  /// the query matches documents written by ServiceRequestEnhancedModel.toMap().
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerServiceRequests(
       String workerId) {
     if (workerId.trim().isEmpty) {
@@ -198,8 +199,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
         openSub = firestore
             .collection(serviceRequestsCollection)
-            // FIX: use .name format ('open', 'awaitingSelection') to match
-            // what ServiceRequestEnhancedModel.toMap() writes.
             .where('status', whereIn: [
               ServiceStatus.open.name,
               ServiceStatus.awaitingSelection.name,
@@ -227,7 +226,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     return controller.stream;
   }
 
-  /// FIX (Critical): status strings changed from .toString() → .name.
   Stream<List<ServiceRequestEnhancedModel>> streamAvailableRequests({
     required int wilayaCode,
     required String serviceType,
@@ -236,7 +234,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         .collection(serviceRequestsCollection)
         .where('wilayaCode', isEqualTo: wilayaCode)
         .where('serviceType', isEqualTo: serviceType)
-        // FIX: .name format ('open', 'awaitingSelection')
         .where('status', whereIn: [
           ServiceStatus.open.name,
           ServiceStatus.awaitingSelection.name,
@@ -248,7 +245,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             _parseRequestList(s.docs, 'streamAvailableRequests'));
   }
 
-  /// FIX (Critical): status strings changed from .toString() → .name.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerActiveJobs(
       String workerId) {
     if (workerId.trim().isEmpty) {
@@ -258,7 +254,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     return firestore
         .collection(serviceRequestsCollection)
         .where('workerId', isEqualTo: workerId)
-        // FIX: .name format ('bidSelected', 'inProgress')
         .where('status', whereIn: [
           ServiceStatus.bidSelected.name,
           ServiceStatus.inProgress.name,
@@ -329,8 +324,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // BID LIFECYCLE
   // --------------------------------------------------------------------------
 
-  /// FIX (Critical): status writes use .name format to match what
-  /// ServiceRequestEnhancedModel.toMap() writes.
   Future<void> acceptBidTransaction({
     required String requestId,
     required String bidId,
@@ -361,7 +354,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             code: 'INVALID_REQUEST_STATE',
           );
         }
-        // FIX: BidStatus.accepted.name → 'accepted'
         tx.update(
           firestore.collection(workerBidsCollection).doc(bidId),
           {
@@ -369,7 +361,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             'acceptedAt': Timestamp.now(),
           },
         );
-        // FIX: ServiceStatus.bidSelected.name → 'bidSelected'
         tx.update(requestRef, {
           'status': ServiceStatus.bidSelected.name,
           'selectedBidId': bidId,
@@ -380,20 +371,20 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
       }).timeout(const Duration(seconds: 20));
 
-      // Decline all other pending bids (outside the transaction — eventual
-      // consistency is acceptable here since the request is already locked).
+      // B3 FIX: added .limit(_maxBidsToDecline) to the query that fetches
+      // other pending bids to decline. A popular request could accumulate
+      // many bids; without a cap this is an unbounded read.
       final others = await firestore
           .collection(workerBidsCollection)
           .where('serviceRequestId', isEqualTo: requestId)
-          // FIX: BidStatus.pending.name → 'pending'
           .where('status', isEqualTo: BidStatus.pending.name)
+          .limit(_maxBidsToDecline)
           .get()
           .timeout(FirestoreRepositoryBase.operationTimeout);
 
       final batch = firestore.batch();
       for (final doc in others.docs) {
         if (doc.id != bidId) {
-          // FIX: BidStatus.declined.name → 'declined'
           batch.update(doc.reference,
               {'status': BidStatus.declined.name});
         }
@@ -434,7 +425,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
               'Can only withdraw pending bids',
               code: 'INVALID_BID_STATE');
         }
-        // FIX: BidStatus.withdrawn.name → 'withdrawn'
         tx.update(bidRef, {'status': BidStatus.withdrawn.name});
         tx.update(
           firestore
@@ -484,9 +474,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     logInfo('Request cancelled: $requestId');
   }
 
-  /// FIX (Critical): use .name instead of .toString() so the written value
-  /// matches what ServiceRequestEnhancedModel.toMap() writes and what
-  /// streamAvailableRequests queries for.
   Future<void> _updateRequestStatus(
     String requestId,
     ServiceStatus status, {
@@ -498,7 +485,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     }
     await retryOperation(() async {
       try {
-        // FIX: status.name instead of status.toString()
         await firestore
             .collection(serviceRequestsCollection)
             .doc(requestId)

@@ -8,10 +8,13 @@ import 'firestore_repository_base.dart';
 class GeoCellFirestoreRepository extends FirestoreRepositoryBase {
   static const String cellsCollection = 'geographic_cells';
 
+  // B3 FIX: cap for getCellsInWilaya() — cells are small documents but a
+  // wilaya can eventually contain hundreds of them. 200 is generous and
+  // prevents runaway reads as coverage grows.
+  static const int _maxCellsPerWilaya = 200;
+
   GeoCellFirestoreRepository(super.firestore);
 
-  // FIX: renamed from `_logTag` (library-private) to `logTag` (public).
-  // See firestore_repository_base.dart for the full explanation.
   @override
   String get logTag => '[GeoCellRepo]';
 
@@ -64,6 +67,8 @@ class GeoCellFirestoreRepository extends FirestoreRepositoryBase {
     });
   }
 
+  // B3 FIX: added .limit(_maxCellsPerWilaya) to prevent an unbounded read
+  // as the number of cells per wilaya grows in production.
   Future<List<GeographicCell>> getCellsInWilaya(int wilayaCode) async {
     ensureNotDisposed();
     return retryOperation(() async {
@@ -71,6 +76,7 @@ class GeoCellFirestoreRepository extends FirestoreRepositoryBase {
         final snapshot = await firestore
             .collection(cellsCollection)
             .where('wilayaCode', isEqualTo: wilayaCode)
+            .limit(_maxCellsPerWilaya)
             .get()
             .timeout(FirestoreRepositoryBase.operationTimeout);
         return snapshot.docs
