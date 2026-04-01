@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/worker_model.dart';
 
+import '../services/firestore_service.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 import '../utils/model_extensions.dart';
@@ -185,15 +186,6 @@ class HomeController extends StateNotifier<HomeState> {
     state = state.copyWith(isMapFullscreen: false);
   }
 
-  // FIX (Bug 3 — bestWorkerId lingers on manual filter change):
-  // The original code set clearBestWorker only when next == null (filter
-  // toggled off). When the user switched to a DIFFERENT filter, clearBestWorker
-  // was false, so the stale bestWorkerId from a previous AI search was
-  // preserved — allowing the golden star to incorrectly appear on a worker
-  // from the new profession's list.
-  //
-  // Fix: always set clearBestWorker: true so that any manual filter change
-  // (toggle off OR switch to different profession) wipes the AI highlight.
   void toggleServiceFilter(String? filter) {
     final next = filter == state.activeServiceFilter ? null : filter;
     AppLogger.debug('HomeController: filter → $next');
@@ -204,16 +196,6 @@ class HomeController extends StateNotifier<HomeState> {
     );
   }
 
-  // FIX (Bug 2 — filter resets to ALL on repeated AI search):
-  // applyToMap() previously called toggleServiceFilter() which has toggle
-  // semantics: if the same profession was already active, next became null
-  // and the filter was cleared. This method sets the filter directly without
-  // toggling, so repeated AI searches for the same profession always keep
-  // the filter active.
-  //
-  // clearBestWorker is true here because setBestWorker() is always called
-  // immediately after in applyToMap(); this also handles the edge case where
-  // results are empty (no new bestWorkerId is set, so the stale one is wiped).
   void setServiceFilter(String? filter) {
     AppLogger.debug('HomeController: setServiceFilter → $filter');
     state = state.copyWith(
@@ -319,21 +301,6 @@ class HomeController extends StateNotifier<HomeState> {
   // Private — real-time geo-aware Firestore stream
   // --------------------------------------------------------------------------
 
-  /// Cancels any previous stream and subscribes to a new real-time stream of
-  /// online workers scoped to the user's wilaya (and its neighbours where
-  /// feasible), then filters results to [AppConstants.defaultSearchRadiusKm].
-  ///
-  /// Architecture:
-  ///   1. Determine the user's wilaya code via [GeographicGridService].
-  ///   2. Build a primary Firestore stream filtered by that wilaya code.
-  ///   3. Build a secondary stream for neighbouring wilayas (≤9 codes, within
-  ///      Firestore's `whereIn` limit of 10).
-  ///   4. Merge both snapshots and apply a Haversine distance filter in Dart,
-  ///      sorting results by proximity.
-  ///
-  /// This approach is intentionally built on top of the existing
-  /// [GeographicGridService] / [GeoHashHelper] infrastructure without
-  /// introducing any new geo-libraries.
   Future<void> _subscribeToNearbyWorkers(LatLng location) async {
     // Cancel the previous subscription before rebuilding.
     await _workersStreamSub?.cancel();
@@ -368,8 +335,6 @@ class HomeController extends StateNotifier<HomeState> {
           'and neighbours');
 
       // ── 2. Collect wilaya codes to query ──────────────────────────────────
-      // Primary wilaya always included; add neighbours up to Firestore's
-      // whereIn ceiling of 10 total values.
       final wilayaModel = wilayaManager.wilayas[wilayaCode];
       final allCodes = <int>[wilayaCode];
       if (wilayaModel != null) {
@@ -383,10 +348,10 @@ class HomeController extends StateNotifier<HomeState> {
           'HomeController: querying wilaya codes $allCodes');
 
       // ── 3. Firestore real-time stream ─────────────────────────────────────
-      // whereIn with up to 10 codes, filtered by isOnline server-side.
-      // Distance filtering is applied in Dart on each snapshot.
+      // B8 FIX: use FirestoreService.workersCollection constant instead of
+      // the hardcoded string 'workers' so collection renames stay consistent.
       final query = FirebaseFirestore.instance
-          .collection('workers')
+          .collection(FirestoreService.workersCollection)
           .where('isOnline', isEqualTo: true)
           .where('wilayaCode', whereIn: allCodes);
 
@@ -413,8 +378,6 @@ class HomeController extends StateNotifier<HomeState> {
         onError: (Object e) {
           AppLogger.error('HomeController workers stream error', e);
           if (!mounted) return;
-          // On wilaya-based query error (e.g. missing Firestore index) fall
-          // back to the simpler unscoped query instead of showing an error.
           AppLogger.warning(
               'HomeController: wilaya stream failed — falling back to '
               'unscoped query');
@@ -432,14 +395,21 @@ class HomeController extends StateNotifier<HomeState> {
   /// Fallback: query all online workers without wilaya scoping, then filter
   /// by distance in Dart. Used when the wilaya lookup fails or the indexed
   /// query is unavailable (e.g. first-run before index build).
+  ///
+  /// B7 FIX: added .limit(AppConstants.fallbackWorkerQueryLimit) to prevent
+  /// reading every online worker document on every snapshot in production.
+  /// B8 FIX: use FirestoreService.workersCollection instead of 'workers'.
   void _subscribeFallback(LatLng location) {
     AppLogger.info('HomeController: using fallback unscoped stream');
 
     _workersStreamSub?.cancel();
 
+    // B8 FIX: FirestoreService.workersCollection instead of 'workers'.
+    // B7 FIX: .limit() cap to prevent unbounded reads in production.
     _workersStreamSub = FirebaseFirestore.instance
-        .collection('workers')
+        .collection(FirestoreService.workersCollection)
         .where('isOnline', isEqualTo: true)
+        .limit(AppConstants.fallbackWorkerQueryLimit)
         .snapshots()
         .listen(
       (snapshot) {
@@ -472,11 +442,6 @@ class HomeController extends StateNotifier<HomeState> {
   // Private — snapshot processing
   // --------------------------------------------------------------------------
 
-  /// Converts a Firestore snapshot into a distance-filtered, sorted list of
-  /// [WorkerModel]s. The distance gate is [AppConstants.defaultSearchRadiusKm].
-  ///
-  /// Uses the [WorkerLogic.distanceTo] extension (model_extensions.dart) which
-  /// implements the Haversine formula — no additional geo-library needed.
   List<WorkerModel> _processWorkerSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot,
     LatLng userLocation,

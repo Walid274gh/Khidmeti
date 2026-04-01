@@ -12,9 +12,11 @@
 //   _ref.read(firestoreServiceProvider).completeJob()          — for completed
 //   _ref.read(firestoreServiceProvider).cancelRequest()        — for declined
 //
-// The _subscribeToWorker and _subscribeToRequests real-time streams still use
-// FirebaseFirestore.instance.snapshots() directly — this is intentional and
-// correct; FirestoreService does not expose real-time streams for these shapes.
+// B8 FIX: _subscribeToWorker and _subscribeToRequests previously used
+// hardcoded 'workers' and 'service_requests' collection name strings.
+// These are replaced with FirestoreService.workersCollection and
+// FirestoreService.serviceRequestsCollection so that any collection rename
+// stays consistent across the codebase.
 
 import 'dart:async';
 
@@ -27,6 +29,7 @@ import '../models/worker_model.dart';
 import '../providers/core_providers.dart';
 import '../providers/location_controller.dart';
 import '../providers/location_permission_controller.dart';
+import '../services/firestore_service.dart';
 import '../utils/logger.dart';
 
 // ============================================================================
@@ -161,7 +164,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 
           final locationState = _ref.read(userLocationControllerProvider);
           if (locationState.userLocation != null) {
-            // Update location via FirestoreService (not direct Firestore write).
             await _ref.read(firestoreServiceProvider).updateWorkerLocation(
               worker.id,
               locationState.userLocation!.latitude,
@@ -223,9 +225,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
         }
       }
 
-      // SECURITY FIX: route the online-status write through FirestoreService
-      // instead of writing directly to FirebaseFirestore.instance.
-      // This ensures retry logic, validation, and proper field scoping apply.
       await _ref
           .read(firestoreServiceProvider)
           .updateWorkerStatus(worker.id, newIsOnline)
@@ -339,10 +338,11 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     _subscribeToWorker(uid);
   }
 
+  // B8 FIX: use FirestoreService.workersCollection instead of 'workers'.
   void _subscribeToWorker(String uid) {
     _workerSub?.cancel();
     _workerSub = FirebaseFirestore.instance
-        .collection('workers')
+        .collection(FirestoreService.workersCollection)
         .doc(uid)
         .snapshots()
         .listen(
@@ -371,6 +371,8 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     );
   }
 
+  // B8 FIX: use FirestoreService.serviceRequestsCollection instead of
+  // the hardcoded string 'service_requests'.
   void _subscribeToRequests(String workerId) {
     if (_requestsSub != null) return;
 
@@ -382,7 +384,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     );
 
     _requestsSub = FirebaseFirestore.instance
-        .collection('service_requests')
+        .collection(FirestoreService.serviceRequestsCollection)
         .where('workerId', isEqualTo: workerId)
         .orderBy('createdAt', descending: true)
         .limit(30)
@@ -418,20 +420,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     _subscribeToRequests(workerId);
   }
 
-  /// SECURITY FIX: route all status updates through FirestoreService instead
-  /// of writing directly to FirebaseFirestore.instance.
-  ///
-  /// Previously: direct `.update({'status': newStatus.name, ...})` bypassed
-  /// all retry logic and allowed accidental writes of server-only fields like
-  /// workerId or acceptedAt from client code.
-  ///
-  /// Now: each transition delegates to the appropriate FirestoreService method:
-  ///   accepted / inProgress  → startJob()     (marks inProgress server-side)
-  ///   completed               → completeJob()
-  ///   declined / cancelled    → cancelRequest()
-  ///
-  /// Note: 'accepted' in this controller means the worker is starting the job
-  /// (they were already bid-selected by the client). Map it to startJob().
   Future<void> _updateRequestStatus(
     String requestId,
     ServiceStatus newStatus, {
@@ -456,9 +444,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
           break;
 
         default:
-          // For any other status (edge cases), fall back to a minimal update
-          // still routed through FirestoreService's updateServiceRequest path
-          // rather than a raw Firestore write.
           AppLogger.warning(
               'WorkerHomeController._updateRequestStatus: '
               'unhandled status $newStatus for $requestId — skipping');
