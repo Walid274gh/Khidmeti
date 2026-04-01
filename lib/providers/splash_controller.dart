@@ -18,45 +18,73 @@ import 'core_providers.dart';
 // ENUMS
 // ============================================================================
 
-enum SplashState { initializing, animating, ready, error }
+// FIX (P1): renamed from SplashState to SplashPhase to free up the name for
+// the immutable state class required by StateNotifier<T>. Screens that
+// previously switched on SplashState.xxx must update to SplashPhase.xxx.
+enum SplashPhase { initializing, animating, ready, error }
 
 enum SplashErrorType { none, noInternet, serverError, timeout, unknown }
+
+// ============================================================================
+// STATE
+// ============================================================================
+
+// FIX (P1): replaces the scattered private fields on ChangeNotifier with a
+// single immutable value type — the idiomatic Riverpod StateNotifier pattern.
+// Consumers watch splashControllerProvider directly to get this value; no
+// need to call .state on the controller object.
+class SplashState {
+  final SplashPhase phase;
+  final SplashErrorType errorType;
+
+  const SplashState({
+    this.phase     = SplashPhase.initializing,
+    this.errorType = SplashErrorType.none,
+  });
+
+  bool get canRetry => phase == SplashPhase.error;
+
+  SplashState copyWith({
+    SplashPhase?     phase,
+    SplashErrorType? errorType,
+  }) {
+    return SplashState(
+      phase:     phase     ?? this.phase,
+      errorType: errorType ?? this.errorType,
+    );
+  }
+}
 
 // ============================================================================
 // CONTROLLER
 // ============================================================================
 
-class SplashController extends ChangeNotifier {
+// FIX (P1): migrated from ChangeNotifier + ChangeNotifierProvider to
+// StateNotifier<SplashState> + StateNotifierProvider. Benefits:
+//   • Typed state value — consumers watch SplashState directly.
+//   • mounted check replaces _isDisposed bool.
+//   • No notifyListeners(); state assignments trigger rebuilds automatically.
+//   • Fully overridable in ProviderScope for widget tests.
+class SplashController extends StateNotifier<SplashState> {
   final Ref _ref;
 
-  SplashState     _state    = SplashState.initializing;
-  bool  _isAnimationComplete   = false;
-  bool  _isAuthChecked         = false;
-  // FIX (Architect): minimum splash duration was previously owned by
-  // SplashScreen — broken separation of concerns. All timing logic now lives
-  // in the controller. The screen only reports UI events (branding done) and
-  // delegates the coordination gate entirely to the controller.
-  bool  _isMinDurationElapsed  = false;
-  SplashErrorType _errorType   = SplashErrorType.none;
+  // Internal coordination gates — not part of the exposed state because
+  // consumers only need to react to the resolved phase.
+  bool  _isAnimationComplete  = false;
+  bool  _isAuthChecked        = false;
+  bool  _isMinDurationElapsed = false;
 
   // Mutex: prevents concurrent initialize() calls (e.g. double-tap retry).
   bool _isInitializing = false;
-  // Guard: prevents notifyListeners() on a disposed controller.
-  bool _isDisposed     = false;
 
   /// Minimum time the splash is visible — prevents a jarring instant transition
   /// on fast devices where auth resolves before the logo animation finishes.
-  static const Duration _kMinSplashDuration  = Duration(seconds: 3);
+  static const Duration _kMinSplashDuration = Duration(seconds: 3);
 
   /// Global timeout for the full init sequence.
-  /// Prevents the splash blocking for up to 42s when Firestore retries accumulate.
-  static const Duration _globalInitTimeout   = Duration(seconds: 15);
+  static const Duration _globalInitTimeout  = Duration(seconds: 15);
 
-  SplashState     get state      => _state;
-  SplashErrorType get errorType  => _errorType;
-  bool            get canRetry   => _state == SplashState.error;
-
-  SplashController(this._ref);
+  SplashController(this._ref) : super(const SplashState());
 
   // --------------------------------------------------------------------------
   // Initialization
@@ -67,12 +95,12 @@ class SplashController extends ChangeNotifier {
     _isInitializing = true;
 
     try {
-      _state               = SplashState.initializing;
-      _isAnimationComplete = false;
-      _isAuthChecked       = false;
+      _isAnimationComplete  = false;
+      _isAuthChecked        = false;
       _isMinDurationElapsed = false;
-      _errorType           = SplashErrorType.none;
-      _safeNotify();
+
+      if (!mounted) return;
+      state = const SplashState(phase: SplashPhase.initializing);
 
       // Arm the minimum splash duration timer in parallel with auth init.
       _armMinDurationTimer();
@@ -104,30 +132,34 @@ class SplashController extends ChangeNotifier {
       _updateState();
     } on TimeoutException {
       AppLogger.warning('SplashController.initialize: timeout');
-      _errorType     = SplashErrorType.timeout;
-      _state         = SplashState.error;
+      if (!mounted) return;
       _isAuthChecked = true;
-      _safeNotify();
+      state = state.copyWith(
+        phase:     SplashPhase.error,
+        errorType: SplashErrorType.timeout,
+      );
     } on FirebaseException catch (e) {
       AppLogger.error('SplashController.initialize (Firebase)', e);
-      _errorType     = _mapFirebaseError(e);
-      _state         = SplashState.error;
+      if (!mounted) return;
       _isAuthChecked = true;
-      _safeNotify();
+      state = state.copyWith(
+        phase:     SplashPhase.error,
+        errorType: _mapFirebaseError(e),
+      );
     } catch (e, stack) {
       AppLogger.error('SplashController.initialize', '$e\n$stack');
-      _errorType     = SplashErrorType.unknown;
-      _state         = SplashState.error;
+      if (!mounted) return;
       _isAuthChecked = true;
-      _safeNotify();
+      state = state.copyWith(
+        phase:     SplashPhase.error,
+        errorType: SplashErrorType.unknown,
+      );
     } finally {
       _isInitializing = false;
     }
   }
 
   /// Called by SplashScreen when the branding animation finishes.
-  /// The screen no longer needs to coordinate with a min-duration timer —
-  /// it simply reports this single event and the controller handles the rest.
   void onAnimationComplete() {
     _isAnimationComplete = true;
     _updateState();
@@ -139,32 +171,28 @@ class SplashController extends ChangeNotifier {
   // Private helpers
   // --------------------------------------------------------------------------
 
-  /// Arms the minimum splash duration timer.
-  /// If the controller is disposed before the timer fires, the callback is
-  /// a no-op thanks to the [_isDisposed] guard.
   void _armMinDurationTimer() {
     Future.delayed(_kMinSplashDuration, () {
-      if (_isDisposed) return;
+      if (!mounted) return;
       _isMinDurationElapsed = true;
       _updateState();
     });
   }
 
   void _updateState() {
-    if (_state == SplashState.error) return;
+    if (!mounted) return;
+    if (state.phase == SplashPhase.error) return;
 
     // All three gates must clear before the app navigates:
     //   1. _isAuthChecked       — Firebase auth + role resolved
     //   2. _isAnimationComplete — Branding animation finished
     //   3. _isMinDurationElapsed — Minimum visible time elapsed
     if (_isAnimationComplete && _isAuthChecked && _isMinDurationElapsed) {
-      _state = SplashState.ready;
+      state = state.copyWith(phase: SplashPhase.ready);
       _ref.read(appInitializedProvider.notifier).state = true;
       _ref.read(authRedirectNotifierProvider).notifyAuthReady();
-      _safeNotify();
     } else if (_isAuthChecked && !_isAnimationComplete) {
-      _state = SplashState.animating;
-      _safeNotify();
+      state = state.copyWith(phase: SplashPhase.animating);
     }
   }
 
@@ -176,7 +204,9 @@ class SplashController extends ChangeNotifier {
       final worker = await firestoreService.getWorker(uid);
       final role   = worker != null ? UserRole.worker : UserRole.client;
 
-      _ref.read(cachedUserRoleProvider.notifier).state = role;
+      // FIX (Suggestion 1): use setCachedUserRole helper instead of direct
+      // state write so the write-guard contract is respected.
+      setCachedUserRole(_ref, role);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
@@ -186,11 +216,8 @@ class SplashController extends ChangeNotifier {
 
       AppLogger.info('SplashController: cached role=$role uid=$uid');
     } on FirebaseException catch (e) {
-      // FIX (QA P0): distinguish permission-denied from generic Firestore
-      // errors. A PERMISSION_DENIED means Firebase security rules rejected
-      // this user — silently defaulting to client and letting them into the
-      // app is a security risk. Rethrowing lets the outer FirebaseException
-      // handler set state=error and force the user to retry (or sign out).
+      // FIX (QA P0): permission-denied is a security issue — rethrow so the
+      // outer handler sets phase=error instead of silently defaulting to client.
       if (e.code == 'permission-denied') {
         AppLogger.error(
           'SplashController._resolveAndCacheRole: PERMISSION_DENIED uid=$uid',
@@ -199,10 +226,10 @@ class SplashController extends ChangeNotifier {
         rethrow;
       }
       // On other Firestore errors, default to client — safest fallback.
-      _ref.read(cachedUserRoleProvider.notifier).state = UserRole.client;
+      setCachedUserRole(_ref, UserRole.client);
       AppLogger.error('SplashController._resolveAndCacheRole', e);
     } catch (e) {
-      _ref.read(cachedUserRoleProvider.notifier).state = UserRole.client;
+      setCachedUserRole(_ref, UserRole.client);
       AppLogger.error('SplashController._resolveAndCacheRole', e);
     }
   }
@@ -221,24 +248,22 @@ class SplashController extends ChangeNotifier {
         return SplashErrorType.unknown;
     }
   }
-
-  /// notifyListeners() guarded against post-dispose calls.
-  void _safeNotify() {
-    if (!_isDisposed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _isDisposed = true;
-    super.dispose();
-  }
 }
 
 // ============================================================================
 // PROVIDER
 // ============================================================================
 
+// FIX (P1): ChangeNotifierProvider.autoDispose → StateNotifierProvider.autoDispose.
+// Consumers that previously watched the controller object directly now watch
+// the typed SplashState value:
+//   OLD: ref.watch(splashControllerProvider).state      → SplashState enum value
+//   NEW: ref.watch(splashControllerProvider).phase      → SplashPhase enum value
+//
+// Method calls now route through .notifier:
+//   OLD: ref.read(splashControllerProvider).initialize()
+//   NEW: ref.read(splashControllerProvider.notifier).initialize()
 final splashControllerProvider =
-    ChangeNotifierProvider.autoDispose<SplashController>((ref) {
-  return SplashController(ref);
-});
+    StateNotifierProvider.autoDispose<SplashController, SplashState>(
+  (ref) => SplashController(ref),
+);

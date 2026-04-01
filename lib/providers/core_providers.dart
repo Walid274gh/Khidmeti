@@ -40,9 +40,6 @@ export 'auth_providers.dart';
 // ============================================================================
 // AI INTENT EXTRACTOR — merged from lib/providers/ai_providers.dart
 // ============================================================================
-// FIX (Structure): ai_providers.dart was 6 lines and imported by only
-// core_providers.dart and home_search_controller.dart. Merging eliminates
-// one indirection file with zero growth potential (single provider, no state).
 
 final aiIntentExtractorProvider = Provider<AiIntentExtractorService>((ref) {
   return AiIntentExtractorService();
@@ -261,92 +258,120 @@ final hasAllCriticalPermissionsProvider = FutureProvider<bool>((ref) async {
 
 final userProfileProvider = FutureProvider.family
     .autoDispose<UserModel?, String>((ref, String userId) async {
+  // FIX (P4): hoist ref.watch before guard so dependency is always registered.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (userId.trim().isEmpty) throw ArgumentError('User ID cannot be empty');
   try {
-    return await ref.watch(firestoreServiceProvider).getUser(userId);
+    return await firestoreService.getUser(userId);
   } catch (e) { _logError('userProfileProvider($userId)', e); rethrow; }
 });
 
 final workerProfileProvider = FutureProvider.family
     .autoDispose<WorkerModel?, String>((ref, String workerId) async {
+  // FIX (P4): hoist ref.watch before guard.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (workerId.trim().isEmpty) throw ArgumentError('Worker ID cannot be empty');
   try {
-    return await ref.watch(firestoreServiceProvider).getWorker(workerId);
+    return await firestoreService.getWorker(workerId);
   } catch (e) { _logError('workerProfileProvider($workerId)', e); rethrow; }
 });
 
 final serviceRequestProvider = FutureProvider.family
     .autoDispose<ServiceRequestEnhancedModel?, String>((ref, String requestId) async {
+  // FIX (P4): hoist ref.watch before guard.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (requestId.trim().isEmpty) throw ArgumentError('Request ID cannot be empty');
   try {
-    return await ref.watch(firestoreServiceProvider).getServiceRequest(requestId);
+    return await firestoreService.getServiceRequest(requestId);
   } catch (e) { _logError('serviceRequestProvider($requestId)', e); rethrow; }
 });
 
 // ============================================================================
 // STREAM PROVIDERS
 // ============================================================================
+//
+// FIX (P4): In all StreamProvider.family bodies below, ref.watch() is now
+// hoisted BEFORE the early-return guard. Previously the guard could fire
+// before ref.watch() was called, meaning the dependency was never registered
+// in those branches — causing stale subscriptions on re-execution.
+// The hoisted local variable is used in all branches so Riverpod always
+// tracks the dependency regardless of the guard outcome.
 
 final userServiceRequestsStreamProvider = StreamProvider.family
     .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String userId) {
+  // FIX (P4): hoisted before guard.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (userId.trim().isEmpty)
     return Stream.error(ArgumentError('User ID cannot be empty'));
   try {
-    return ref.watch(firestoreServiceProvider).streamUserServiceRequests(userId);
+    return firestoreService.streamUserServiceRequests(userId);
   } catch (e) { _logError('userServiceRequestsStreamProvider', e); return Stream.error(e); }
 });
 
 final workerServiceRequestsStreamProvider = StreamProvider.family
     .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String workerId) {
+  // FIX (P4): hoisted before guard.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (workerId.trim().isEmpty)
     return Stream.error(ArgumentError('Worker ID cannot be empty'));
   try {
-    return ref.watch(firestoreServiceProvider).streamWorkerServiceRequests(workerId);
+    return firestoreService.streamWorkerServiceRequests(workerId);
   } catch (e) { _logError('workerServiceRequestsStreamProvider', e); return Stream.error(e); }
 });
 
 final serviceRequestStreamProvider = StreamProvider.family
     .autoDispose<ServiceRequestEnhancedModel?, String>((ref, String requestId) {
+  // FIX (P4): hoisted before guard.
+  final firestoreService = ref.watch(firestoreServiceProvider);
   if (requestId.trim().isEmpty)
     return Stream.error(ArgumentError('Request ID cannot be empty'));
   try {
-    return ref.watch(firestoreServiceProvider).streamServiceRequest(requestId);
+    return firestoreService.streamServiceRequest(requestId);
   } catch (e) { _logError('serviceRequestStreamProvider', e); return Stream.error(e); }
 });
 
 final bidsStreamProvider = StreamProvider.family
     .autoDispose<List<WorkerBidModel>, String>((ref, String requestId) {
+  // FIX (P4): hoisted before guard.
+  final bidService = ref.watch(workerBidServiceProvider);
   if (requestId.trim().isEmpty)
     return Stream.error(ArgumentError('Request ID cannot be empty'));
   try {
-    return ref.watch(workerBidServiceProvider).streamBidsForRequest(requestId);
+    return bidService.streamBidsForRequest(requestId);
   } catch (e) { _logError('bidsStreamProvider', e); return Stream.error(e); }
 });
 
 final availableRequestsStreamProvider = StreamProvider.family.autoDispose<
     List<ServiceRequestEnhancedModel>,
     ({int wilayaCode, String serviceType})>((ref, params) {
+  // FIX (P4): hoisted; no early-return guard in this provider but hoisting
+  // is consistent and ensures the dependency is always tracked.
+  final bidService = ref.watch(workerBidServiceProvider);
   try {
-    return ref.watch(workerBidServiceProvider).streamAvailableRequests(
+    return bidService.streamAvailableRequests(
         wilayaCode: params.wilayaCode, serviceType: params.serviceType);
   } catch (e) { _logError('availableRequestsStreamProvider', e); return Stream.error(e); }
 });
 
 final workerActiveJobsStreamProvider = StreamProvider.family
     .autoDispose<List<ServiceRequestEnhancedModel>, String>((ref, String workerId) {
+  // FIX (P4): hoisted before guard.
+  final bidService = ref.watch(workerBidServiceProvider);
   if (workerId.trim().isEmpty)
     return Stream.error(ArgumentError('Worker ID cannot be empty'));
   try {
-    return ref.watch(workerBidServiceProvider).streamWorkerActiveJobs(workerId);
+    return bidService.streamWorkerActiveJobs(workerId);
   } catch (e) { _logError('workerActiveJobsStreamProvider', e); return Stream.error(e); }
 });
 
 final workerBidsStreamProvider = StreamProvider.family
     .autoDispose<List<WorkerBidModel>, String>((ref, String workerId) {
+  // FIX (P4): hoisted before guard.
+  final bidService = ref.watch(workerBidServiceProvider);
   if (workerId.trim().isEmpty)
     return Stream.error(ArgumentError('Worker ID cannot be empty'));
   try {
-    return ref.watch(workerBidServiceProvider).streamWorkerBids(workerId);
+    return bidService.streamWorkerBids(workerId);
   } catch (e) { _logError('workerBidsStreamProvider', e); return Stream.error(e); }
 });
 
@@ -354,14 +379,22 @@ final workerBidsStreamProvider = StreamProvider.family
 // UTILITY
 // ============================================================================
 
-final servicesInitializedProvider = FutureProvider<bool>((ref) async {
+// FIX (Suggestion 2): servicesInitializedProvider was FutureProvider<bool>
+// but contained no actual async work — only synchronous ref.watch calls.
+// FutureProvider added an unnecessary async frame and AsyncValue<bool> wrapping
+// on consumers. Converted to Provider<bool>; rethrow on exception so callers
+// can react to failures (previously swallowed with `return false`).
+final servicesInitializedProvider = Provider<bool>((ref) {
   try {
     ref.watch(firestoreServiceProvider);
     ref.watch(authServiceProvider);
     ref.watch(languageServiceProvider);
     _logInfo('All services initialized successfully');
     return true;
-  } catch (e) { _logError('servicesInitializedProvider', e); return false; }
+  } catch (e) {
+    _logError('servicesInitializedProvider', e);
+    rethrow;
+  }
 });
 
 // ============================================================================

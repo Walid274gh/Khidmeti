@@ -105,7 +105,6 @@ class RegisterController extends StateNotifier<RegisterState> {
 
     if (!mounted) return;
 
-    // FIX (Marketplace P1): log registration success for funnel analytics.
     _ref.read(analyticsServiceProvider).logUserRegistered(
       provider: 'email',
       role:     role == UserRole.worker ? 'worker' : 'client',
@@ -119,7 +118,7 @@ class RegisterController extends StateNotifier<RegisterState> {
   }
 
   // ==========================================================================
-  // SOCIAL SIGN-IN AS WORKER  (U9 worker path)
+  // SOCIAL SIGN-IN AS WORKER
   // ==========================================================================
 
   Future<String?> signInWithSocialAsWorker({
@@ -187,7 +186,6 @@ class RegisterController extends StateNotifier<RegisterState> {
 
     if (!mounted) return null;
 
-    // FIX (Marketplace P1): log social worker registration.
     _ref.read(analyticsServiceProvider).logUserRegistered(
       provider: provider,
       role:     'worker',
@@ -201,7 +199,7 @@ class RegisterController extends StateNotifier<RegisterState> {
   }
 
   // ==========================================================================
-  // SOCIAL SIGN-IN AS CLIENT  (U8 client path)
+  // SOCIAL SIGN-IN AS CLIENT
   // ==========================================================================
 
   Future<String?> signInWithSocialAsClient({required String provider}) async {
@@ -250,7 +248,6 @@ class RegisterController extends StateNotifier<RegisterState> {
 
     if (!mounted) return null;
 
-    // FIX (Marketplace P1): log social client registration.
     _ref.read(analyticsServiceProvider).logUserRegistered(
       provider: provider,
       role:     'client',
@@ -268,11 +265,13 @@ class RegisterController extends StateNotifier<RegisterState> {
   // ==========================================================================
 
   Future<void> _cacheRole(UserRole role) async {
-    final cachedRoleNotifier = _ref.read(cachedUserRoleProvider.notifier);
-
     try {
       final isWorker = role == UserRole.worker;
-      cachedRoleNotifier.state = role;
+
+      // FIX (Suggestion 1): use setCachedUserRole helper instead of direct
+      // state write — ensures write-guard contract is respected and prevents
+      // race conditions with LoginController writing concurrently.
+      setCachedUserRole(_ref, role, force: true);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
@@ -287,13 +286,15 @@ class RegisterController extends StateNotifier<RegisterState> {
       try {
         final prefs     = await SharedPreferences.getInstance();
         final persisted = prefs.getString(PrefKeys.accountRole);
-        cachedRoleNotifier.state =
-            persisted == UserType.worker ? UserRole.worker : UserRole.client;
+        final fallback  = persisted == UserType.worker
+            ? UserRole.worker
+            : UserRole.client;
+        setCachedUserRole(_ref, fallback, force: true);
         AppLogger.warning(
             'RegisterController._cacheRole: storage error — '
             'using persisted role=$persisted');
       } catch (_) {
-        cachedRoleNotifier.state = UserRole.client;
+        setCachedUserRole(_ref, UserRole.client, force: true);
       }
     }
   }

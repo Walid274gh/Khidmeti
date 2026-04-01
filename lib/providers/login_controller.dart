@@ -67,10 +67,11 @@ class LoginController extends StateNotifier<LoginState> {
     final uid = _authService.user?.uid;
     if (uid != null) {
       await _resolveAndPersistRole(uid);
-      // FIX (Marketplace P1): log successful email sign-in for funnel analytics.
       _ref.read(analyticsServiceProvider).logUserSignedIn(provider: 'email');
     } else {
-      _ref.read(cachedUserRoleProvider.notifier).state = UserRole.client;
+      // FIX (Suggestion 1): use setCachedUserRole instead of direct write so
+      // the write-guard contract is respected and race conditions are prevented.
+      setCachedUserRole(_ref, UserRole.client);
       AppLogger.warning('LoginController: uid null after signIn');
     }
 
@@ -101,7 +102,7 @@ class LoginController extends StateNotifier<LoginState> {
   }
 
   // ==========================================================================
-  // SOCIAL SIGN-IN — Google  (B-C1)
+  // SOCIAL SIGN-IN — Google
   // ==========================================================================
 
   Future<void> signInWithGoogle() async {
@@ -126,7 +127,7 @@ class LoginController extends StateNotifier<LoginState> {
   }
 
   // ==========================================================================
-  // SOCIAL SIGN-IN — Facebook  (B-C2)
+  // SOCIAL SIGN-IN — Facebook
   // ==========================================================================
 
   Future<void> signInWithFacebook() async {
@@ -151,7 +152,7 @@ class LoginController extends StateNotifier<LoginState> {
   }
 
   // ==========================================================================
-  // SOCIAL SIGN-IN — Apple  (B-C3)
+  // SOCIAL SIGN-IN — Apple
   // ==========================================================================
 
   Future<void> signInWithApple() async {
@@ -190,7 +191,6 @@ class LoginController extends StateNotifier<LoginState> {
 
     await _resolveAndPersistRole(uid);
 
-    // FIX (Marketplace P1): log social sign-in for funnel analytics.
     _ref.read(analyticsServiceProvider).logUserSignedIn(provider: provider);
 
     if (!mounted) return;
@@ -203,8 +203,6 @@ class LoginController extends StateNotifier<LoginState> {
   // ==========================================================================
 
   Future<void> _resolveAndPersistRole(String uid) async {
-    final cachedRoleNotifier = _ref.read(cachedUserRoleProvider.notifier);
-
     try {
       final firestoreService = _ref.read(firestoreServiceProvider);
       final worker = await firestoreService
@@ -219,7 +217,10 @@ class LoginController extends StateNotifier<LoginState> {
         role == UserRole.worker ? UserType.worker : UserType.user,
       );
 
-      cachedRoleNotifier.state = role;
+      // FIX (Suggestion 1): use setCachedUserRole helper to respect the
+      // write-guard contract — prevents a stale unknown write from overwriting
+      // a role that was already resolved by a concurrent call.
+      setCachedUserRole(_ref, role, force: true);
       AppLogger.info('LoginController: role=$role uid=$uid');
     } catch (e) {
       AppLogger.error('LoginController._resolveAndPersistRole', e);
@@ -227,13 +228,15 @@ class LoginController extends StateNotifier<LoginState> {
       try {
         final prefs     = await SharedPreferences.getInstance();
         final persisted = prefs.getString(PrefKeys.accountRole);
-        cachedRoleNotifier.state =
-            persisted == UserType.worker ? UserRole.worker : UserRole.client;
+        final fallback  = persisted == UserType.worker
+            ? UserRole.worker
+            : UserRole.client;
+        setCachedUserRole(_ref, fallback, force: true);
         AppLogger.warning(
             'LoginController._resolveAndPersistRole: network error — '
             'using persisted role=$persisted');
       } catch (_) {
-        cachedRoleNotifier.state = UserRole.client;
+        setCachedUserRole(_ref, UserRole.client, force: true);
       }
     }
   }

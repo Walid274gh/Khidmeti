@@ -73,9 +73,14 @@ class AvailableRequestsState {
   /// Filtered and sorted list — memoized: re-runs only when allRequests or
   /// activeFilter change, not on every pendingBidRequestIds update.
   List<ServiceRequestEnhancedModel> get filteredRequests {
-    // Return cache if still valid.
-    if (_cachedFilterKey == activeFilter &&
-        _cachedFilteredRequests.isNotEmpty) {
+    // FIX (🔴 Critical — S2-cache-bug):
+    // Previous guard: `_cachedFilterKey == activeFilter && _cachedFilteredRequests.isNotEmpty`
+    // The isNotEmpty condition caused memoization to fail silently whenever the
+    // active filter produced zero results — every subsequent widget rebuild
+    // re-ran the full O(n) _computeFiltered() scan even though nothing changed.
+    // An empty list is a perfectly valid cached result; the key equality check
+    // alone is sufficient to determine cache validity.
+    if (_cachedFilterKey == activeFilter) {
       return _cachedFilteredRequests;
     }
     return _computeFiltered();
