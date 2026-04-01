@@ -1,4 +1,12 @@
 // lib/services/repositories/service_request_firestore_repository.dart
+//
+// TASK 2 FIX — Added streamWorkerAssignedRequests().
+//
+// NEW METHOD:
+//   streamWorkerAssignedRequests(workerId, {limit}): simple single-stream query
+//   for requests assigned to a specific worker. Used by WorkerHomeController
+//   dashboard. Previously the controller built this query via
+//   FirebaseFirestore.instance directly.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,10 +23,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   static const String workerBidsCollection = 'worker_bids';
   static const String notificationsCollection = 'notifications';
 
-  // B3 FIX: cap for the "decline other pending bids" query in
-  // acceptBidTransaction(). 50 is more than enough given
-  // AppConstants.maxPendingBidsPerWorker and prevents runaway reads on
-  // popular requests.
   static const int _maxBidsToDecline = 50;
 
   ServiceRequestFirestoreRepository(super.firestore);
@@ -266,6 +270,39 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   }
 
   // --------------------------------------------------------------------------
+  // TASK 2 — WORKER HOME ASSIGNED REQUESTS STREAM
+  // --------------------------------------------------------------------------
+
+  /// Streams service requests assigned to [workerId], ordered by createdAt
+  /// descending, limited to [limit] docs.
+  ///
+  /// This is a simpler single-stream query vs. streamWorkerServiceRequests
+  /// (which merges assigned + open marketplace listings for the browse view).
+  /// WorkerHomeController uses this for the dashboard summary — only requests
+  /// with this worker's ID, no open marketplace entries.
+  ///
+  /// Previously WorkerHomeController._subscribeToRequests() constructed this
+  /// query directly via FirebaseFirestore.instance. Now fully injected through
+  /// firestoreServiceProvider, making the controller testable.
+  Stream<List<ServiceRequestEnhancedModel>> streamWorkerAssignedRequests(
+      String workerId, {int limit = 30}) {
+    if (workerId.trim().isEmpty) {
+      logWarning('streamWorkerAssignedRequests called with empty workerId');
+      return Stream.value([]);
+    }
+    return firestore
+        .collection(serviceRequestsCollection)
+        .where('workerId', isEqualTo: workerId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .handleError((Object e) =>
+            logError('streamWorkerAssignedRequests', e))
+        .map((s) =>
+            _parseRequestList(s.docs, 'streamWorkerAssignedRequests'));
+  }
+
+  // --------------------------------------------------------------------------
   // WORKER BIDS — CRUD
   // --------------------------------------------------------------------------
 
@@ -371,9 +408,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
       }).timeout(const Duration(seconds: 20));
 
-      // B3 FIX: added .limit(_maxBidsToDecline) to the query that fetches
-      // other pending bids to decline. A popular request could accumulate
-      // many bids; without a cap this is an unbounded read.
       final others = await firestore
           .collection(workerBidsCollection)
           .where('serviceRequestId', isEqualTo: requestId)

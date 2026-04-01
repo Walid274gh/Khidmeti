@@ -1,4 +1,17 @@
 // lib/services/repositories/worker_firestore_repository.dart
+//
+// TASK 2 FIX — Extracted online-worker stream queries from HomeController.
+//
+// NEW METHODS:
+//   • streamOnlineWorkersByWilayas(wilayaCodes): streams online workers whose
+//     wilayaCode is in the provided list. Previously called directly via
+//     FirebaseFirestore.instance in HomeController._subscribeToNearbyWorkers().
+//   • streamOnlineWorkersUnscoped({limit}): fallback stream for all online
+//     workers up to [limit]. Previously called via FirebaseFirestore.instance
+//     in HomeController._subscribeFallback().
+//
+// The HomeController is now DI-clean: it uses these methods via
+// firestoreServiceProvider and no longer holds a direct Firestore dependency.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -89,9 +102,67 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         });
   }
 
-  /// FIX: added .limit(50) to prevent unbounded reads on large datasets.
-  /// Algiers (wilaya 16) alone could have hundreds of workers — reading
-  /// them all in a single call causes Firestore cost explosion.
+  // --------------------------------------------------------------------------
+  // TASK 2 — NEARBY WORKER STREAMS (extracted from HomeController)
+  // --------------------------------------------------------------------------
+
+  /// Streams online workers whose wilayaCode is in [wilayaCodes].
+  ///
+  /// Previously this query was constructed directly in
+  /// HomeController._subscribeToNearbyWorkers() via FirebaseFirestore.instance,
+  /// bypassing DI and making the controller untestable. Now injected through
+  /// firestoreServiceProvider.
+  ///
+  /// The controller still handles distance filtering and sorting on the
+  /// returned list — those are business concerns, not data concerns.
+  Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) {
+    if (wilayaCodes.isEmpty) {
+      logWarning('streamOnlineWorkersByWilayas called with empty wilayaCodes');
+      return Stream.value([]);
+    }
+    return firestore
+        .collection(workersCollection)
+        .where('isOnline', isEqualTo: true)
+        .where('wilayaCode', whereIn: wilayaCodes)
+        .snapshots()
+        .handleError((Object e) => logError('streamOnlineWorkersByWilayas', e))
+        .map((s) => s.docs.map((doc) {
+              try {
+                return WorkerModel.fromMap(
+                    doc.data() as Map<String, dynamic>, doc.id);
+              } catch (e) {
+                logError('streamOnlineWorkersByWilayas.parsing', e);
+                return null;
+              }
+            }).whereType<WorkerModel>().toList());
+  }
+
+  /// Fallback stream: all online workers up to [limit], with no wilaya filter.
+  ///
+  /// Previously constructed directly in HomeController._subscribeFallback().
+  /// Used when the wilaya lookup fails or the composite index is not yet built.
+  Stream<List<WorkerModel>> streamOnlineWorkersUnscoped({int limit = 100}) {
+    return firestore
+        .collection(workersCollection)
+        .where('isOnline', isEqualTo: true)
+        .limit(limit)
+        .snapshots()
+        .handleError((Object e) => logError('streamOnlineWorkersUnscoped', e))
+        .map((s) => s.docs.map((doc) {
+              try {
+                return WorkerModel.fromMap(
+                    doc.data() as Map<String, dynamic>, doc.id);
+              } catch (e) {
+                logError('streamOnlineWorkersUnscoped.parsing', e);
+                return null;
+              }
+            }).whereType<WorkerModel>().toList());
+  }
+
+  // --------------------------------------------------------------------------
+  // QUERY HELPERS
+  // --------------------------------------------------------------------------
+
   Future<List<WorkerModel>> getWorkersInCell({
     required String cellId,
     String? serviceType,
@@ -113,7 +184,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         }
         if (onlineOnly) query = query.where('isOnline', isEqualTo: true);
 
-        // FIX: cap at 50 to prevent Firestore cost explosion on dense cells.
         final snapshot = await query
             .limit(50)
             .get()
@@ -137,7 +207,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
     });
   }
 
-  /// FIX: added .limit(50) to prevent unbounded reads on large wilayas.
   Future<List<WorkerModel>> getWorkersInWilaya({
     required int wilayaCode,
     String? serviceType,
@@ -155,7 +224,6 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         }
         if (onlineOnly) query = query.where('isOnline', isEqualTo: true);
 
-        // FIX: cap at 50 to prevent Firestore cost explosion on dense wilayas.
         final snapshot = await query
             .limit(50)
             .get()
