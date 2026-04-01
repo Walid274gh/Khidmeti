@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
@@ -12,16 +11,19 @@ import 'widgets/browse_tab.dart';
 import 'widgets/missions_tab.dart';
 import 'widgets/my_bids_tab.dart';
 
+// FIX (P3): was ConsumerStatefulWidget — ref was never used in build() or any
+// lifecycle method. Converted to StatefulWidget to eliminate the unnecessary
+// Riverpod dependency. Child tab widgets (BrowseTab, MissionsTab, MyBidsTab)
+// are responsible for their own provider subscriptions.
 
-
-class WorkerJobsScreen extends ConsumerStatefulWidget {
+class WorkerJobsScreen extends StatefulWidget {
   const WorkerJobsScreen({super.key});
 
   @override
-  ConsumerState<WorkerJobsScreen> createState() => _WorkerJobsScreenState();
+  State<WorkerJobsScreen> createState() => _WorkerJobsScreenState();
 }
 
-class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
+class _WorkerJobsScreenState extends State<WorkerJobsScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final TabController _tabController;
 
@@ -81,7 +83,6 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
 
 // ============================================================================
 // _JobsHeader
-// Private to this file — used only by WorkerJobsScreen.
 // ============================================================================
 
 class _JobsHeader extends StatelessWidget {
@@ -123,8 +124,6 @@ class _JobsHeader extends StatelessWidget {
               ],
             ),
           ),
-          // FIX (Designer): font family is resolved from ThemeData — no
-          // hardcoded 'Inter' to avoid breaking Arabic tab labels.
           TabBar(
             controller: tabController,
             indicatorColor: accent,
