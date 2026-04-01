@@ -1,26 +1,29 @@
 // lib/providers/worker_home_controller.dart
 //
-// SECURITY FIX (Critical): toggleOnlineStatus and _updateRequestStatus wrote
-// directly to FirebaseFirestore.instance rather than going through
-// FirestoreService. This bypassed all retry logic, validation, and logging,
-// and made it easy to accidentally write server-only fields (workerId,
-// acceptedAt) from client-side code.
+// TASK 2 FIX — Removed direct FirebaseFirestore.instance usage.
 //
-// Fix: All Firestore writes now route through:
-//   _ref.read(firestoreServiceProvider).updateWorkerStatus()   — for online toggle
-//   _ref.read(firestoreServiceProvider).startJob()             — for accepted
-//   _ref.read(firestoreServiceProvider).completeJob()          — for completed
-//   _ref.read(firestoreServiceProvider).cancelRequest()        — for declined
+// WHAT CHANGED:
+//   • _subscribeToWorker(): replaced FirebaseFirestore.instance.collection(...)
+//     .doc(uid).snapshots() with firestoreServiceProvider.streamWorker(uid).
+//     The stream now returns WorkerModel? (typed) instead of a raw
+//     DocumentSnapshot, so doc.exists / fromMap parsing is removed from here.
+//   • _subscribeToRequests(): replaced FirebaseFirestore.instance.collection(...)
+//     .where('workerId',...).snapshots() with
+//     firestoreServiceProvider.streamWorkerAssignedRequests(workerId, limit: 30).
+//     The stream now returns List<ServiceRequestEnhancedModel> directly.
+//   • _workerSub type: DocumentSnapshot<...> → WorkerModel?
+//   • _requestsSub type: QuerySnapshot<...> → List<ServiceRequestEnhancedModel>
+//   • Removed: `import 'package:cloud_firestore/cloud_firestore.dart'` —
+//     no Firestore types remain in this controller.
+//   • Removed: `import '../services/firestore_service.dart'` (collection
+//     constants were only needed for the inline queries).
 //
-// B8 FIX: _subscribeToWorker and _subscribeToRequests previously used
-// hardcoded 'workers' and 'service_requests' collection name strings.
-// These are replaced with FirestoreService.workersCollection and
-// FirestoreService.serviceRequestsCollection so that any collection rename
-// stays consistent across the codebase.
+// All Firestore write paths (toggleOnlineStatus → updateWorkerStatus, startJob,
+// completeJob, cancelRequest) were already routed through firestoreServiceProvider
+// by the previous security fix — unchanged.
 
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/message_enums.dart';
@@ -29,7 +32,6 @@ import '../models/worker_model.dart';
 import '../providers/core_providers.dart';
 import '../providers/location_controller.dart';
 import '../providers/location_permission_controller.dart';
-import '../services/firestore_service.dart';
 import '../utils/logger.dart';
 
 // ============================================================================
@@ -117,8 +119,10 @@ class WorkerHomeState {
 
 class WorkerHomeController extends StateNotifier<WorkerHomeState> {
   final Ref _ref;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _workerSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?   _requestsSub;
+
+  // TASK 2 FIX: type changed to match the typed stream returns.
+  StreamSubscription<WorkerModel?>?                         _workerSub;
+  StreamSubscription<List<ServiceRequestEnhancedModel>>?    _requestsSub;
 
   WorkerHomeController(this._ref) : super(const WorkerHomeState()) {
     _initialize();
@@ -156,7 +160,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
 
     try {
       if (newIsOnline) {
-        // Capture fresh GPS coordinates before going online.
         try {
           final locationNotifier =
               _ref.read(userLocationControllerProvider.notifier);
@@ -180,7 +183,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               'going online without live coords: $gpsError');
         }
 
-        // Assign worker to geographic cell.
         try {
           final locState = _ref.read(userLocationControllerProvider);
           if (locState.userLocation != null) {
@@ -199,7 +201,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               '(non-fatal): $cellError');
         }
 
-        // Start native background location service.
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.startLocationService(
@@ -213,7 +214,6 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
               'WorkerHomeController: native location service start failed: $e');
         }
       } else {
-        // Stop native background location service.
         try {
           final nativeService = _ref.read(nativeChannelServiceProvider);
           await nativeService.stopLocationService();
@@ -284,7 +284,7 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
       state = state.copyWith(clearGoOnlineBlockReason: true);
 
   // --------------------------------------------------------------------------
-  // Private — GPS / permission gate
+  // Private — GPS / permission gate (unchanged)
   // --------------------------------------------------------------------------
 
   Future<GoOnlineBlockReason?> _resolveGoOnlineBlockReason() async {
@@ -338,24 +338,31 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     _subscribeToWorker(uid);
   }
 
-  // B8 FIX: use FirestoreService.workersCollection instead of 'workers'.
+  // --------------------------------------------------------------------------
+  // TASK 2 FIX — stream via firestoreServiceProvider
+  // --------------------------------------------------------------------------
+
+  /// TASK 2 FIX: replaced FirebaseFirestore.instance.collection('workers')
+  /// .doc(uid).snapshots() with firestoreServiceProvider.streamWorker(uid).
+  ///
+  /// streamWorker() is already implemented in WorkerFirestoreRepository and
+  /// exposed via FirestoreService — it returns Stream<WorkerModel?> with
+  /// parsing and cache-warming handled by the repository layer.
   void _subscribeToWorker(String uid) {
     _workerSub?.cancel();
-    _workerSub = FirebaseFirestore.instance
-        .collection(FirestoreService.workersCollection)
-        .doc(uid)
-        .snapshots()
+    _workerSub = _ref
+        .read(firestoreServiceProvider)
+        .streamWorker(uid)
         .listen(
-      (doc) {
+      (worker) {
         if (!mounted) return;
-        if (!doc.exists || doc.data() == null) {
+        if (worker == null) {
           state = state.copyWith(
             workerAsync: AsyncValue.error(
                 Exception('Worker profile not found'), StackTrace.current),
           );
           return;
         }
-        final worker = WorkerModel.fromMap(doc.data()!, doc.id);
         AppLogger.debug(
             'WorkerHomeController: worker snapshot — online=${worker.isOnline}');
         state = state.copyWith(workerAsync: AsyncValue.data(worker));
@@ -371,8 +378,13 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
     );
   }
 
-  // B8 FIX: use FirestoreService.serviceRequestsCollection instead of
-  // the hardcoded string 'service_requests'.
+  /// TASK 2 FIX: replaced FirebaseFirestore.instance.collection(
+  /// 'service_requests').where('workerId',...).limit(30).snapshots()
+  /// with firestoreServiceProvider.streamWorkerAssignedRequests(workerId).
+  ///
+  /// The repository constructs the same query and returns typed
+  /// List<ServiceRequestEnhancedModel>, so doc-to-model conversion is
+  /// no longer the controller's responsibility.
   void _subscribeToRequests(String workerId) {
     if (_requestsSub != null) return;
 
@@ -383,19 +395,12 @@ class WorkerHomeController extends StateNotifier<WorkerHomeState> {
       clearRequestsError: true,
     );
 
-    _requestsSub = FirebaseFirestore.instance
-        .collection(FirestoreService.serviceRequestsCollection)
-        .where('workerId', isEqualTo: workerId)
-        .orderBy('createdAt', descending: true)
-        .limit(30)
-        .snapshots()
+    _requestsSub = _ref
+        .read(firestoreServiceProvider)
+        .streamWorkerAssignedRequests(workerId, limit: 30)
         .listen(
-      (snap) {
+      (requests) {
         if (!mounted) return;
-        final requests = snap.docs
-            .map((doc) =>
-                ServiceRequestEnhancedModel.fromMap(doc.data(), doc.id))
-            .toList();
         AppLogger.info(
             'WorkerHomeController: loaded ${requests.length} requests');
         state = state.copyWith(

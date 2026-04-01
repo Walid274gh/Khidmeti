@@ -1,32 +1,31 @@
 // lib/providers/auth_providers.dart
 //
-// Single home for all auth-adjacent state providers:
-//   • appInitializedProvider
-//   • AuthRedirectNotifier
-//   • authRedirectNotifierProvider
-//   • currentUserProvider
-//   • currentUserIdProvider
-//   • isAuthLoadingProvider
-//   • isLoggedInProvider
+// TASK 1 FIX — AuthService ChangeNotifierProvider migration.
 //
-// MERGE RATIONALE:
-//   app_initialization_provider.dart was 31 lines imported by exactly 2 files.
-//   auth_redirect_notifier.dart was 51 lines imported by exactly 2 files.
-//   Both had zero growth potential — their contracts are frozen by design.
-//   The four computed auth providers in core_providers.dart are logically
-//   auth-domain and belong alongside their siblings.
+// WHAT CHANGED:
+//   • firebaseAuthStreamProvider (new): StreamProvider<User?> driven directly
+//     by FirebaseAuth.instance.authStateChanges(). This is the single source of
+//     truth for the current user — it has no isLoading side effects.
+//   • currentUserProvider: now watches firebaseAuthStreamProvider instead of
+//     authServiceProvider (ChangeNotifier). Falls back to
+//     FirebaseAuth.instance.currentUser synchronously during the loading frame
+//     so there is no null-flash before the stream emits.
+//   • isAuthLoadingProvider: watches the stream's loading state (true only
+//     before the first auth emission, not during signIn/signUp operations).
+//   • isLoggedInProvider, currentUserIdProvider: unchanged in API, now derived
+//     from the corrected currentUserProvider.
 //
-// DEPENDENCY NOTE:
-//   This file imports core_providers.dart to access authServiceProvider.
-//   core_providers.dart exports this file via `export 'auth_providers.dart'`.
-//   This is a one-directional import chain — NOT a circular dependency:
-//     core_providers.dart EXPORTS auth_providers.dart (additive re-export).
-//     auth_providers.dart IMPORTS core_providers.dart (to read authServiceProvider).
-//   Dart's export directive does not create a compile-time cycle. The dependency
-//   arrow is: auth_providers → core_providers, and core_providers re-exports
-//   auth_providers for consumer convenience.
-//   Consumers that only need auth symbols should import auth_providers.dart
-//   directly to avoid pulling in the full core_providers graph.
+// WHY:
+//   authServiceProvider (ChangeNotifierProvider) called notifyListeners() on
+//   every isLoading flip inside signIn/signUp flows, which caused
+//   currentUserRoleProvider and any ref.watch(authServiceProvider) consumer to
+//   rebuild and re-fetch Firestore on every state transition — not just on UID
+//   changes. The stream approach only fires on actual auth state changes.
+//
+// DEPENDENCY NOTE (unchanged):
+//   auth_providers → core_providers (import)
+//   core_providers → auth_providers (re-export)
+//   This is a one-directional import chain — NOT circular.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -37,84 +36,66 @@ import 'core_providers.dart';
 // ============================================================================
 // APP INITIALIZATION PROVIDER
 // ============================================================================
-//
-// BUG-001 FIX
-// ───────────
-// appInitializedProvider is written ONCE by SplashController._updateState()
-// when both conditions are met:
-//   1. _isAnimationComplete = true  (splash animation finished)
-//   2. _isAuthChecked = true        (auth + role resolution finished)
-//
-// The GoRouter redirect uses this as its primary gate: no routing decisions
-// are made until this is true. This prevents premature redirect fires from
-// authService.notifyListeners() (which fires as soon as Firebase resolves
-// the credential, before Firestore role data has been fetched).
-//
-// CONTRACT: appInitializedProvider is set to true only AFTER both
-//   cachedUserRoleProvider  and  resolvedViewModeIsWorkerProvider
-// have been written by SplashController._resolveAndCacheRole().
-// This guarantees the router can read them synchronously without async.
 
-/// Tracks whether the app initialization sequence has completed.
-///
-/// false → SplashScreen is still running; no routing decisions made.
-/// true  → Initialization done; router may redirect based on auth + role.
 final appInitializedProvider = StateProvider<bool>((ref) => false);
 
 // ============================================================================
 // AUTH REDIRECT NOTIFIER
 // ============================================================================
-//
-// WHY THIS EXISTS
-// ───────────────
-// GoRouter's `refreshListenable` triggers a full redirect re-evaluation every
-// time the listenable notifies. If we use `AuthService` directly (which extends
-// ChangeNotifier and calls notifyListeners() inside Firebase's authStateChanges
-// stream), the router fires *before* the role is cached — because Firebase emits
-// its stream event as soon as the credential resolves, not after our async
-// Firestore role-fetch completes.
-//
-// This notifier is the *only* object passed to `refreshListenable` for
-// login/register completion events. It is triggered manually by
-// LoginController and RegisterController *after* both:
-//   1. cachedUserRoleProvider has been written in memory.
-//   2. SharedPreferences has been updated.
-//
-// For sign-out, the router uses a _UserIdentityListenable wrapper that
-// filters AuthService notifications to only uid changes — so isLoading
-// fluctuations no longer trigger redirect evaluations.
 
 class AuthRedirectNotifier extends ChangeNotifier {
-  /// Called by LoginController / RegisterController after the role has been
-  /// fully cached in memory and SharedPreferences.
-  void notifyAuthReady() {
-    notifyListeners();
-  }
-
-  /// Called on sign-out. Resets no state here (controllers handle that),
-  /// but triggers the router redirect so it can redirect to /login.
-  void notifySignedOut() {
-    notifyListeners();
-  }
+  void notifyAuthReady() => notifyListeners();
+  void notifySignedOut() => notifyListeners();
 }
 
 final authRedirectNotifierProvider =
     Provider<AuthRedirectNotifier>((ref) => AuthRedirectNotifier());
 
 // ============================================================================
+// FIREBASE AUTH STREAM — single source of truth for current user
+// ============================================================================
+//
+// FIX (Task 1 — ChangeNotifierProvider migration):
+// Driving currentUserProvider from FirebaseAuth.instance.authStateChanges()
+// means reactive auth state is now completely decoupled from AuthService's
+// internal isLoading / isLoading-flip notification cycle. The stream only
+// emits on UID-level auth changes (sign-in, sign-out, token refresh) — never
+// on load-state changes that are internal to AuthService operations.
+
+final firebaseAuthStreamProvider = StreamProvider<User?>((ref) {
+  return FirebaseAuth.instance.authStateChanges();
+});
+
+// ============================================================================
 // COMPUTED AUTH PROVIDERS
 // ============================================================================
 
+/// The currently authenticated Firebase user.
+///
+/// FIX (Task 1): Previously `ref.watch(authServiceProvider).user`, which
+/// subscribed to the ChangeNotifier and rebuilt on every `notifyListeners()`
+/// call (including isLoading flips during signIn). Now driven by
+/// [firebaseAuthStreamProvider] which only emits on actual UID changes.
+///
+/// Falls back to `FirebaseAuth.instance.currentUser` synchronously during the
+/// short loading frame before the stream emits its first value, preventing a
+/// null-flash in screens that display `user.email`.
 final currentUserProvider = Provider<User?>((ref) {
-  return ref.watch(authServiceProvider).user;
+  final streamState = ref.watch(firebaseAuthStreamProvider);
+  // During AsyncLoading, use the synchronous currentUser so there is no
+  // null-flash before the stream emits.
+  return streamState.valueOrNull ?? FirebaseAuth.instance.currentUser;
 });
 
 final currentUserIdProvider = Provider<String?>((ref) {
   return ref.watch(currentUserProvider)?.uid;
 });
 
+/// True only while the auth stream has not yet emitted its first value
+/// (i.e. app startup, before Firebase resolves the persisted credential).
+/// This is NOT true during signIn/signUp operations — use controller state for that.
 final isAuthLoadingProvider = Provider<bool>((ref) {
-  return ref.watch(authServiceProvider).isLoading;
+  return ref.watch(firebaseAuthStreamProvider).isLoading;
 });
 
 final isLoggedInProvider = Provider<bool>((ref) {

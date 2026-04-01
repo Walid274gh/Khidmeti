@@ -1,14 +1,29 @@
 // lib/providers/home_controller.dart
+//
+// TASK 2 FIX — Removed direct FirebaseFirestore.instance usage.
+//
+// WHAT CHANGED:
+//   • _subscribeToNearbyWorkers(): replaced the inline Firestore query
+//     (FirebaseFirestore.instance.collection(workersCollection).where(...))
+//     with firestoreServiceProvider.streamOnlineWorkersByWilayas(allCodes).
+//   • _subscribeFallback(): replaced the inline Firestore query with
+//     firestoreServiceProvider.streamOnlineWorkersUnscoped(limit: ...).
+//   • _workersStreamSub type: QuerySnapshot<...> → List<WorkerModel>.
+//   • _processWorkerSnapshot() → _filterAndSortWorkers(): same distance-
+//     filter + sort logic, but now operates on List<WorkerModel> (the typed
+//     result from the service) instead of a raw QuerySnapshot. WorkerModel
+//     parsing is now the service's responsibility.
+//   • Removed: `import 'package:cloud_firestore/cloud_firestore.dart'` —
+//     no longer needed since the controller holds no Firestore type references.
+//   • Removed: `import '../services/firestore_service.dart'` — workersCollection
+//     constant was only needed for the inline queries; the service encapsulates it.
 
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/worker_model.dart';
-
-import '../services/firestore_service.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 import '../utils/model_extensions.dart';
@@ -33,10 +48,7 @@ class HomeState {
   final bool isMapFullscreen;
   final String? activeServiceFilter;
   final bool isRefreshing;
-  /// Set to true while the first geo-query result has not yet arrived.
   final bool isWorkersStreamInitialising;
-  /// ID of the highest-scored worker after an AI search (rating + proximity).
-  /// Null when no AI search has been run or after filter reset.
   final String? bestWorkerId;
 
   const HomeState({
@@ -77,7 +89,6 @@ class HomeState {
     bool? isRefreshing,
     bool? isWorkersStreamInitialising,
     String? bestWorkerId,
-    // Explicit-clear flags
     bool clearLocation = false,
     bool clearFilter = false,
     bool clearWorkersError = false,
@@ -112,23 +123,21 @@ class HomeState {
 class HomeController extends StateNotifier<HomeState> {
   final Ref _ref;
 
-  /// Real-time Firestore subscription for online workers.
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _workersStreamSub;
+  // TASK 2 FIX: type changed from StreamSubscription<QuerySnapshot<...>> to
+  // StreamSubscription<List<WorkerModel>> — the service now handles Firestore
+  // snapshot → model parsing, so the controller receives typed data.
+  StreamSubscription<List<WorkerModel>>? _workersStreamSub;
 
-  /// Debounce timer — prevents rapid location changes from spawning multiple
-  /// Firestore streams in quick succession.
   Timer? _streamRebuildDebounce;
 
   HomeController(this._ref) : super(const HomeState()) {
     _syncFromLocationController();
 
-    // React to every location update emitted by UserLocationController.
     _ref.listen<UserLocationState>(
       userLocationControllerProvider,
       (prev, next) {
         if (!mounted) return;
 
-        // ── GPS hardware off ───────────────────────────────────────────────
         if (next.isGpsDisabled) {
           AppLogger.warning('HomeController: GPS hardware disabled');
           state = state.copyWith(
@@ -137,7 +146,6 @@ class HomeController extends StateNotifier<HomeState> {
           return;
         }
 
-        // ── Permission denied ──────────────────────────────────────────────
         if (next.isDenied && state.userLocation == null) {
           AppLogger.warning(
               'HomeController: location denied — using default location');
@@ -145,7 +153,6 @@ class HomeController extends StateNotifier<HomeState> {
           return;
         }
 
-        // ── New location arrived ───────────────────────────────────────────
         if (next.userLocation != null &&
             next.userLocation != prev?.userLocation) {
           AppLogger.info(
@@ -205,8 +212,6 @@ class HomeController extends StateNotifier<HomeState> {
     );
   }
 
-  /// Sets the best-scored worker ID after an AI search.
-  /// Pass null to clear the highlight (e.g. on filter reset).
   void setBestWorker(String? workerId) {
     AppLogger.debug('HomeController: bestWorkerId → $workerId');
     state = state.copyWith(
@@ -219,7 +224,6 @@ class HomeController extends StateNotifier<HomeState> {
     if (state.isRefreshing) return;
     state = state.copyWith(isRefreshing: true);
     if (state.userLocation != null) {
-      // Rebuild the real-time stream (picks up any wilaya / cell change).
       await _subscribeToNearbyWorkers(state.userLocation!);
       await _fetchAddress(state.userLocation!);
     } else {
@@ -265,11 +269,9 @@ class HomeController extends StateNotifier<HomeState> {
   // Private — location change handler
   // --------------------------------------------------------------------------
 
-  /// Called whenever a valid location becomes available or changes.
   void _onLocationUpdated(LatLng location) {
     _fetchAddress(location);
 
-    // Debounce stream rebuilds so rapid GPS fixes don't thrash Firestore.
     _streamRebuildDebounce?.cancel();
     _streamRebuildDebounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) _subscribeToNearbyWorkers(location);
@@ -293,16 +295,14 @@ class HomeController extends StateNotifier<HomeState> {
       state = state.copyWith(userAddress: address);
     } catch (e) {
       AppLogger.warning('HomeController._fetchAddress: $e');
-      // Swallow — UI handles null address gracefully.
     }
   }
 
   // --------------------------------------------------------------------------
-  // Private — real-time geo-aware Firestore stream
+  // TASK 2 FIX — real-time geo-aware stream via firestoreServiceProvider
   // --------------------------------------------------------------------------
 
   Future<void> _subscribeToNearbyWorkers(LatLng location) async {
-    // Cancel the previous subscription before rebuilding.
     await _workersStreamSub?.cancel();
     _workersStreamSub = null;
 
@@ -313,8 +313,7 @@ class HomeController extends StateNotifier<HomeState> {
     );
 
     try {
-      // ── 1. Determine user's wilaya ────────────────────────────────────────
-      final gridService = _ref.read(geographicGridServiceProvider);
+      final gridService  = _ref.read(geographicGridServiceProvider);
       final wilayaManager = _ref.read(wilayaManagerProvider);
 
       final wilayaCode = gridService.getWilayaCodeFromCoordinates(
@@ -334,7 +333,6 @@ class HomeController extends StateNotifier<HomeState> {
           'HomeController: subscribing to workers in wilaya $wilayaCode '
           'and neighbours');
 
-      // ── 2. Collect wilaya codes to query ──────────────────────────────────
       final wilayaModel = wilayaManager.wilayas[wilayaCode];
       final allCodes = <int>[wilayaCode];
       if (wilayaModel != null) {
@@ -344,26 +342,23 @@ class HomeController extends StateNotifier<HomeState> {
         }
       }
 
-      AppLogger.debug(
-          'HomeController: querying wilaya codes $allCodes');
+      AppLogger.debug('HomeController: querying wilaya codes $allCodes');
 
-      // ── 3. Firestore real-time stream ─────────────────────────────────────
-      // B8 FIX: use FirestoreService.workersCollection constant instead of
-      // the hardcoded string 'workers' so collection renames stay consistent.
-      final query = FirebaseFirestore.instance
-          .collection(FirestoreService.workersCollection)
-          .where('isOnline', isEqualTo: true)
-          .where('wilayaCode', whereIn: allCodes);
-
-      _workersStreamSub = query.snapshots().listen(
-        (snapshot) {
+      // TASK 2 FIX: use firestoreServiceProvider instead of
+      // FirebaseFirestore.instance.collection(...).where(...).snapshots().
+      // WorkerFirestoreRepository.streamOnlineWorkersByWilayas() constructs
+      // the same Firestore query internally and returns List<WorkerModel>.
+      _workersStreamSub = _ref
+          .read(firestoreServiceProvider)
+          .streamOnlineWorkersByWilayas(allCodes)
+          .listen(
+        (workers) {
           if (!mounted) return;
 
           AppLogger.debug(
-              'HomeController: workers snapshot — '
-              '${snapshot.docs.length} raw docs');
+              'HomeController: workers snapshot — ${workers.length} raw docs');
 
-          final filtered = _processWorkerSnapshot(snapshot, location);
+          final filtered = _filterAndSortWorkers(workers, location);
 
           state = state.copyWith(
             nearbyWorkers:               filtered,
@@ -392,30 +387,24 @@ class HomeController extends StateNotifier<HomeState> {
     }
   }
 
-  /// Fallback: query all online workers without wilaya scoping, then filter
-  /// by distance in Dart. Used when the wilaya lookup fails or the indexed
-  /// query is unavailable (e.g. first-run before index build).
-  ///
-  /// B7 FIX: added .limit(AppConstants.fallbackWorkerQueryLimit) to prevent
-  /// reading every online worker document on every snapshot in production.
-  /// B8 FIX: use FirestoreService.workersCollection instead of 'workers'.
+  // TASK 2 FIX: fallback also uses firestoreServiceProvider.
+  // WorkerFirestoreRepository.streamOnlineWorkersUnscoped() applies the same
+  // .limit() cap that was previously in the inline query.
   void _subscribeFallback(LatLng location) {
     AppLogger.info('HomeController: using fallback unscoped stream');
 
     _workersStreamSub?.cancel();
 
-    // B8 FIX: FirestoreService.workersCollection instead of 'workers'.
-    // B7 FIX: .limit() cap to prevent unbounded reads in production.
-    _workersStreamSub = FirebaseFirestore.instance
-        .collection(FirestoreService.workersCollection)
-        .where('isOnline', isEqualTo: true)
-        .limit(AppConstants.fallbackWorkerQueryLimit)
-        .snapshots()
+    _workersStreamSub = _ref
+        .read(firestoreServiceProvider)
+        .streamOnlineWorkersUnscoped(
+          limit: AppConstants.fallbackWorkerQueryLimit,
+        )
         .listen(
-      (snapshot) {
+      (workers) {
         if (!mounted) return;
 
-        final filtered = _processWorkerSnapshot(snapshot, location);
+        final filtered = _filterAndSortWorkers(workers, location);
         state = state.copyWith(
           nearbyWorkers:               filtered,
           isWorkersStreamInitialising: false,
@@ -439,17 +428,19 @@ class HomeController extends StateNotifier<HomeState> {
   }
 
   // --------------------------------------------------------------------------
-  // Private — snapshot processing
+  // TASK 2 FIX — distance filter + sort (was _processWorkerSnapshot)
   // --------------------------------------------------------------------------
 
-  List<WorkerModel> _processWorkerSnapshot(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
+  /// Filters [workers] to those within the max search radius and sorts by
+  /// ascending distance to [userLocation]. Replaces _processWorkerSnapshot
+  /// which took a raw QuerySnapshot — the service now handles model parsing.
+  List<WorkerModel> _filterAndSortWorkers(
+    List<WorkerModel> workers,
     LatLng userLocation,
   ) {
     final maxKm = AppConstants.defaultSearchRadiusKm;
 
-    final workers = snapshot.docs
-        .map((doc) => WorkerModel.fromMap(doc.data(), doc.id))
+    return workers
         .where((w) => w.latitude != null && w.longitude != null)
         .where((w) {
           final distKm = w.distanceTo(
@@ -466,8 +457,6 @@ class HomeController extends StateNotifier<HomeState> {
               b.distanceTo(userLocation.latitude, userLocation.longitude);
           return da.compareTo(db);
         });
-
-    return workers;
   }
 }
 
