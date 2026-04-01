@@ -13,9 +13,9 @@ const double _kRetryButtonMinHeight = 48.0;
 const double _kStatusAreaHeight     = 64.0;
 
 class SplashBottomStatus extends StatelessWidget {
-  final SplashController controller;
-  final bool             isDark;
-  final VoidCallback     onRetry;
+  final SplashState  controller;
+  final bool         isDark;
+  final VoidCallback onRetry;
 
   const SplashBottomStatus({
     super.key,
@@ -68,8 +68,8 @@ class SplashBottomStatus extends StatelessWidget {
     }
 
     // ── Loading pulse ─────────────────────────────────────────────────────
-    if (controller.state == SplashState.initializing ||
-        controller.state == SplashState.animating) {
+    if (controller.phase == SplashPhase.initializing ||
+        controller.phase == SplashPhase.animating) {
       return SplashLoadingPulse(
         key:   const ValueKey('loading'),
         color: accent,
