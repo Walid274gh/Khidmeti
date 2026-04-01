@@ -11,6 +11,7 @@ import '../../services/worker_bid_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart';
 
 
 class SubmitBidScreen extends ConsumerStatefulWidget {
@@ -98,15 +99,7 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
     final requestAsync = ref.watch(serviceRequestStreamProvider(widget.requestId));
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                      Colors.transparent,
-        statusBarIconBrightness:             isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:                 isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:            Colors.transparent,
-        systemNavigationBarDividerColor:     Colors.transparent,
-        systemNavigationBarIconBrightness:   isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
