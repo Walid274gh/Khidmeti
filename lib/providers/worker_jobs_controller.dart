@@ -19,6 +19,11 @@
 // The stub methods acceptJob / completeJob / declineJob are kept on this
 // controller to avoid a hard compile break during the widget migration window.
 // They delegate to the family provider internally.
+//
+// FIX (P2 — W5): Replaced manual isLoading/errorMessage/jobs triple with
+// AsyncValue<List<ServiceRequestEnhancedModel>>. Backward-compatible getters
+// (isLoading, errorMessage, jobs) are preserved so UI widgets require no
+// changes. filteredJobs, countFor, allJobs now unwrap from AsyncValue.
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,21 +49,33 @@ enum JobFilter { all, pending, accepted, inProgress, completed }
 // ============================================================================
 
 class WorkerJobsState {
-  final List<ServiceRequestEnhancedModel> jobs;
+  // FIX (P2 — W5): jobs list, isLoading, and errorMessage are now represented
+  // as a single AsyncValue<List<...>>. Backward-compatible getters below mean
+  // existing UI widgets continue to work without modification.
+  final AsyncValue<List<ServiceRequestEnhancedModel>> jobsAsync;
   final JobFilter activeFilter;
-  final bool isLoading;
-  final String? errorMessage;
   final bool isRefreshing;
 
   const WorkerJobsState({
-    this.jobs         = const [],
+    this.jobsAsync    = const AsyncValue.loading(),
     this.activeFilter = JobFilter.all,
-    this.isLoading    = true,
-    this.errorMessage,
     this.isRefreshing = false,
   });
 
-  /// Alias kept for job_detail_screen.dart: `jobsState.allJobs.where(...)`.
+  // ── Backward-compatible surface ───────────────────────────────────────────
+
+  /// The raw job list; empty while loading or on error.
+  List<ServiceRequestEnhancedModel> get jobs =>
+      jobsAsync.value ?? const [];
+
+  /// True while the initial stream data has not yet arrived.
+  bool get isLoading => jobsAsync is AsyncLoading;
+
+  /// Error message from the last stream failure; null when healthy.
+  String? get errorMessage =>
+      jobsAsync.asError?.error.toString();
+
+  // ── Alias kept for job_detail_screen.dart ─────────────────────────────────
   List<ServiceRequestEnhancedModel> get allJobs => jobs;
 
   List<ServiceRequestEnhancedModel> get filteredJobs {
@@ -88,18 +105,13 @@ class WorkerJobsState {
   }
 
   WorkerJobsState copyWith({
-    List<ServiceRequestEnhancedModel>? jobs,
+    AsyncValue<List<ServiceRequestEnhancedModel>>? jobsAsync,
     JobFilter? activeFilter,
-    bool? isLoading,
-    String? errorMessage,
     bool? isRefreshing,
-    bool clearError = false,
   }) {
     return WorkerJobsState(
-      jobs:         jobs         ?? this.jobs,
+      jobsAsync:    jobsAsync    ?? this.jobsAsync,
       activeFilter: activeFilter ?? this.activeFilter,
-      isLoading:    isLoading    ?? this.isLoading,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
@@ -132,8 +144,10 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = state.copyWith(
-        isLoading:    false,
-        errorMessage: 'worker_not_authenticated',
+        jobsAsync: AsyncValue.error(
+          Exception('worker_not_authenticated'),
+          StackTrace.current,
+        ),
       );
       return;
     }
@@ -144,6 +158,9 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
   void _subscribeToJobs(String workerId) {
     _jobsSubscription?.cancel();
 
+    // Set loading state while re-subscribing.
+    state = state.copyWith(jobsAsync: const AsyncValue.loading());
+
     _jobsSubscription = _ref
         .read(firestoreServiceProvider)
         .streamWorkerServiceRequests(workerId)
@@ -152,10 +169,8 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
         if (!mounted) return;
         final sorted = _sortJobs(jobs);
         state = state.copyWith(
-          jobs:         sorted,
-          isLoading:    false,
+          jobsAsync:    AsyncValue.data(sorted),
           isRefreshing: false,
-          clearError:   true,
         );
         AppLogger.debug('WorkerJobsController: ${jobs.length} jobs');
       },
@@ -163,9 +178,8 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
         AppLogger.error('WorkerJobsController._subscribeToJobs', error);
         if (!mounted) return;
         state = state.copyWith(
-          isLoading:    false,
+          jobsAsync:    AsyncValue.error(error, StackTrace.current),
           isRefreshing: false,
-          errorMessage: error.toString(),
         );
       },
     );

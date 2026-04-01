@@ -20,11 +20,20 @@ enum UserRole {
 
 /// Provider that determines if current user is a worker or client.
 /// Makes a live Firestore call — prefer cachedUserRoleProvider for sync reads.
+///
+/// FIX (P4 — W3): replaced ref.watch(authServiceProvider) with
+/// ref.watch(currentUserProvider). authServiceProvider is a
+/// ChangeNotifierProvider that fires notifyListeners() on every isLoading
+/// change (e.g. during sign-in), which previously caused this provider to
+/// make a new Firestore call on every such notification.
+/// currentUserProvider only changes when the UID actually changes, so
+/// Firestore is only re-queried on real auth state transitions.
 final currentUserRoleProvider = FutureProvider.autoDispose<UserRole>((ref) async {
-  final authService      = ref.watch(authServiceProvider);
+  // FIX (P4): watch the UID-scoped provider instead of the full AuthService
+  // ChangeNotifier to avoid spurious Firestore re-fetches on isLoading changes.
+  final user = ref.watch(currentUserProvider);
   final firestoreService = ref.watch(firestoreServiceProvider);
 
-  final user = authService.user;
   if (user == null) return UserRole.unknown;
 
   try {

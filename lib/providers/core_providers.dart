@@ -240,13 +240,18 @@ final isRTLProvider = Provider<bool>((ref) =>
 // PERMISSIONS
 // ============================================================================
 
-final hasLocationPermissionProvider = FutureProvider<bool>((ref) async {
+// FIX (P6 — W4): Added .autoDispose to both permission FutureProviders.
+// Without autoDispose, the first-run result was cached permanently, causing
+// stale values after runtime permission changes (grant/revoke). autoDispose
+// ensures re-evaluation whenever the provider is re-watched.
+// Prefer locationPermissionControllerProvider for reactive permission state.
+final hasLocationPermissionProvider = FutureProvider.autoDispose<bool>((ref) async {
   try {
     return await ref.watch(permissionServiceProvider).hasLocationPermission();
   } catch (e) { _logError('hasLocationPermissionProvider', e); return false; }
 });
 
-final hasAllCriticalPermissionsProvider = FutureProvider<bool>((ref) async {
+final hasAllCriticalPermissionsProvider = FutureProvider.autoDispose<bool>((ref) async {
   try {
     return await ref.watch(permissionServiceProvider).areAllCriticalPermissionsGranted();
   } catch (e) { _logError('hasAllCriticalPermissionsProvider', e); return false; }

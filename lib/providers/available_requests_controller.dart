@@ -52,6 +52,12 @@ class AvailableRequestsState {
 
   // FIX (Performance): memoized filtered list — recomputed only when
   // allRequests or activeFilter changes, not on pendingBidRequestIds updates.
+  // FIX (🔴 Critical — S2-cache-bug): _cacheValid sentinel added.
+  // Previously cachedFilterKey was set to newActiveFilter on invalidation,
+  // so `_cachedFilterKey == activeFilter` was always true after any data
+  // update — causing filteredRequests to return const [] every time.
+  // _cacheValid=false forces _computeFiltered() on the next access.
+  final bool _cacheValid;
   final List<ServiceRequestEnhancedModel> _cachedFilteredRequests;
   final AvailableRequestsFilter _cachedFilterKey;
 
@@ -61,9 +67,11 @@ class AvailableRequestsState {
     this.isLoading = false,
     this.errorMessage,
     this.pendingBidRequestIds = const {},
+    bool cacheValid = false,
     List<ServiceRequestEnhancedModel>? cachedFiltered,
     AvailableRequestsFilter? cachedFilterKey,
-  })  : _cachedFilteredRequests = cachedFiltered ?? const [],
+  })  : _cacheValid = cacheValid,
+        _cachedFilteredRequests = cachedFiltered ?? const [],
         _cachedFilterKey = cachedFilterKey ?? AvailableRequestsFilter.all;
 
   /// Returns true if the current worker already has a pending bid on [requestId].
@@ -74,13 +82,11 @@ class AvailableRequestsState {
   /// activeFilter change, not on every pendingBidRequestIds update.
   List<ServiceRequestEnhancedModel> get filteredRequests {
     // FIX (🔴 Critical — S2-cache-bug):
-    // Previous guard: `_cachedFilterKey == activeFilter && _cachedFilteredRequests.isNotEmpty`
-    // The isNotEmpty condition caused memoization to fail silently whenever the
-    // active filter produced zero results — every subsequent widget rebuild
-    // re-ran the full O(n) _computeFiltered() scan even though nothing changed.
-    // An empty list is a perfectly valid cached result; the key equality check
-    // alone is sufficient to determine cache validity.
-    if (_cachedFilterKey == activeFilter) {
+    // Guard on _cacheValid prevents returning stale const [] after data update.
+    // When _cacheValid=false (set by copyWith on invalidation), we fall through
+    // to _computeFiltered() which operates on this.allRequests / this.activeFilter
+    // — both of which are already the NEW values on the new state instance.
+    if (_cacheValid && _cachedFilterKey == activeFilter) {
       return _cachedFilteredRequests;
     }
     return _computeFiltered();
@@ -127,9 +133,13 @@ class AvailableRequestsState {
       isLoading:            isLoading ?? this.isLoading,
       errorMessage:         clearError ? null : (errorMessage ?? this.errorMessage),
       pendingBidRequestIds: pendingBidRequestIds ?? this.pendingBidRequestIds,
-      cachedFiltered: cacheInvalidated
-          ? null // force recompute on next filteredRequests access
-          : _cachedFilteredRequests,
+      // FIX (🔴 Critical — S2-cache-bug):
+      // cacheValid=false when invalidated → filteredRequests getter falls
+      // through to _computeFiltered() which uses the new allRequests /
+      // activeFilter values already set on this new state instance.
+      // cacheValid=true when nothing changed → existing cache is valid.
+      cacheValid: !cacheInvalidated,
+      cachedFiltered: cacheInvalidated ? null : _cachedFilteredRequests,
       cachedFilterKey: cacheInvalidated ? newActiveFilter : _cachedFilterKey,
     );
   }
