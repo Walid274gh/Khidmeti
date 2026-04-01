@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/splash_controller.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
+import '../../utils/system_ui_overlay.dart';
 import 'widgets/splash_bottom_status.dart';
 import 'widgets/splash_branding.dart';
 import 'widgets/splash_error_icon.dart';
@@ -80,12 +81,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final controller = ref.watch(splashControllerProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor:          backgroundColor,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: SafeArea(
