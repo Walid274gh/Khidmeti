@@ -1,15 +1,25 @@
 // lib/screens/settings/widgets/settings_content.dart
 //
-// CHANGE: settings_provider.dart import updated from '../settings_provider.dart'
-//         to '../../../providers/settings_provider.dart'.
+// TASK 1 FIX — LanguageService ref.watch update.
+//
+// WHAT CHANGED:
+//   • `ref.watch(languageServiceProvider)` → `ref.read(languageServiceProvider)`
+//     for method calls (changeToFrench(), etc.). languageServiceProvider is now
+//     a plain Provider<LanguageService>, so watching it no longer subscribes to
+//     ChangeNotifier notifications.
+//   • `currentLanguageName` subtitle now reads from `currentLanguageNameProvider`
+//     (a reactive Provider<String> that watches localeStateNotifierProvider).
+//     This ensures the subtitle updates when the locale changes without requiring
+//     languageService to be a ChangeNotifierProvider.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../services/language_service.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/theme_provider.dart';
-import '../../../providers/settings_provider.dart'; // CHANGED path
+import '../../../providers/settings_provider.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
@@ -28,7 +38,16 @@ class SettingsContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final languageService    = ref.watch(languageServiceProvider);
+    // FIX (Task 1): ref.read for method calls (changeToFrench, etc.).
+    // languageServiceProvider is now a plain Provider — watching it would not
+    // cause rebuilds anyway, but ref.read makes the intent explicit.
+    final languageService = ref.read(languageServiceProvider);
+
+    // FIX (Task 1): watch currentLanguageNameProvider (reactive, derives from
+    // localeStateNotifierProvider) instead of languageService.currentLanguageName
+    // (which would not update now that languageServiceProvider is a plain Provider).
+    final currentLanguageName = ref.watch(currentLanguageNameProvider);
+
     final isActionInProgress = state.isSigningOut || state.isDeletingAccount;
 
     return ListView(
@@ -55,9 +74,10 @@ class SettingsContent extends ConsumerWidget {
           icon:           AppIcons.language,
           iconColor:      AppTheme.cyanBlue,
           title:          context.tr('settings.language'),
-          subtitle:       languageService.currentLanguageName,
+          // FIX (Task 1): use the reactive provider value, not the service field.
+          subtitle:       currentLanguageName,
           semanticsLabel: context.tr('settings.language'),
-          onTap:          () => _showLanguageSheet(context, ref),
+          onTap:          () => _showLanguageSheet(context, ref, languageService),
         ),
 
         SettingsTile(
@@ -135,9 +155,10 @@ class SettingsContent extends ConsumerWidget {
     );
   }
 
-  void _showLanguageSheet(BuildContext context, WidgetRef ref) {
-    final languageService = ref.read(languageServiceProvider);
-    final current         = languageService.currentLocale.languageCode;
+  // FIX (Task 1): languageService passed explicitly (read in build, not re-read here).
+  void _showLanguageSheet(BuildContext context, WidgetRef ref, LanguageService languageService) {
+    // Read the current locale from the reactive provider for correct selection state.
+    final current = ref.read(currentLocaleProvider).languageCode;
 
     showModalBottomSheet<void>(
       context:            context,
@@ -282,7 +303,7 @@ class SettingsContent extends ConsumerWidget {
 }
 
 // ============================================================================
-// PRIVATE — DELETE ACCOUNT TILE
+// PRIVATE — DELETE ACCOUNT TILE (unchanged)
 // ============================================================================
 
 class _DeleteAccountTile extends StatelessWidget {
@@ -363,7 +384,7 @@ class _DeleteAccountTile extends StatelessWidget {
 }
 
 // ============================================================================
-// PRIVATE — PROFILE CARD SKELETON
+// PRIVATE — PROFILE CARD SKELETON (unchanged)
 // ============================================================================
 
 class _ProfileCardSkeleton extends StatefulWidget {
