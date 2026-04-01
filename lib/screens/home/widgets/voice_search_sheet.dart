@@ -16,20 +16,8 @@ import '../../../utils/localization.dart';
 
 // ============================================================================
 // VOICE SEARCH SHEET
-//
-// Audio-direct path: AudioService records → bytes sent to Gemini 2.5 Flash-Lite.
-// No STT — Gemini handles Algerian Darija natively.
-//
-// States driven by HomeSearchStatus:
-//   idle / listening  → orb pulses + waveform + recording timer
-//   extracting / searching → orb switches to AI spinner
-//   results           → _VoiceResultPill + confirm row
-//   error             → error message + retry button
-//
-// Auto-stops at [_kMaxRecordingSeconds] to cap token cost.
 // ============================================================================
 
-// Max recording duration — 30 s = 960 audio tokens max (cost-aware cap).
 const int _kMaxRecordingSeconds = 30;
 
 class VoiceSearchSheet extends StatelessWidget {
@@ -62,8 +50,12 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   late AnimationController _pulseCtrl;
   late Animation<double>   _pulse;
 
-  // Local recording timer — drives the elapsed display and auto-stop.
-  // Widget-level state only: does not touch HomeSearchController fields.
+  // FIX (R5): capture the notifier reference synchronously in initState()
+  // before any autoDispose rebuild could dispose the provider under us.
+  // dispose() then calls reset() directly on this cached reference — no
+  // ref.read() on a potentially-already-disposed autoDispose provider.
+  late final HomeSearchController _searchNotifier;
+
   Timer?   _elapsedTimer;
   Timer?   _autoStopTimer;
   int      _elapsedSeconds = 0;
@@ -71,6 +63,11 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   @override
   void initState() {
     super.initState();
+
+    // FIX (R5): capture notifier immediately — before addPostFrameCallback
+    // so it's guaranteed to be set before dispose() could ever fire.
+    _searchNotifier = ref.read(homeSearchControllerProvider.notifier);
+
     _pulseCtrl = AnimationController(
       vsync:    this,
       duration: const Duration(milliseconds: 1200),
@@ -78,11 +75,10 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
     _pulse = Tween<double>(begin: 0.92, end: 1.08).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
-    // Capture the notifier reference synchronously — before any autoDispose
-    // rebuild could swap it — then start recording after the first frame.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(homeSearchControllerProvider.notifier).startListening();
+      _searchNotifier.startListening();
       _startElapsedTimer();
     });
   }
@@ -92,24 +88,19 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
     _elapsedTimer?.cancel();
     _autoStopTimer?.cancel();
     _pulseCtrl.dispose();
-    // FIX (P0 — AI Cost / Cross-Screen Flow): Previously called reset()
-    // unconditionally, which destroyed search state even on the SUCCESS path:
-    //   user taps "See Workers" → applyToMap() → Navigator.pop() →
-    //   dispose() → reset() ← clears the map state we just applied.
-    //
-    // Fix: only reset when the session did NOT produce results (i.e. the user
-    // cancelled, an error occurred, or the sheet closed mid-recording).
-    // On the results path applyToMap() has already written the intent to the
-    // map controller — leave that state intact.
-    try {
-      final status =
-          ref.read(homeSearchControllerProvider).status;
-      if (status != HomeSearchStatus.results) {
-        ref.read(homeSearchControllerProvider.notifier).reset();
-      }
-    } catch (_) {
-      // Provider may already be disposed — safe to ignore.
+
+    // FIX (R5 + P0 — AI Cost / Cross-Screen Flow):
+    // 1. Uses the cached _searchNotifier reference instead of ref.read() so
+    //    there is no risk of reading an already-disposed autoDispose provider.
+    // 2. Only resets when the session did NOT produce results — on the success
+    //    path applyToMap() has already written intent to the map controller and
+    //    resetting here would destroy that state.
+    // 3. No bare try/catch {} that silently swallows failures.
+    if (_searchNotifier.mounted &&
+        _searchNotifier.debugState.status != HomeSearchStatus.results) {
+      _searchNotifier.reset();
     }
+
     super.dispose();
   }
 
@@ -125,7 +116,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
       setState(() => _elapsedSeconds++);
     });
 
-    // Auto-stop at cap to control token cost
     _autoStopTimer = Timer(
       Duration(seconds: _kMaxRecordingSeconds),
       () {
@@ -153,13 +143,13 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
 
   void _stopAndProcess() {
     _stopTimers();
-    ref.read(homeSearchControllerProvider.notifier).stopListening();
+    _searchNotifier.stopListening();
   }
 
   void _retryListening() {
     _stopTimers();
-    ref.read(homeSearchControllerProvider.notifier).reset();
-    ref.read(homeSearchControllerProvider.notifier).startListening();
+    _searchNotifier.reset();
+    _searchNotifier.startListening();
     _startElapsedTimer();
   }
 
@@ -298,7 +288,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               const SizedBox(height: AppConstants.spacingMd),
 
               // ── Recording feedback ────────────────────────────────────────
-              // Shows elapsed time while recording — no transcript (audio-direct)
               SizedBox(
                 height: 48,
                 child: Center(
@@ -353,9 +342,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       child: ElevatedButton(
                         onPressed: () {
                           HapticFeedback.mediumImpact();
-                          ref
-                              .read(homeSearchControllerProvider.notifier)
-                              .applyToMap();
+                          _searchNotifier.applyToMap();
                           Navigator.pop(context);
                         },
                         child: Text(context.tr('home.ai_search_see_workers')),
@@ -392,9 +379,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       child: OutlinedButton(
                         onPressed: () {
                           _stopTimers();
-                          ref
-                              .read(homeSearchControllerProvider.notifier)
-                              .reset();
+                          _searchNotifier.reset();
                           Navigator.pop(context);
                         },
                         child: Text(context.tr('common.cancel')),
@@ -403,7 +388,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                     const SizedBox(width: AppConstants.spacingSm),
                     Expanded(
                       child: ElevatedButton.icon(
-                        // Enabled after at least 2 seconds of audio
                         onPressed: _elapsedSeconds >= 2
                             ? _stopAndProcess
                             : null,
@@ -580,4 +564,3 @@ class _VoiceResultPill extends StatelessWidget {
     );
   }
 }
-

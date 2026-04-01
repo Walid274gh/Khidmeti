@@ -1,7 +1,6 @@
 // lib/screens/home/widgets/worker_preview_sheet.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../models/worker_model.dart';
@@ -15,15 +14,18 @@ import 'worker_avatar.dart';
 
 // ============================================================================
 // WORKER PREVIEW SHEET — flat surface, no BackdropFilter
+//
+// FIX (P3): was ConsumerWidget with ref declared but never used in build().
+// Converted to StatelessWidget — no Riverpod dependency is needed here.
 // ============================================================================
 
-class WorkerPreviewSheet extends ConsumerWidget {
+class WorkerPreviewSheet extends StatelessWidget {
   final WorkerModel worker;
 
   const WorkerPreviewSheet({super.key, required this.worker});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color  = AppTheme.getProfessionColor(worker.profession, isDark);
     final theme  = Theme.of(context);
@@ -139,7 +141,7 @@ class _WhatsAppCTA extends StatefulWidget {
   final String       phone;
   final bool         isDark;
   final String       label;
-  final VoidCallback onPressed; // called before launching (e.g. pop sheet)
+  final VoidCallback onPressed;
   final BuildContext context;
 
   const _WhatsAppCTA({
@@ -159,7 +161,7 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
 
   Future<void> _launch() async {
     if (_loading) return;
-    widget.onPressed(); // pop sheet first
+    widget.onPressed();
     setState(() => _loading = true);
     try {
       final msg = widget.context.tr('whatsapp.contact_message');
@@ -184,7 +186,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
       child: ElevatedButton(
         onPressed: _loading ? null : _launch,
         style: ElevatedButton.styleFrom(
-          // White bg so the coloured WhatsApp icon is clearly visible
           backgroundColor: widget.isDark
               ? const Color(0xFF1B2B1B)
               : Colors.white,
@@ -212,7 +213,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Natural icon — NO color tint
                   WhatsAppIcon(size: 20),
                   const SizedBox(width: 8),
                   Flexible(
