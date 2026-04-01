@@ -1,4 +1,17 @@
 // lib/services/firestore_service.dart
+//
+// TASK 2 FIX — Added facade methods for new stream queries.
+//
+// NEW FACADES:
+//   • streamOnlineWorkersByWilayas(wilayaCodes): delegates to
+//     WorkerFirestoreRepository.streamOnlineWorkersByWilayas(). Used by
+//     HomeController for geo-scoped real-time worker discovery.
+//   • streamOnlineWorkersUnscoped({limit}): delegates to
+//     WorkerFirestoreRepository.streamOnlineWorkersUnscoped(). Used as
+//     HomeController fallback when wilaya lookup fails.
+//   • streamWorkerAssignedRequests(workerId, {limit}): delegates to
+//     ServiceRequestFirestoreRepository.streamWorkerAssignedRequests(). Used
+//     by WorkerHomeController dashboard.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -65,19 +78,8 @@ class FirestoreService {
   Future<void> createOrUpdateUser(UserModel user) => _users.createOrUpdateUser(user);
   Future<void> updateUserLocation(String userId, double lat, double lng) =>
       _users.updateUserLocation(userId, lat, lng);
-
-  /// Updates the FCM push-notification token on the `users` document (clients).
-  ///
-  /// FIX (README3 Backend Audit): added facade for the users FCM update
-  /// so SettingsNotifier.signOut() can clear the token before sign-out,
-  /// preventing cross-user notification leakage on shared devices.
-  /// Pass an empty string to clear the token on sign-out.
   Future<void> updateUserFcmToken(String userId, String token) =>
       _users.updateFcmToken(userId, token);
-
-  // FIX (README2/README3): kept the old name as a forwarding alias so existing
-  // call sites (e.g. NotificationPushService) do not break. New code should
-  // prefer updateUserFcmToken for clarity.
   Future<void> updateFcmToken(String userId, String token) =>
       _users.updateFcmToken(userId, token);
 
@@ -100,16 +102,6 @@ class FirestoreService {
       _workers.updateWorkerStatus(workerId, isOnline);
   Future<void> updateWorkerOnlineStatus(String workerId, bool isOnline) =>
       _workers.updateWorkerOnlineStatus(workerId, isOnline);
-
-  /// Updates the FCM push-notification token on the `workers` document.
-  ///
-  /// FIX (README2/README3 Backend P0): WorkerFirestoreRepository already had
-  /// updateFcmToken() but FirestoreService had no facade for it — the method
-  /// was unreachable from any provider or controller. Workers receive
-  /// service-request push notifications, so keeping their token current is
-  /// critical. A stale token = silent notifications = lost revenue.
-  ///
-  /// Pass an empty string to clear the token on sign-out.
   Future<void> updateWorkerFcmToken(String workerId, String token) =>
       _workers.updateFcmToken(workerId, token);
 
@@ -125,6 +117,19 @@ class FirestoreService {
 
   Stream<WorkerModel?> streamWorker(String workerId) =>
       _workers.streamWorker(workerId);
+
+  // ── TASK 2 — new worker stream facades ───────────────────────────────────
+
+  /// Streams online workers whose wilayaCode is in [wilayaCodes].
+  /// Used by HomeController for geo-scoped worker discovery.
+  /// Replaces direct FirebaseFirestore.instance usage in _subscribeToNearbyWorkers.
+  Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) =>
+      _workers.streamOnlineWorkersByWilayas(wilayaCodes);
+
+  /// Fallback: streams all online workers up to [limit] (no wilaya filter).
+  /// Used by HomeController._subscribeFallback when wilaya lookup fails.
+  Stream<List<WorkerModel>> streamOnlineWorkersUnscoped({int limit = 100}) =>
+      _workers.streamOnlineWorkersUnscoped(limit: limit);
 
   // ============================================================================
   // SERVICE REQUEST METHODS
@@ -176,6 +181,15 @@ class FirestoreService {
     required String requestId, required int stars, String? comment,
   }) => _requests.submitClientRating(requestId: requestId,
       stars: stars, comment: comment);
+
+  // ── TASK 2 — new request stream facade ───────────────────────────────────
+
+  /// Streams service requests assigned to [workerId], ordered by createdAt
+  /// descending, limited to [limit]. Used by WorkerHomeController dashboard.
+  /// Replaces direct FirebaseFirestore.instance usage in _subscribeToRequests.
+  Stream<List<ServiceRequestEnhancedModel>> streamWorkerAssignedRequests(
+      String workerId, {int limit = 30}) =>
+      _requests.streamWorkerAssignedRequests(workerId, limit: limit);
 
   // ============================================================================
   // NOTIFICATION METHODS
