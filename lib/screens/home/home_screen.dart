@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/home_controller.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/system_ui_overlay.dart';          // NEW
 import 'widgets/advanced_search_bar.dart';
 import 'widgets/fullscreen_map_controls.dart';
 import 'widgets/home_map_background.dart';
@@ -25,6 +26,8 @@ import 'widgets/home_top_bar.dart';
 //     Workers used to miss the promo content — fixed.
 //   • Removed: import user_role_provider, import home_worker_section,
 //     the Consumer block with isWorker check, and the conditional rendering.
+//   • SystemUiOverlayStyle blocks replaced with systemOverlayStyle() from
+//     utils/system_ui_overlay.dart — eliminates the duplicated 14-line block.
 // ============================================================================
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -77,48 +80,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isDark       = Theme.of(context).brightness == Brightness.dark;
     final accent       = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
-    // FIX (SystemChrome): the original code used SystemUiMode.immersiveSticky
-    // on fullscreen entry. This hides the status bar completely — the clock,
-    // battery, and signal icons disappear, which disorients users on the map.
+    // FIX (SystemChrome): always stay in SystemUiMode.edgeToEdge so the
+    // status bar icons remain visible in both normal and fullscreen modes.
+    // systemOverlayStyle() centralises the brightness logic — no duplication.
     //
-    // Fix: always stay in SystemUiMode.edgeToEdge so the status bar icons
-    // remain visible in both normal and fullscreen modes. The overlay style
-    // (light/dark icons) is set to match the current theme brightness so the
-    // icons are always legible against the map or background.
-    //
-    // The bottom navigation bar (app-level) is now hidden in fullscreen by
-    // MainNavigationScreen watching isMapFullscreen — no SystemChrome needed.
+    // In fullscreen we override icon brightness to Brightness.light because
+    // the map background is always dark. On exit we restore the theme-derived
+    // style via systemOverlayStyle(isDark).
     ref.listen<bool>(
       homeControllerProvider.select((s) => s.isMapFullscreen),
       (_, next) {
         if (next) {
           _transitionCtrl.forward();
-          // Stay in edgeToEdge — status bar icons remain visible.
-          // Use light icons on the map (dark tiles / dark background).
+          // Map is always dark → force light (white) status-bar icons.
           SystemChrome.setSystemUIOverlayStyle(
-            const SystemUiOverlayStyle(
-              statusBarColor:                    Colors.transparent,
-              statusBarIconBrightness:           Brightness.light,
-              statusBarBrightness:               Brightness.dark,
-              systemNavigationBarColor:          Colors.transparent,
-              systemNavigationBarDividerColor:   Colors.transparent,
-              systemNavigationBarIconBrightness: Brightness.light,
-              systemNavigationBarContrastEnforced: false,
-            ),
+            systemOverlayStyle(true), // true = treat as dark bg
           );
         } else {
           _transitionCtrl.reverse();
           // Restore theme-appropriate icon brightness.
           SystemChrome.setSystemUIOverlayStyle(
-            SystemUiOverlayStyle(
-              statusBarColor:                    Colors.transparent,
-              statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-              statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-              systemNavigationBarColor:          Colors.transparent,
-              systemNavigationBarDividerColor:   Colors.transparent,
-              systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-            ),
+            systemOverlayStyle(isDark),
           );
         }
       },
@@ -206,10 +188,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 bottom: false,
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  // All users see the same layout:
-                  //   TopBar → SearchBar → QuickActions (with Vous chip for
-                  //   workers) → PromoSection → bottom spacer.
-                  // Workers reach their dashboard via the "Vous" story chip.
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: const [
