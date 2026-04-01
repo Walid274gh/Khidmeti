@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart';
 import '../../utils/validation_form.dart';
 import 'edit_profile_provider.dart';
 
@@ -104,25 +105,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final theme  = Theme.of(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      )
-          : SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:        theme.colorScheme.surface,
         extendBodyBehindAppBar: true,
