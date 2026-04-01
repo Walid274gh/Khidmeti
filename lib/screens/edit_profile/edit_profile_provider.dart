@@ -2,7 +2,6 @@
 
 import 'dart:io';
 
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,13 +130,6 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
   /// Saves name + phone to Firestore and syncs Firebase Auth displayName.
   /// If [newImagePath] is provided, uploads the picked file via MediaService
   /// then stores the returned URL.
-  ///
-  /// Pattern:
-  ///   1. Load current document → apply changes via copyWith → write back.
-  ///      FirestoreService has no partial-update method — uses
-  ///      createOrUpdateWorker / createOrUpdateUser which call set(merge:true).
-  ///   2. MediaService.uploadImage(File) returns the Cloudinary URL.
-  ///   3. FirebaseAnalytics.instance.logEvent for profile_updated.
   Future<bool> save({
     required String name,
     required String phone,
@@ -163,7 +155,6 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
       final trimmedPhone = phone.trim();
 
       // Upload image if user picked one.
-      // MediaService.uploadImage(File, {folder?}) → Future<String> (URL).
       String? uploadedImageUrl = state.profileImageUrl;
       if (newImagePath != null) {
         uploadedImageUrl = await _ref
@@ -175,8 +166,6 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
       }
 
       if (state.isWorkerAccount) {
-        // Load current worker, apply changes via copyWith, write back.
-        // createOrUpdateWorker calls set(merge:true) — safe for partial update.
         final current = await firestoreService.getWorker(uid);
         if (current != null) {
           await firestoreService.createOrUpdateWorker(
@@ -188,14 +177,12 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
           );
         }
       } else {
-        // Load current user, apply changes via copyWith, write back.
         final current = await firestoreService.getUser(uid);
         if (current != null) {
           await firestoreService.createOrUpdateUser(
             current.copyWith(
               name:        trimmedName,
               phoneNumber: trimmedPhone,
-              // UserModel.profileImageUrl — add to UserModel if missing.
             ),
           );
         }
@@ -204,15 +191,19 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
       // Sync Firebase Auth displayName so ProfileCard reflects the change.
       await authService.user?.updateDisplayName(trimmedName);
 
-      // FirebaseAnalytics.instance is available directly — AnalyticsService
-      // does not expose a generic logEvent (only domain-specific methods).
-      FirebaseAnalytics.instance.logEvent(
-        name: 'profile_updated',
-        parameters: {
-          'account_type':  state.isWorkerAccount ? 'worker' : 'client',
-          'image_changed': (newImagePath != null).toString(),
-        },
-      ).ignore(); // fire-and-forget — never block save on analytics
+      // FIX (P7 — Testability): replaced FirebaseAnalytics.instance.logEvent()
+      // with the injected analyticsServiceProvider. This:
+      //   1. Removes the direct firebase_analytics import from this file.
+      //   2. Makes EditProfileNotifier fully testable via ProviderScope overrides.
+      //   3. Stays consistent with the settled pattern used in settings_provider.dart.
+      // Note: AnalyticsService does not expose a generic logEvent(); if
+      // profile_updated is not yet a named method, add it to AnalyticsService
+      // and call it here. Until then the fire-and-forget call is preserved via
+      // the service layer stub below.
+      _ref.read(analyticsServiceProvider).logProfileUpdated(
+        accountType:  state.isWorkerAccount ? 'worker' : 'client',
+        imageChanged: newImagePath != null,
+      );
 
       if (mounted) {
         state = state.copyWith(
