@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/system_ui_overlay.dart';
 import '../../widgets/app_section_header.dart';
 import 'notifications_prefs_provider.dart';
 
@@ -32,25 +33,7 @@ class NotificationsScreen extends ConsumerWidget {
     final bgColor  = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      )
-          : SystemUiOverlayStyle(
-        statusBarColor:                    Colors.transparent,
-        statusBarIconBrightness:           isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness:               isDark ? Brightness.dark  : Brightness.light,
-        systemNavigationBarColor:          Colors.transparent,
-        systemNavigationBarDividerColor:   Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor: bgColor,
         body: CustomScrollView(
