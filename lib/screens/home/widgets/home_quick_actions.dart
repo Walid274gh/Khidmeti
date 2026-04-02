@@ -29,22 +29,20 @@ class HomeQuickActions extends ConsumerWidget {
     );
 
     // ── Worker status ────────────────────────────────────────────────────────
-    // FIX (P3): workerHomeControllerProvider is now watched conditionally.
+    // FIX (P3): Both ref.watch calls are now unconditional so that Riverpod
+    // always sees the same number of watch subscriptions per build.
+    // Calling ref.watch inside a ternary is conditional — the second watch
+    // would be skipped whenever isWorker is false, violating Riverpod's
+    // stable-subscription rule and causing stale-listener bugs.
     //
-    // Previously, workerIsOnline was unconditionally watched for ALL users.
-    // For a client, this initialised WorkerHomeController which called
-    // _subscribeToWorker(uid), opening a Firestore read on workers/{uid} —
-    // a document that does not exist for clients — incurring a real read cost.
-    //
-    // cachedUserRoleProvider transitions from unknown → client/worker exactly
-    // once per session. Once resolved to 'worker', the inner watch is stable.
-    // Once resolved to 'client', the outer condition never becomes true.
-    // The brief unknown→resolved window causes at most one watch-count change,
-    // which is acceptable per Riverpod guidelines.
+    // The workerHomeControllerProvider subscription is cheap for clients
+    // (it reads a non-existent document once then idles). The correctness
+    // guarantee outweighs the marginal extra read.
     final isWorker = ref.watch(cachedUserRoleProvider) == UserRole.worker;
-    final workerIsOnline = isWorker
-        ? ref.watch(workerHomeControllerProvider.select((s) => s.isOnline))
-        : false;
+    final workerOnlineRaw = ref.watch(
+      workerHomeControllerProvider.select((s) => s.isOnline),
+    );
+    final workerIsOnline = isWorker && workerOnlineRaw;
 
     return Column(
       mainAxisSize:       MainAxisSize.min,
