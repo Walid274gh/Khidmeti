@@ -10,7 +10,9 @@ import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../widgets/app_section_header.dart';
-import '../../providers/notification_prefs_controller.dart';
+// FIX (DG): was 'notification_prefs_controller' — actual source file is
+// notifications_prefs_provider.dart (matches the provider/notifier names).
+import '../../providers/notifications_prefs_provider.dart';
 
 // ============================================================================
 // NOTIFICATIONS SCREEN
@@ -87,8 +89,6 @@ class NotificationsScreen extends ConsumerWidget {
                     _NotifToggleTile(
                       isDark:    isDark,
                       icon:      AppIcons.requests,
-                      // FIX (P3): was darkAccent — icons should use semantic icon tokens,
-                      // not the CTA accent. Using iconIndigo for consistency with other screens.
                       iconColor: AppTheme.iconIndigo,
                       title:     context.tr('notifications.new_requests'),
                       subtitle:  context.tr('notifications.new_requests_sub'),
