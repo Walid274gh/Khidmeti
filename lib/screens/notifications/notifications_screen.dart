@@ -10,7 +10,7 @@ import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../widgets/app_section_header.dart';
-import 'notifications_prefs_provider.dart';
+import '../../providers/notification_prefs_controller.dart';
 
 // ============================================================================
 // NOTIFICATIONS SCREEN
