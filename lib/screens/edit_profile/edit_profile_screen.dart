@@ -13,7 +13,7 @@ import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../utils/validation_form.dart';
-import '../../providers/edit_profile_controller.dart';
+import '../../providers/edit_profile_provider.dart';
 
 // ============================================================================
 // EDIT PROFILE SCREEN — getSurfaceDecoration() deleted, inline BoxDecoration
