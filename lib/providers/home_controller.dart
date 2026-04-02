@@ -6,6 +6,10 @@
 // isWorkersStreamInitialising + nearbyWorkers four-field pattern with
 // nearbyWorkersAsync: AsyncValue<List<WorkerModel>> — matches workerJobsController
 // gold-standard pattern. Backward-compat getters preserve all call sites.
+//
+// ALGO FIX: _filterAndSortWorkers previously called w.distanceTo() twice per
+// worker (once in .where() and once in .sort()). Replaced with a precomputed
+// distance Map so each Haversine call runs exactly once per worker per update.
 
 import 'dart:async';
 
@@ -294,8 +298,6 @@ class HomeController extends StateNotifier<HomeState> {
     _workersStreamSub = null;
 
     if (!mounted) return;
-    // FIX: AsyncValue.loading() replaces the former three-field pattern:
-    //   isWorkersStreamInitialising: true + clearWorkersError: true
     state = state.copyWith(
       nearbyWorkersAsync: const AsyncValue.loading(),
     );
@@ -344,7 +346,6 @@ class HomeController extends StateNotifier<HomeState> {
 
           final filtered = _filterAndSortWorkers(workers, location);
 
-          // FIX: AsyncValue.data replaces nearbyWorkers + isWorkersStreamInitialising: false
           state = state.copyWith(
             nearbyWorkersAsync: AsyncValue.data(filtered),
           );
@@ -408,29 +409,32 @@ class HomeController extends StateNotifier<HomeState> {
   // Private — distance filter + sort
   // --------------------------------------------------------------------------
 
+  /// FIX: Precompute each worker's distance once into a Map<workerId, double>
+  /// and reuse it in both the .where() filter and .sort() comparator.
+  ///
+  /// The previous implementation called w.distanceTo() twice per worker:
+  ///   once in .where()  → O(n) Haversine calls
+  ///   once in .sort()   → O(n log n) Haversine calls (comparator called repeatedly)
+  ///
+  /// With precomputation: exactly O(n) Haversine calls total.
   List<WorkerModel> _filterAndSortWorkers(
     List<WorkerModel> workers,
     LatLng userLocation,
   ) {
     final maxKm = AppConstants.defaultSearchRadiusKm;
 
+    // Precompute distances — each Haversine call runs exactly once.
+    final Map<String, double> distanceCache = {
+      for (final w in workers)
+        if (w.latitude != null && w.longitude != null)
+          w.id: w.distanceTo(userLocation.latitude, userLocation.longitude),
+    };
+
     return workers
-        .where((w) => w.latitude != null && w.longitude != null)
-        .where((w) {
-          final distKm = w.distanceTo(
-            userLocation.latitude,
-            userLocation.longitude,
-          );
-          return distKm <= maxKm;
-        })
+        .where((w) => distanceCache.containsKey(w.id))
+        .where((w) => distanceCache[w.id]! <= maxKm)
         .toList()
-      ..sort((a, b) {
-          final da =
-              a.distanceTo(userLocation.latitude, userLocation.longitude);
-          final db =
-              b.distanceTo(userLocation.latitude, userLocation.longitude);
-          return da.compareTo(db);
-        });
+      ..sort((a, b) => distanceCache[a.id]!.compareTo(distanceCache[b.id]!));
   }
 }
 

@@ -12,6 +12,7 @@ import '../services/ai_intent_extractor.dart';
 import '../utils/model_extensions.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
+import '../utils/ranking_utils.dart';
 import 'core_providers.dart';
 import 'home_controller.dart';
 
@@ -91,12 +92,20 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
   final Ref _ref;
 
   // FIX (AI Cost): per-session rate limit — max 20 AI calls per hour.
-  // Timestamps are stored in memory; the window is a rolling 1-hour period.
-  // This guards against accidental runaway (e.g. automation, rapid retries)
-  // before server-side enforcement (Firebase App Check / Cloud Function) is in place.
   static const int      _maxCallsPerHour = 20;
   static const Duration _windowDuration  = Duration(hours: 1);
   final List<DateTime>  _callTimestamps  = [];
+
+  // FIX: AI confidence thresholds.
+  // Below _lowConfidenceThreshold → intent is too ambiguous; fall back to
+  // unfiltered nearby workers instead of propagating a weak profession guess.
+  // Below _highConfidenceThreshold → intent is usable but log a warning.
+  //
+  // Calibrate both values after 100+ real queries:
+  //   _lowConfidenceThreshold  = 25th percentile of correct-match confidences
+  //   _highConfidenceThreshold = 70th percentile of correct-match confidences
+  static const double _lowConfidenceThreshold  = 0.35;
+  static const double _highConfidenceThreshold = 0.70;
 
   HomeSearchController(this._ref) : super(const HomeSearchState());
 
@@ -142,7 +151,6 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
       clearError: true,
     );
 
-    // FIX (Analytics): log search attempt.
     _ref.read(analyticsServiceProvider).logBrowseFilterApplied(
       filter:       hasImage ? 'image_search' : 'text_search',
       resultsCount: 0,
@@ -173,17 +181,21 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
       return;
     }
 
+    // FIX: confidence gate — clear profession on weak extractions so that
+    // _search() falls back to unfiltered nearby workers rather than
+    // propagating a low-confidence profession guess to the map.
+    final gatedIntent = _applyConfidenceGate(intent);
+
     state = state.copyWith(
       status:     HomeSearchStatus.searching,
-      lastIntent: intent,
+      lastIntent: gatedIntent,
     );
 
     try {
-      final results = await _search(intent);
+      final results = await _search(gatedIntent);
 
-      // FIX (Analytics): log results with profession + count.
       _ref.read(analyticsServiceProvider).logBrowseFilterApplied(
-        filter:       intent.profession ?? 'no_profession',
+        filter:       gatedIntent.profession ?? 'no_profession',
         resultsCount: results.length,
       );
 
@@ -308,10 +320,14 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
     }
 
     if (!mounted) return;
+
+    // FIX: apply confidence gate to audio-extracted intent as well.
+    final gatedIntent = _applyConfidenceGate(intent);
+
     state = state.copyWith(
-        status: HomeSearchStatus.searching, lastIntent: intent);
+        status: HomeSearchStatus.searching, lastIntent: gatedIntent);
     try {
-      final results = await _search(intent);
+      final results = await _search(gatedIntent);
       if (mounted) {
         state = state.copyWith(
             status: HomeSearchStatus.results, results: results);
@@ -368,6 +384,9 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
         }).toList();
       }
 
+      // FIX: replaced degenerate min-max normalization with RankingUtils.minMaxNormalize
+      // which returns 0.5 when the range collapses (all workers have equal rating
+      // or equal distance), preventing the score from blowing up or all collapsing to 0.
       final maxRating = pool
           .map((r) => r.data.averageRating)
           .reduce((a, b) => a > b ? a : b);
@@ -381,18 +400,16 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
           .map((r) => r.distance)
           .reduce((a, b) => a < b ? a : b);
 
-      final ratingRange =
-          (maxRating - minRating).clamp(0.01, double.infinity);
-      final distRange =
-          (maxDist - minDist).clamp(0.01, double.infinity);
-
       String? bestId;
       double  bestScore = -1;
 
       for (final r in pool) {
-        final normRating = (r.data.averageRating - minRating) / ratingRange;
-        final normDist   = 1.0 - ((r.distance - minDist) / distRange);
-        final score      = normRating * 0.6 + normDist * 0.4;
+        final normRating = RankingUtils.minMaxNormalize(
+            r.data.averageRating, minRating, maxRating);
+        // Higher distance → lower score: invert normalized distance.
+        final normDist = 1.0 -
+            RankingUtils.minMaxNormalize(r.distance, minDist, maxDist);
+        final score = normRating * 0.6 + normDist * 0.4;
         if (score > bestScore) {
           bestScore = score;
           bestId    = r.data.id;
@@ -416,6 +433,35 @@ class HomeSearchController extends StateNotifier<HomeSearchState> {
   // --------------------------------------------------------------------------
   // Private helpers
   // --------------------------------------------------------------------------
+
+  /// FIX: Apply confidence gate to extracted intent.
+  ///
+  /// Below [_lowConfidenceThreshold] (0.35): the AI could not reliably
+  /// identify a profession. Clear profession so search falls back to all
+  /// nearby workers rather than surfacing a wrong service category.
+  ///
+  /// Between thresholds: usable but log a warning so the team can monitor
+  /// mid-confidence performance and adjust thresholds from real data.
+  SearchIntent _applyConfidenceGate(SearchIntent intent) {
+    final confidence = intent.confidence ?? 1.0; // default 1.0 if not set
+
+    if (confidence < _lowConfidenceThreshold) {
+      AppLogger.warning(
+          'HomeSearchController: low confidence '
+          '(${confidence.toStringAsFixed(2)} < $_lowConfidenceThreshold) — '
+          'clearing profession, falling back to all nearby workers');
+      return intent.copyWith(profession: null);
+    }
+
+    if (confidence < _highConfidenceThreshold) {
+      AppLogger.info(
+          'HomeSearchController: mid confidence '
+          '(${confidence.toStringAsFixed(2)}) — '
+          'using intent but monitoring recommended');
+    }
+
+    return intent;
+  }
 
   HomeSearchErrorType _mapErrorCode(AiExtractorErrorCode code) {
     switch (code) {

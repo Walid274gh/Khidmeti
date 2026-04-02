@@ -1,29 +1,14 @@
 // lib/providers/worker_jobs_controller.dart
 //
-// FIX (S2): jobActionStatuses: Map<String, JobActionStatus> and
-// jobActionErrors: Map<String, String?> removed from WorkerJobsState.
-// Any single job action previously triggered a full state copy + rebuild of
-// every widget watching this provider (the entire job list).
+// FIX (S2): jobActionStatuses / jobActionErrors removed (see full comment below).
 //
-// Per-job loading/error state is now owned by jobActionControllerProvider
-// (StateNotifierProvider.autoDispose.family keyed on jobId), mirroring the
-// MissionController pattern already used elsewhere in this codebase.
+// FIX (P2 — W5): AsyncValue<List<...>> replaces manual isLoading/errorMessage/jobs.
 //
-// MIGRATION for widgets:
-//   OLD: ref.watch(workerJobsControllerProvider).actionStatusFor(jobId)
-//   NEW: ref.watch(jobActionControllerProvider(jobId)).status
-//
-//   OLD: workerJobsController.acceptJob(jobId)
-//   NEW: ref.read(jobActionControllerProvider(jobId).notifier).startJob()
-//
-// The stub methods acceptJob / completeJob / declineJob are kept on this
-// controller to avoid a hard compile break during the widget migration window.
-// They delegate to the family provider internally.
-//
-// FIX (P2 — W5): Replaced manual isLoading/errorMessage/jobs triple with
-// AsyncValue<List<ServiceRequestEnhancedModel>>. Backward-compatible getters
-// (isLoading, errorMessage, jobs) are preserved so UI widgets require no
-// changes. filteredJobs, countFor, allJobs now unwrap from AsyncValue.
+// ALGO FIX: _sortJobs previously called order.indexOf(status) inside the sort
+// comparator. indexOf is O(k) per call and comparators are invoked O(n log n)
+// times, giving O(k · n log n) total — k=7 status values here. Replaced with
+// a precomputed Map<ServiceStatus, int> lookup that is O(1), reducing sort
+// complexity to O(n log n) with a small constant.
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,8 +19,6 @@ import '../utils/logger.dart';
 import 'core_providers.dart';
 import 'job_action_controller.dart';
 
-// JobActionStatus is now defined in job_action_controller.dart and re-exported
-// from there. Re-export here for backward compatibility with existing imports.
 export 'job_action_controller.dart' show JobActionStatus, JobActionState, jobActionControllerProvider;
 
 // ============================================================================
@@ -49,9 +32,6 @@ enum JobFilter { all, pending, accepted, inProgress, completed }
 // ============================================================================
 
 class WorkerJobsState {
-  // FIX (P2 — W5): jobs list, isLoading, and errorMessage are now represented
-  // as a single AsyncValue<List<...>>. Backward-compatible getters below mean
-  // existing UI widgets continue to work without modification.
   final AsyncValue<List<ServiceRequestEnhancedModel>> jobsAsync;
   final JobFilter activeFilter;
   final bool isRefreshing;
@@ -64,18 +44,14 @@ class WorkerJobsState {
 
   // ── Backward-compatible surface ───────────────────────────────────────────
 
-  /// The raw job list; empty while loading or on error.
   List<ServiceRequestEnhancedModel> get jobs =>
       jobsAsync.value ?? const [];
 
-  /// True while the initial stream data has not yet arrived.
   bool get isLoading => jobsAsync is AsyncLoading;
 
-  /// Error message from the last stream failure; null when healthy.
   String? get errorMessage =>
       jobsAsync.asError?.error.toString();
 
-  // ── Alias kept for job_detail_screen.dart ─────────────────────────────────
   List<ServiceRequestEnhancedModel> get allJobs => jobs;
 
   List<ServiceRequestEnhancedModel> get filteredJobs {
@@ -158,7 +134,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
   void _subscribeToJobs(String workerId) {
     _jobsSubscription?.cancel();
 
-    // Set loading state while re-subscribing.
     state = state.copyWith(jobsAsync: const AsyncValue.loading());
 
     _jobsSubscription = _ref
@@ -185,24 +160,37 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
     );
   }
 
+  // FIX: replaced order.indexOf(status) inside sort comparator with a
+  // precomputed Map<ServiceStatus, int> lookup.
+  //
+  // OLD: order.indexOf() is O(k) per call; comparators are called O(n log n)
+  //      times → O(k · n log n) total (k=7 status buckets here).
+  //
+  // NEW: Map lookup is O(1) → O(n log n) with a small constant.
+  //      The map is built once per _sortJobs() call (O(k)) and reused
+  //      throughout the sort.
+  static const List<ServiceStatus> _sortOrder = [
+    ServiceStatus.bidSelected,
+    ServiceStatus.inProgress,
+    ServiceStatus.awaitingSelection,
+    ServiceStatus.open,
+    ServiceStatus.completed,
+    ServiceStatus.cancelled,
+    ServiceStatus.expired,
+  ];
+
+  // Precomputed at class level: constant cost, never rebuilt.
+  static final Map<ServiceStatus, int> _sortRank = {
+    for (int i = 0; i < _sortOrder.length; i++) _sortOrder[i]: i,
+  };
+
   List<ServiceRequestEnhancedModel> _sortJobs(
       List<ServiceRequestEnhancedModel> jobs) {
-    const order = [
-      ServiceStatus.bidSelected,
-      ServiceStatus.inProgress,
-      ServiceStatus.awaitingSelection,
-      ServiceStatus.open,
-      ServiceStatus.completed,
-      ServiceStatus.cancelled,
-      ServiceStatus.expired,
-    ];
     return List.from(jobs)
       ..sort((a, b) {
-        final ia = order.indexOf(a.status);
-        final ib = order.indexOf(b.status);
-        if (ia == -1 && ib == -1) return b.createdAt.compareTo(a.createdAt);
-        if (ia == -1) return 1;
-        if (ib == -1) return -1;
+        // O(1) map lookup replaces O(k) indexOf.
+        final ia = _sortRank[a.status] ?? _sortOrder.length;
+        final ib = _sortRank[b.status] ?? _sortOrder.length;
         if (ia != ib) return ia.compareTo(ib);
         return b.createdAt.compareTo(a.createdAt);
       });
@@ -235,10 +223,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
 
   // --------------------------------------------------------------------------
   // Action stubs — delegate to jobActionControllerProvider family
-  //
-  // These methods are kept for backward compatibility during the widget
-  // migration window. Prefer watching jobActionControllerProvider(jobId)
-  // directly for per-job loading state.
   // --------------------------------------------------------------------------
 
   Future<void> acceptJob(String jobId) async {
@@ -268,7 +252,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
 // PROVIDER
 // ============================================================================
 
-// keepAlive prevents stream disposal on tab switch.
 final workerJobsControllerProvider =
     StateNotifierProvider.autoDispose<WorkerJobsController, WorkerJobsState>(
   (ref) {
