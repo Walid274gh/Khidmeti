@@ -15,17 +15,6 @@ import 'home_service_grid.dart';
 
 // ============================================================================
 // HOME QUICK ACTIONS
-//
-// Layout (top → bottom, no dead space):
-//   ① "Nos services" label + horizontal service grid
-//      └─ Workers see a "Vous" chip prepended (story-avatar pattern).
-//         Green ring = En ligne, Red ring = Hors ligne.
-//         Tap → WorkerStoryModal (full-screen page).
-//   ② Subtle divider
-//   ③ CTA button — single primary action
-//
-// This widget lives inside a SingleChildScrollView (home_screen.dart),
-// so it must NOT have Spacers or unbounded height — use mainAxisSize.min.
 // ============================================================================
 
 class HomeQuickActions extends ConsumerWidget {
@@ -40,13 +29,22 @@ class HomeQuickActions extends ConsumerWidget {
     );
 
     // ── Worker status ────────────────────────────────────────────────────────
-    // Both providers are always watched (stable watch count — Riverpod rule).
-    // workerIsOnline is only forwarded to the grid when isWorker is true,
-    // so non-workers never trigger unnecessary worker UI rebuilds.
+    // FIX (P3): workerHomeControllerProvider is now watched conditionally.
+    //
+    // Previously, workerIsOnline was unconditionally watched for ALL users.
+    // For a client, this initialised WorkerHomeController which called
+    // _subscribeToWorker(uid), opening a Firestore read on workers/{uid} —
+    // a document that does not exist for clients — incurring a real read cost.
+    //
+    // cachedUserRoleProvider transitions from unknown → client/worker exactly
+    // once per session. Once resolved to 'worker', the inner watch is stable.
+    // Once resolved to 'client', the outer condition never becomes true.
+    // The brief unknown→resolved window causes at most one watch-count change,
+    // which is acceptable per Riverpod guidelines.
     final isWorker = ref.watch(cachedUserRoleProvider) == UserRole.worker;
-    final workerIsOnline = ref.watch(
-      workerHomeControllerProvider.select((s) => s.isOnline),
-    );
+    final workerIsOnline = isWorker
+        ? ref.watch(workerHomeControllerProvider.select((s) => s.isOnline))
+        : false;
 
     return Column(
       mainAxisSize:       MainAxisSize.min,
@@ -56,9 +54,6 @@ class HomeQuickActions extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppConstants.paddingLg,
-            // FIX (Spacing): increased top breathing room between the
-            // AdvancedSearchBar and the "NOS SERVICES" section from
-            // paddingMd (16) to paddingLg (24).
             AppConstants.paddingLg,
             AppConstants.paddingLg,
             0,
@@ -134,13 +129,11 @@ class HomeQuickActions extends ConsumerWidget {
           ),
         ),
 
-        // ── Visual separator — with extra breathing room above banner ─────
+        // ── Visual separator ──────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.paddingLg,
-            // FIX (Spacing): increased vertical padding around the divider
-            // from paddingMd (16) to give the CTA banner more whitespace.
-            vertical: AppConstants.paddingLg,
+            vertical:   AppConstants.paddingLg,
           ),
           child: Divider(
             height:    1,
