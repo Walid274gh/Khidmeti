@@ -315,6 +315,10 @@ class RequestCard extends ConsumerWidget {
 //   2. Prevents double-tap (isLoading guard in controller)
 //   3. Surfaces errors via SnackBar through ref.listen
 //   4. Exposes success state for potential follow-up actions
+//
+// FIX (RW): ref.read(notifier) was captured as a local variable in build().
+// It is now called inline inside each callback so Riverpod never holds a
+// stale notifier reference across rebuilds.
 // ============================================================================
 
 class _CancelButton extends ConsumerWidget {
@@ -325,8 +329,6 @@ class _CancelButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ctrl  = ref.read(
-        cancelRequestControllerProvider(requestId).notifier);
     final state = ref.watch(cancelRequestControllerProvider(requestId));
 
     // Surface controller errors as SnackBar
@@ -337,7 +339,9 @@ class _CancelButton extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.tr(next.errorKey!))),
           );
-          ctrl.clearError();
+          ref
+              .read(cancelRequestControllerProvider(requestId).notifier)
+              .clearError();
         }
       },
     );
@@ -376,7 +380,11 @@ class _CancelButton extends ConsumerWidget {
               ],
             ),
           );
-          if (confirmed == true) ctrl.cancel();
+          if (confirmed == true) {
+            ref
+                .read(cancelRequestControllerProvider(requestId).notifier)
+                .cancel();
+          }
         },
         child: Text(
           context.tr('requests.cancel'),
