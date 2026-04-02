@@ -12,6 +12,18 @@
 //
 // The HomeController is now DI-clean: it uses these methods via
 // firestoreServiceProvider and no longer holds a direct Firestore dependency.
+//
+// ALGO FIX (A9): updateWorkerStatus() previously never wrote lastActiveAt.
+// This meant workerScore()'s recency component (10% weight) always received
+// daysSinceActive=0 (the default fallback), making all workers appear equally
+// fresh regardless of when they last went offline. The recency signal was
+// effectively dead.
+//
+// Fix: when isOnline transitions to false, write lastActiveAt: Timestamp.now()
+// so that the daysSinceActive field (computed from lastActiveAt in
+// WorkerModel.fromMap or model_extensions) accurately reflects time offline.
+// When isOnline=true we do NOT overwrite lastActiveAt — going back online
+// doesn't reset "last seen offline" (that would be semantically wrong).
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -327,25 +339,49 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
     });
   }
 
+  /// ALGO FIX (A9): write [lastActiveAt] when [isOnline] transitions to false.
+  ///
+  /// Previously this method never wrote lastActiveAt, so
+  /// WorkerModel.daysSinceActive always fell back to 0 — making the recency
+  /// component of RankingUtils.workerScore() a no-op (all workers scored
+  /// equally on recency regardless of how long ago they went offline).
+  ///
+  /// Fix: when isOnline=false, include lastActiveAt: Timestamp.now() in the
+  /// update payload. When isOnline=true we intentionally do NOT write
+  /// lastActiveAt — coming back online should not reset "last seen offline".
+  ///
+  /// ⚠️  MANUAL: run a backfill Cloud Function to populate lastActiveAt on
+  /// existing worker documents so the recency signal works for workers who
+  /// went offline before this fix was deployed.
   Future<void> updateWorkerStatus(String workerId, bool isOnline) async {
     ensureNotDisposed();
     validateWorkerId(workerId);
 
     return retryOperation(() async {
       try {
+        final updateData = <String, dynamic>{
+          'isOnline': isOnline,
+          'lastUpdated': Timestamp.now(),
+        };
+
+        // FIX (A9): stamp lastActiveAt when the worker goes offline so that
+        // daysSinceActive can be computed accurately for ranking purposes.
+        if (!isOnline) {
+          updateData['lastActiveAt'] = Timestamp.now();
+        }
+
         await firestore
             .collection(workersCollection)
             .doc(workerId)
-            .update({
-          'isOnline': isOnline,
-          'lastUpdated': Timestamp.now(),
-        }).timeout(FirestoreRepositoryBase.operationTimeout);
+            .update(updateData)
+            .timeout(FirestoreRepositoryBase.operationTimeout);
 
         _cache.update(
             workerId,
             (w) => w.copyWith(
                   isOnline: isOnline,
                   lastUpdated: DateTime.now(),
+                  daysSinceActive: isOnline ? w.daysSinceActive : 0,
                 ));
         logInfo('Worker status updated: $workerId → $isOnline');
       } catch (e) {
