@@ -153,7 +153,13 @@ class _KhidmetiAppState extends ConsumerState<KhidmetiApp>
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(goRouterProvider);
-    final languageService = ref.watch(languageServiceProvider);
+    // FIX (P1): Watch currentLocaleProvider (driven by localeStateNotifierProvider)
+    // instead of languageServiceProvider directly. Previously, watching
+    // languageServiceProvider subscribed to its ChangeNotifier, which only fired
+    // on the very first initialization call — leaving the locale frozen for all
+    // subsequent language changes. currentLocaleProvider rebuilds whenever the
+    // locale value itself changes, ensuring the app re-renders with the new locale.
+    final currentLocale = ref.watch(currentLocaleProvider);
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
@@ -162,7 +168,7 @@ class _KhidmetiAppState extends ConsumerState<KhidmetiApp>
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      locale: languageService.currentLocale,
+      locale: currentLocale,
       supportedLocales: LanguageService.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,
