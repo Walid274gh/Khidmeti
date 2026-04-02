@@ -52,8 +52,18 @@ class WorkerModel extends Equatable {
   // responseRate (0.0–1.0):
   //   Fraction of job requests the worker accepted vs. received.
   //   Computed server-side by the onJobAction Cloud Function and written to
-  //   the worker document. fromMap defaults to 1.0 so existing workers are
-  //   not penalised before backfill.
+  //   the worker document.
+  //
+  //   FIX (A3): fromMap default changed from 1.0 → 0.7.
+  //   The 1.0 default inflated scores for legacy workers that pre-date the
+  //   responseRate field: every legacy worker was treated as perfectly
+  //   responsive, boosting their composite score by 0.15 (wResponse weight)
+  //   over workers with real responseRate data.
+  //   0.7 is a neutral prior — slightly below "good" — that neither rewards
+  //   nor heavily penalises legacy workers while the Cloud Function backfill
+  //   populates the field.
+  //   Recalibrate this default from real responseRate distribution after
+  //   backfill is complete.
   //
   // daysSinceActive (0–∞):
   //   Days since the worker's last isOnline=true → isOnline=false transition,
@@ -85,7 +95,11 @@ class WorkerModel extends Equatable {
     this.averageRating = 0.0,
     this.ratingCount = 0,
     this.jobsCompleted = 0,
-    this.responseRate = 1.0,
+    // FIX (A3): constructor default also updated to 0.7 for consistency with
+    // fromMap. Objects created in-memory (e.g. in tests or registration flows)
+    // that omit responseRate now receive the same neutral prior as documents
+    // read from Firestore.
+    this.responseRate = 0.7,
     this.daysSinceActive = 0,
   });
 
@@ -111,9 +125,15 @@ class WorkerModel extends Equatable {
       // Fallback to ratingCount for documents that pre-date this field.
       jobsCompleted:
           map['jobsCompleted'] as int? ?? map['ratingCount'] as int? ?? 0,
-      // Default 1.0 — existing workers are not penalised before Cloud Function backfill.
+      // FIX (A3): default changed from 1.0 → 0.7.
+      // 1.0 silently inflated legacy worker composite scores by +0.15
+      // (wResponse = 0.15 × 1.0 vs 0.15 × 0.7 = +0.045 per worker).
+      // At scale with hundreds of legacy workers this caused them to
+      // outrank newer workers with real responseRate data near 0.7–0.8.
+      // 0.7 is a neutral prior calibrated from typical platform averages;
+      // recalibrate after Cloud Function backfill.
       responseRate:
-          (map['responseRate'] as num?)?.toDouble() ?? 1.0,
+          (map['responseRate'] as num?)?.toDouble() ?? 0.7,
       // Compute from lastActiveAt Timestamp if available; default 0 (treat as active).
       daysSinceActive: () {
         final ts = map['lastActiveAt'] as Timestamp?;

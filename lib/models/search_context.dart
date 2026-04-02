@@ -13,17 +13,25 @@ class SearchContext extends Equatable {
   final Set<String> searchedCellIds;
   final Set<int> searchedWilayaCodes;
 
-  const SearchContext({
+  // FIX (A1): Removed `const {}` defaults — const Sets are immutable and throw
+  // UnsupportedError on .add(). Replaced with nullable parameters that default
+  // to a fresh mutable Set in the initializer list. Callers that previously
+  // relied on the const default get an empty mutable Set transparently.
+  SearchContext({
     required this.userLat,
     required this.userLng,
     required this.userWilayaCode,
     required this.currentCellId,
     this.maxRadius = 50.0,
     this.maxResults = 20,
-    this.searchedCellIds = const {},
-    this.searchedWilayaCodes = const {},
-  });
+    Set<String>? searchedCellIds,
+    Set<int>? searchedWilayaCodes,
+  })  : searchedCellIds = searchedCellIds ?? {},
+        searchedWilayaCodes = searchedWilayaCodes ?? {};
 
+  // FIX (A1 follow-up): copyWith now passes Set.from() defensive copies so
+  // the new SearchContext owns its own mutable Set, preventing aliasing bugs
+  // where two contexts share the same Set instance and writes bleed across.
   SearchContext copyWith({
     double? userLat,
     double? userLng,
@@ -41,8 +49,11 @@ class SearchContext extends Equatable {
       currentCellId: currentCellId ?? this.currentCellId,
       maxRadius: maxRadius ?? this.maxRadius,
       maxResults: maxResults ?? this.maxResults,
-      searchedCellIds: searchedCellIds ?? this.searchedCellIds,
-      searchedWilayaCodes: searchedWilayaCodes ?? this.searchedWilayaCodes,
+      // Defensive copies — caller gets a fresh mutable Set, never an alias.
+      searchedCellIds:
+          searchedCellIds != null ? Set.from(searchedCellIds) : Set.from(this.searchedCellIds),
+      searchedWilayaCodes:
+          searchedWilayaCodes != null ? Set.from(searchedWilayaCodes) : Set.from(this.searchedWilayaCodes),
     );
   }
 
