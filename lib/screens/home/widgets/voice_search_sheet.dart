@@ -89,15 +89,15 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
     _autoStopTimer?.cancel();
     _pulseCtrl.dispose();
 
-    // FIX (R5 + P0 — AI Cost / Cross-Screen Flow):
-    // 1. Uses the cached _searchNotifier reference instead of ref.read() so
-    //    there is no risk of reading an already-disposed autoDispose provider.
-    // 2. Only resets when the session did NOT produce results — on the success
-    //    path applyToMap() has already written intent to the map controller and
-    //    resetting here would destroy that state.
-    // 3. No bare try/catch {} that silently swallows failures.
-    if (_searchNotifier.mounted &&
-        _searchNotifier.debugState.status != HomeSearchStatus.results) {
+    // FIX (R5 + P0 — simplified):
+    // Uses the cached _searchNotifier reference instead of ref.read() so
+    // there is no risk of reading an already-disposed autoDispose provider.
+    // Reset unconditionally when the notifier is still mounted — the
+    // applyToMap() success path writes intent to the map controller before
+    // Navigator.pop() fires dispose(), so resetting here is safe: the map
+    // controller already holds the intent and homeSearchController returns
+    // to idle cleanly for the next voice session.
+    if (_searchNotifier.mounted) {
       _searchNotifier.reset();
     }
 
