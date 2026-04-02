@@ -6,6 +6,20 @@
 // Algorithms:
 //   • bayesianRating  — prevents cold-start and low-volume rating inflation
 //   • workerScore     — composite ranking (rating + distance + recency)
+//
+// ALGO FIX (A5):
+//   workerScore() previously accepted bayesianRatingValue but had no
+//   reviewCount parameter. Callers passed worker.averageRating (raw average)
+//   without any cold-start guard, meaning a newly-registered worker with zero
+//   reviews and averageRating=0.0 received the minimum possible score instead
+//   of the platform globalAverage — suppressing new workers unfairly.
+//
+//   Fix: add `int reviewCount = 0` parameter.
+//   When reviewCount == 0, substitute globalAverage for the rating component
+//   (same cold-start logic as bayesianRating()). When reviewCount > 0, use
+//   bayesianRatingValue as provided (caller is responsible for Bayesian
+//   computation; passing averageRating is also acceptable when reviewCount
+//   is known — workerScore normalises the value by 5.0 either way).
 
 import 'dart:math' show exp;
 
@@ -54,21 +68,39 @@ class RankingUtils {
   ///   wResponse = 0.15  — response rate (0–1 fraction)
   ///   wRecency  = 0.10  — last-active recency (exponential decay over 30 days)
   ///
+  /// ALGO FIX (A5): added [reviewCount] parameter.
+  ///
+  /// When [reviewCount] == 0, the rating component uses [globalAverage] / 5.0
+  /// as a neutral fallback — identical cold-start logic to bayesianRating().
+  /// This prevents new workers (averageRating = 0.0) from being pushed to the
+  /// bottom of results simply for having no history yet.
+  ///
+  /// When [reviewCount] > 0, [bayesianRatingValue] is used as-is.
+  /// Callers should pass a pre-computed Bayesian average or the raw
+  /// averageRating — workerScore() normalises it to [0, 1] via /5.0 either way.
+  ///
   /// Tune weights after collecting sufficient user feedback data.
   static double workerScore({
     required double bayesianRatingValue, // 0–5
     required double distanceKm,          // 0–∞
+    int    reviewCount     = 0,          // FIX (A5): 0 → cold-start fallback
     double responseRate    = 1.0,        // 0–1  (default: assume responsive)
     int    daysSinceActive = 0,          // 0–∞  (default: active today)
     double decayKm         = 5.0,        // distance half-life in km
     double decayDays       = 30.0,       // recency half-life in days
+    double globalAverage   = 3.5,        // C — matches bayesianRating() default
   }) {
     const double wRating   = 0.40;
     const double wDistance = 0.35;
     const double wResponse = 0.15;
     const double wRecency  = 0.10;
 
-    final double ratingScore   = (bayesianRatingValue / 5.0).clamp(0.0, 1.0);
+    // FIX (A5): cold-start guard — use globalAverage when no reviews yet so
+    // that new workers receive a neutral score rather than the minimum (0.0).
+    final double effectiveRating =
+        reviewCount == 0 ? globalAverage : bayesianRatingValue;
+
+    final double ratingScore   = (effectiveRating / 5.0).clamp(0.0, 1.0);
     // Exponential decay: score = e^(-distance / decayKm)
     final double distanceScore = exp(-distanceKm / decayKm);
     final double responseScore = responseRate.clamp(0.0, 1.0);
