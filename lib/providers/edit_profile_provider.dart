@@ -1,4 +1,4 @@
-// lib/screens/edit_profile/edit_profile_provider.dart
+// lib/providers/edit_profile_provider.dart
 
 import 'dart:io';
 
