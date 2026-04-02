@@ -39,7 +39,7 @@ class MyBidCard extends ConsumerWidget {
 
   Future<void> _confirmWithdraw(
     BuildContext context,
-    BidManagementController ctrl,
+    WidgetRef ref,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -66,19 +66,25 @@ class MyBidCard extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      await ctrl.withdrawBid(
-        bidId: bid.id,
-        requestId: bid.serviceRequestId,
-      );
+      // FIX (RW): ref.read(notifier) moved into callback — not captured in build().
+      await ref
+          .read(bidManagementControllerProvider(bid.id).notifier)
+          .withdrawBid(
+            bidId: bid.id,
+            requestId: bid.serviceRequestId,
+          );
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state      = ref.watch(bidManagementControllerProvider(bid.id));
-    final ctrl       = ref.read(bidManagementControllerProvider(bid.id).notifier);
     final color      = _bidStatusColor();
     final canWithdraw = bid.status == BidStatus.pending;
+
+    // FIX (RW): ref.read(notifier) was captured as a local variable in build().
+    // It is now called inline inside each callback so Riverpod never holds a
+    // stale notifier reference across rebuilds.
 
     // Show controller error via SnackBar once.
     ref.listen<BidManagementState>(
@@ -88,7 +94,9 @@ class MyBidCard extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(next.errorMessage!)),
           );
-          ctrl.clearError();
+          ref
+              .read(bidManagementControllerProvider(bid.id).notifier)
+              .clearError();
         }
       },
     );
@@ -100,7 +108,6 @@ class MyBidCard extends ConsumerWidget {
             : AppTheme.lightSurface,
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         border: Border.all(
-          // FIX (Designer): was raw Color opacity — use tokens.
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
         ),
       ),
@@ -161,11 +168,9 @@ class MyBidCard extends ConsumerWidget {
                 button: true,
                 label: context.tr('worker_my_bids.withdraw'),
                 child: GestureDetector(
-                  // FIX (QA P2): was a direct withdraw on tap — now shows
-                  // a confirmation dialog before calling the controller.
                   onTap: state.isWithdrawing
                       ? null
-                      : () => _confirmWithdraw(context, ctrl),
+                      : () => _confirmWithdraw(context, ref),
                   child: state.isWithdrawing
                       ? SizedBox(
                           height: 16,

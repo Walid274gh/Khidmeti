@@ -27,10 +27,13 @@ class MissionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state       = ref.watch(missionControllerProvider(job.id));
-    final ctrl        = ref.read(missionControllerProvider(job.id).notifier);
     final statusColor = AppTheme.getStatusColor(job.status, isDark);
     final isBidSelected = job.status == ServiceStatus.bidSelected;
     final isInProgress  = job.status == ServiceStatus.inProgress;
+
+    // FIX (RW): ref.read(notifier) was captured as a local variable in build().
+    // It is now called inline inside each callback so Riverpod never holds a
+    // stale notifier reference across rebuilds.
 
     // Show controller error via SnackBar once.
     ref.listen<MissionState>(
@@ -40,7 +43,9 @@ class MissionCard extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(next.errorMessage!)),
           );
-          ctrl.clearError();
+          ref
+              .read(missionControllerProvider(job.id).notifier)
+              .clearError();
         }
       },
     );
@@ -59,7 +64,6 @@ class MissionCard extends ConsumerWidget {
                 : AppTheme.lightSurface,
             borderRadius: BorderRadius.circular(AppConstants.radiusLg),
             border: Border.all(
-              // FIX (Designer): was raw Color opacity — use tokens.
               color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
             ),
           ),
@@ -82,8 +86,6 @@ class MissionCard extends ConsumerWidget {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            // FIX (QA P1): was 'requests.worker' — userName
-                            // is the CLIENT who posted the request.
                             '${context.tr('requests.client')}: ${job.userName}',
                             style: Theme.of(context)
                                 .textTheme
@@ -135,14 +137,18 @@ class MissionCard extends ConsumerWidget {
                     label: context.tr('worker_missions.start_job'),
                     color: accent,
                     isLoading: state.isLoading,
-                    onTap: () => ctrl.startJob(job.id),
+                    onTap: () => ref
+                        .read(missionControllerProvider(job.id).notifier)
+                        .startJob(job.id),
                   )
                 else if (isInProgress)
                   _ActionButton(
                     label: context.tr('worker_missions.complete_job'),
                     color: AppTheme.acceptGreen,
                     isLoading: state.isLoading,
-                    onTap: () => ctrl.completeJob(requestId: job.id),
+                    onTap: () => ref
+                        .read(missionControllerProvider(job.id).notifier)
+                        .completeJob(requestId: job.id),
                   ),
               ],
             ),
@@ -177,13 +183,11 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      // FIX (Designer): was magic number 42 — aligned to tap-target minimum.
       height: AppConstants.buttonHeightSm,
       child: ElevatedButton(
         onPressed: isLoading ? null : onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: isLoading ? color.withOpacity(0.4) : color,
-          // FIX (WCAG AA): was Colors.black — ratio insufficient on green.
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -196,7 +200,6 @@ class _ActionButton extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  // White spinner on dimmed coloured background.
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
