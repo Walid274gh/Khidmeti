@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/geographic_cell.dart';
 import '../models/wilaya_model.dart';
 import '../utils/model_extensions.dart';
+import '../utils/geo_cell_utils.dart';
 import 'firestore_service.dart';
 import 'wilaya_manager.dart';
 import 'geographic_grid_service_interface.dart';
@@ -28,13 +29,25 @@ class GeographicGridServiceException implements Exception {
 
 class GeographicGridService implements GeographicGridServiceInterface {
   static const double defaultCellRadiusKm = 5.0;
-  static const double cellPrecisionDegrees = 0.01;
-  static const double adjacentCellOffsetDegrees = 0.05;
-  static const int maxCacheSize = 500;
-  static const Duration cacheTTL = Duration(hours: 24);
-  static const double earthRadiusKm = 6371.0;
-  static const int coordinateDecimalPlaces = 2;
-  static const double maxSearchDistanceKm = 100.0;
+
+  // FIX: cellPrecisionDegrees is the canonical cell step.
+  // adjacentCellOffsetDegrees MUST equal cellPrecisionDegrees so that
+  // neighbour cells are exactly one cell-width apart — not 5× the cell size.
+  //
+  // OLD: adjacentCellOffsetDegrees = 0.05  ← skipped ~4 cells between centre
+  //      and the nearest generated neighbour ID (gap ≈ 5.5 km at Algeria latitudes).
+  // NEW: adjacentCellOffsetDegrees = 0.01  ← matches cellPrecisionDegrees exactly.
+  static const double cellPrecisionDegrees    = 0.01;
+  static const double adjacentCellOffsetDegrees = 0.01; // FIX: was 0.05
+
+  static const int    maxCacheSize       = 500;
+  static const Duration cacheTTL         = Duration(hours: 24);
+  static const double earthRadiusKm      = 6371.0;
+  static const int    coordinateDecimalPlaces = 2;
+  static const double maxSearchDistanceKm     = 100.0;
+
+  // Geohash precision-6 ≈ 1.2 × 0.6 km — matches the ~5 km cell radius well.
+  static const int geohashPrecision = 6;
 
   final FirestoreService firestoreService;
   final WilayaManager wilayaManager;
@@ -173,7 +186,12 @@ class GeographicGridService implements GeographicGridServiceInterface {
         );
       }
 
-      final geoHash = _generateGeoHash(latitude, longitude);
+      // FIX: replaced fake coordinate-string hash with standard base32 geohash.
+      // Old implementation stored '{(lat*1000).round()}_{(lng*1000).round()}'
+      // which cannot be range-queried on Firestore and does not encode
+      // geographic proximity in its sort order.
+      final geoHash = GeoHashHelper.encode(latitude, longitude,
+          precision: geohashPrecision);
 
       await firestoreService.updateWorkerLocation(
         workerId,
@@ -246,7 +264,14 @@ class GeographicGridService implements GeographicGridServiceInterface {
       final lat = double.parse(parts[1]);
       final lng = double.parse(parts[2]);
 
-      return _calculateAdjacentCellIds(lat, lng, wilayaCode);
+      // FIX: delegate to GeoCellUtils.ringCellIds which uses the correct
+      // 0.01° step rather than the mismatched 0.05° that left a gap.
+      return GeoCellUtils.ringCellIds(
+        centerLat:   lat,
+        centerLng:   lng,
+        wilayaCode:  wilayaCode,
+        radiusSteps: 1,
+      );
     } catch (e) {
       _logError('getAdjacentCellIds', e);
       return [];
@@ -265,7 +290,12 @@ class GeographicGridService implements GeographicGridServiceInterface {
       centerLat: _roundCoordinate(lat),
       centerLng: _roundCoordinate(lng),
       radius: defaultCellRadiusKm,
-      adjacentCellIds: _calculateAdjacentCellIds(lat, lng, wilayaCode),
+      adjacentCellIds: GeoCellUtils.ringCellIds(
+        centerLat:   lat,
+        centerLng:   lng,
+        wilayaCode:  wilayaCode,
+        radiusSteps: 1,
+      ),
     );
 
     await firestoreService.saveCell(cell);
@@ -285,32 +315,19 @@ class GeographicGridService implements GeographicGridServiceInterface {
     return (coordinate * multiplier).round() / multiplier;
   }
 
+  // _calculateAdjacentCellIds is kept for backward compatibility but now
+  // delegates to GeoCellUtils so the step size is correct everywhere.
   List<String> _calculateAdjacentCellIds(
     double lat,
     double lng,
     int wilayaCode,
   ) {
-    final adjacentIds = <String>[];
-
-    for (var latOffset in [-adjacentCellOffsetDegrees, 0.0, adjacentCellOffsetDegrees]) {
-      for (var lngOffset in [-adjacentCellOffsetDegrees, 0.0, adjacentCellOffsetDegrees]) {
-        if (latOffset == 0 && lngOffset == 0) continue;
-
-        final adjacentLat = lat + latOffset;
-        final adjacentLng = lng + lngOffset;
-
-        if (_isValidLatitude(adjacentLat) && _isValidLongitude(adjacentLng)) {
-          final adjacentId = _generateCellId(
-            adjacentLat,
-            adjacentLng,
-            wilayaCode,
-          );
-          adjacentIds.add(adjacentId);
-        }
-      }
-    }
-
-    return adjacentIds;
+    return GeoCellUtils.ringCellIds(
+      centerLat:   lat,
+      centerLng:   lng,
+      wilayaCode:  wilayaCode,
+      radiusSteps: 1,
+    );
   }
 
   double _calculateHaversineDistance(
@@ -336,11 +353,10 @@ class GeographicGridService implements GeographicGridServiceInterface {
     return degrees * math.pi / 180.0;
   }
 
-  String _generateGeoHash(double lat, double lng) {
-    final roundedLat = (lat * 1000).round();
-    final roundedLng = (lng * 1000).round();
-    return '${roundedLat}_$roundedLng';
-  }
+  // FIX: _generateGeoHash replaced by GeoHashHelper.encode (called from
+  // assignWorkerToCell above). The old implementation stored a coordinate-pair
+  // string that cannot be used for Firestore geohash range queries.
+  // Method removed to prevent accidental use of the broken implementation.
 
   void _validateCoordinates(double lat, double lng) {
     if (!_isValidLatitude(lat)) {
