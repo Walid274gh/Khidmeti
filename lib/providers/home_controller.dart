@@ -2,21 +2,10 @@
 //
 // TASK 2 FIX — Removed direct FirebaseFirestore.instance usage.
 //
-// WHAT CHANGED:
-//   • _subscribeToNearbyWorkers(): replaced the inline Firestore query
-//     (FirebaseFirestore.instance.collection(workersCollection).where(...))
-//     with firestoreServiceProvider.streamOnlineWorkersByWilayas(allCodes).
-//   • _subscribeFallback(): replaced the inline Firestore query with
-//     firestoreServiceProvider.streamOnlineWorkersUnscoped(limit: ...).
-//   • _workersStreamSub type: QuerySnapshot<...> → List<WorkerModel>.
-//   • _processWorkerSnapshot() → _filterAndSortWorkers(): same distance-
-//     filter + sort logic, but now operates on List<WorkerModel> (the typed
-//     result from the service) instead of a raw QuerySnapshot. WorkerModel
-//     parsing is now the service's responsibility.
-//   • Removed: `import 'package:cloud_firestore/cloud_firestore.dart'` —
-//     no longer needed since the controller holds no Firestore type references.
-//   • Removed: `import '../services/firestore_service.dart'` — workersCollection
-//     constant was only needed for the inline queries; the service encapsulates it.
+// STATE FIX (P2, P5): replaced isLoadingWorkers + workersError +
+// isWorkersStreamInitialising + nearbyWorkers four-field pattern with
+// nearbyWorkersAsync: AsyncValue<List<WorkerModel>> — matches workerJobsController
+// gold-standard pattern. Backward-compat getters preserve all call sites.
 
 import 'dart:async';
 
@@ -42,28 +31,40 @@ class HomeState {
   final HomeLocationStatus locationStatus;
   final LatLng? userLocation;
   final String? userAddress;
-  final List<WorkerModel> nearbyWorkers;
-  final bool isLoadingWorkers;
-  final String? workersError;
+
+  // FIX (P2, P5): replaced isLoadingWorkers + workersError +
+  // isWorkersStreamInitialising + nearbyWorkers with a single AsyncValue.
+  // Backward-compat getters below preserve all existing call sites.
+  final AsyncValue<List<WorkerModel>> nearbyWorkersAsync;
+
   final bool isMapFullscreen;
   final String? activeServiceFilter;
   final bool isRefreshing;
-  final bool isWorkersStreamInitialising;
   final String? bestWorkerId;
 
   const HomeState({
-    this.locationStatus = HomeLocationStatus.idle,
+    this.locationStatus   = HomeLocationStatus.idle,
     this.userLocation,
     this.userAddress,
-    this.nearbyWorkers = const [],
-    this.isLoadingWorkers = false,
-    this.workersError,
-    this.isMapFullscreen = false,
+    this.nearbyWorkersAsync = const AsyncValue.data([]),
+    this.isMapFullscreen  = false,
     this.activeServiceFilter,
-    this.isRefreshing = false,
-    this.isWorkersStreamInitialising = false,
+    this.isRefreshing     = false,
     this.bestWorkerId,
   });
+
+  // ── Backward-compat getters — all existing call sites unchanged ───────────
+
+  List<WorkerModel> get nearbyWorkers =>
+      nearbyWorkersAsync.asData?.value ?? const [];
+
+  bool get isLoadingWorkers => nearbyWorkersAsync.isLoading;
+
+  String? get workersError => nearbyWorkersAsync.asError?.error.toString();
+
+  bool get isWorkersStreamInitialising => nearbyWorkersAsync.isLoading;
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   int get workerCountForFilter => activeServiceFilter == null
       ? nearbyWorkers.length
@@ -81,37 +82,27 @@ class HomeState {
     HomeLocationStatus? locationStatus,
     LatLng? userLocation,
     String? userAddress,
-    List<WorkerModel>? nearbyWorkers,
-    bool? isLoadingWorkers,
-    String? workersError,
+    AsyncValue<List<WorkerModel>>? nearbyWorkersAsync,
     bool? isMapFullscreen,
     String? activeServiceFilter,
     bool? isRefreshing,
-    bool? isWorkersStreamInitialising,
     String? bestWorkerId,
-    bool clearLocation = false,
-    bool clearFilter = false,
-    bool clearWorkersError = false,
-    bool clearAddress = false,
-    bool clearBestWorker = false,
+    bool clearLocation    = false,
+    bool clearFilter      = false,
+    bool clearAddress     = false,
+    bool clearBestWorker  = false,
   }) {
     return HomeState(
-      locationStatus:   locationStatus   ?? this.locationStatus,
-      userLocation:     clearLocation ? null : (userLocation ?? this.userLocation),
-      userAddress:      clearAddress  ? null : (userAddress  ?? this.userAddress),
-      nearbyWorkers:    nearbyWorkers    ?? this.nearbyWorkers,
-      isLoadingWorkers: isLoadingWorkers ?? this.isLoadingWorkers,
-      workersError:     clearWorkersError
-          ? null
-          : (workersError ?? this.workersError),
-      isMapFullscreen:  isMapFullscreen  ?? this.isMapFullscreen,
+      locationStatus:      locationStatus   ?? this.locationStatus,
+      userLocation:        clearLocation    ? null : (userLocation ?? this.userLocation),
+      userAddress:         clearAddress     ? null : (userAddress  ?? this.userAddress),
+      nearbyWorkersAsync:  nearbyWorkersAsync ?? this.nearbyWorkersAsync,
+      isMapFullscreen:     isMapFullscreen  ?? this.isMapFullscreen,
       activeServiceFilter: clearFilter
           ? null
           : (activeServiceFilter ?? this.activeServiceFilter),
-      isRefreshing:    isRefreshing    ?? this.isRefreshing,
-      isWorkersStreamInitialising:
-          isWorkersStreamInitialising ?? this.isWorkersStreamInitialising,
-      bestWorkerId: clearBestWorker ? null : (bestWorkerId ?? this.bestWorkerId),
+      isRefreshing:        isRefreshing     ?? this.isRefreshing,
+      bestWorkerId:        clearBestWorker  ? null : (bestWorkerId ?? this.bestWorkerId),
     );
   }
 }
@@ -123,11 +114,7 @@ class HomeState {
 class HomeController extends StateNotifier<HomeState> {
   final Ref _ref;
 
-  // TASK 2 FIX: type changed from StreamSubscription<QuerySnapshot<...>> to
-  // StreamSubscription<List<WorkerModel>> — the service now handles Firestore
-  // snapshot → model parsing, so the controller receives typed data.
   StreamSubscription<List<WorkerModel>>? _workersStreamSub;
-
   Timer? _streamRebuildDebounce;
 
   HomeController(this._ref) : super(const HomeState()) {
@@ -299,7 +286,7 @@ class HomeController extends StateNotifier<HomeState> {
   }
 
   // --------------------------------------------------------------------------
-  // TASK 2 FIX — real-time geo-aware stream via firestoreServiceProvider
+  // Private — real-time geo-aware stream via firestoreServiceProvider
   // --------------------------------------------------------------------------
 
   Future<void> _subscribeToNearbyWorkers(LatLng location) async {
@@ -307,13 +294,14 @@ class HomeController extends StateNotifier<HomeState> {
     _workersStreamSub = null;
 
     if (!mounted) return;
+    // FIX: AsyncValue.loading() replaces the former three-field pattern:
+    //   isWorkersStreamInitialising: true + clearWorkersError: true
     state = state.copyWith(
-      isWorkersStreamInitialising: true,
-      clearWorkersError:           true,
+      nearbyWorkersAsync: const AsyncValue.loading(),
     );
 
     try {
-      final gridService  = _ref.read(geographicGridServiceProvider);
+      final gridService   = _ref.read(geographicGridServiceProvider);
       final wilayaManager = _ref.read(wilayaManagerProvider);
 
       final wilayaCode = gridService.getWilayaCodeFromCoordinates(
@@ -344,10 +332,6 @@ class HomeController extends StateNotifier<HomeState> {
 
       AppLogger.debug('HomeController: querying wilaya codes $allCodes');
 
-      // TASK 2 FIX: use firestoreServiceProvider instead of
-      // FirebaseFirestore.instance.collection(...).where(...).snapshots().
-      // WorkerFirestoreRepository.streamOnlineWorkersByWilayas() constructs
-      // the same Firestore query internally and returns List<WorkerModel>.
       _workersStreamSub = _ref
           .read(firestoreServiceProvider)
           .streamOnlineWorkersByWilayas(allCodes)
@@ -360,17 +344,16 @@ class HomeController extends StateNotifier<HomeState> {
 
           final filtered = _filterAndSortWorkers(workers, location);
 
+          // FIX: AsyncValue.data replaces nearbyWorkers + isWorkersStreamInitialising: false
           state = state.copyWith(
-            nearbyWorkers:               filtered,
-            isWorkersStreamInitialising: false,
-            clearWorkersError:           true,
+            nearbyWorkersAsync: AsyncValue.data(filtered),
           );
 
           AppLogger.info(
               'HomeController: ${filtered.length} workers within '
               '${AppConstants.defaultSearchRadiusKm.toInt()} km');
         },
-        onError: (Object e) {
+        onError: (Object e, StackTrace st) {
           AppLogger.error('HomeController workers stream error', e);
           if (!mounted) return;
           AppLogger.warning(
@@ -380,16 +363,13 @@ class HomeController extends StateNotifier<HomeState> {
         },
         cancelOnError: false,
       );
-    } catch (e) {
+    } catch (e, st) {
       AppLogger.error('HomeController._subscribeToNearbyWorkers', e);
       if (!mounted) return;
       _subscribeFallback(location);
     }
   }
 
-  // TASK 2 FIX: fallback also uses firestoreServiceProvider.
-  // WorkerFirestoreRepository.streamOnlineWorkersUnscoped() applies the same
-  // .limit() cap that was previously in the inline query.
   void _subscribeFallback(LatLng location) {
     AppLogger.info('HomeController: using fallback unscoped stream');
 
@@ -406,21 +386,18 @@ class HomeController extends StateNotifier<HomeState> {
 
         final filtered = _filterAndSortWorkers(workers, location);
         state = state.copyWith(
-          nearbyWorkers:               filtered,
-          isWorkersStreamInitialising: false,
-          clearWorkersError:           true,
+          nearbyWorkersAsync: AsyncValue.data(filtered),
         );
 
         AppLogger.info(
             'HomeController (fallback): ${filtered.length} workers within '
             '${AppConstants.defaultSearchRadiusKm.toInt()} km');
       },
-      onError: (Object e) {
+      onError: (Object e, StackTrace st) {
         AppLogger.error('HomeController fallback stream error', e);
         if (!mounted) return;
         state = state.copyWith(
-          isWorkersStreamInitialising: false,
-          workersError: e.toString(),
+          nearbyWorkersAsync: AsyncValue.error(e, st),
         );
       },
       cancelOnError: false,
@@ -428,12 +405,9 @@ class HomeController extends StateNotifier<HomeState> {
   }
 
   // --------------------------------------------------------------------------
-  // TASK 2 FIX — distance filter + sort (was _processWorkerSnapshot)
+  // Private — distance filter + sort
   // --------------------------------------------------------------------------
 
-  /// Filters [workers] to those within the max search radius and sorts by
-  /// ascending distance to [userLocation]. Replaces _processWorkerSnapshot
-  /// which took a raw QuerySnapshot — the service now handles model parsing.
   List<WorkerModel> _filterAndSortWorkers(
     List<WorkerModel> workers,
     LatLng userLocation,

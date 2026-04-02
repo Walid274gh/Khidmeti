@@ -1,21 +1,15 @@
 // lib/providers/settings_provider.dart
 //
 // MOVED FROM: lib/screens/settings/settings_provider.dart
-// REASON: A StateNotifier has no business living inside a screen folder.
-//         All other providers live in lib/providers/. This move corrects the
-//         dependency direction so settings_screen.dart imports upward from
-//         lib/providers/ rather than importing from its own folder.
+//
+// STATE FIX (P2): collapsed isSigningOut: bool + isDeletingAccount: bool into
+// SettingsStatus enum variants (signingOut, deletingAccount). Consumers that
+// already used state.isSigningOut / state.isDeletingAccount continue to work
+// via backward-compat getters on SettingsState.
 //
 // FIX (Settings Audit P1): SettingsNotifier was calling
-// FirebaseAnalytics.instance.logEvent() directly from the state layer,
-// creating a second direct Firebase dependency and making the notifier
-// untestable without a real Firebase instance.
+// FirebaseAnalytics.instance.logEvent() directly from the state layer.
 // Fix: replaced with ref.read(analyticsServiceProvider) calls.
-//
-// IMPORT PATHS updated for new location (lib/providers/ → lib/utils/ is ../utils/):
-//   OLD: '../../providers/auth_providers.dart'  → './auth_providers.dart'
-//   OLD: '../../providers/core_providers.dart'  → './core_providers.dart'
-//   OLD: '../../utils/constants.dart'           → '../utils/constants.dart'
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,7 +24,9 @@ import '../utils/logger.dart';
 // SETTINGS STATE
 // ============================================================================
 
-enum SettingsStatus { idle, loading, error }
+// FIX (P2): extended with signingOut + deletingAccount to replace the separate
+// boolean fields. SettingsStatus.loading is now reserved for profile load only.
+enum SettingsStatus { idle, loading, signingOut, deletingAccount, error }
 
 class SettingsState {
   final SettingsStatus status;
@@ -39,11 +35,6 @@ class SettingsState {
   final String? profileImageUrl;
   final UserRole activeRole;
   final bool isWorkerAccount;
-
-  // Separate flag for sign-out / delete-account so SettingsStatus.loading
-  // is not misused — skeleton loader during those operations is semantically wrong.
-  final bool isSigningOut;
-  final bool isDeletingAccount;
 
   final double? workerAverageRating;
   final int?    workerRatingCount;
@@ -57,12 +48,20 @@ class SettingsState {
     this.profileImageUrl,
     this.activeRole          = UserRole.client,
     this.isWorkerAccount     = false,
-    this.isSigningOut        = false,
-    this.isDeletingAccount   = false,
     this.workerAverageRating,
     this.workerRatingCount,
     this.errorMessage,
   });
+
+  // ── Backward-compat getters — settings_screen / settings_content unchanged ─
+
+  /// True while a sign-out operation is in progress.
+  bool get isSigningOut => status == SettingsStatus.signingOut;
+
+  /// True while an account-deletion operation is in progress.
+  bool get isDeletingAccount => status == SettingsStatus.deletingAccount;
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   SettingsState copyWith({
     SettingsStatus? status,
@@ -71,8 +70,6 @@ class SettingsState {
     String?  profileImageUrl,
     UserRole? activeRole,
     bool?    isWorkerAccount,
-    bool?    isSigningOut,
-    bool?    isDeletingAccount,
     double?  workerAverageRating,
     int?     workerRatingCount,
     String?  errorMessage,
@@ -84,8 +81,6 @@ class SettingsState {
       profileImageUrl:     profileImageUrl     ?? this.profileImageUrl,
       activeRole:          activeRole          ?? this.activeRole,
       isWorkerAccount:     isWorkerAccount     ?? this.isWorkerAccount,
-      isSigningOut:        isSigningOut        ?? this.isSigningOut,
-      isDeletingAccount:   isDeletingAccount   ?? this.isDeletingAccount,
       workerAverageRating: workerAverageRating ?? this.workerAverageRating,
       workerRatingCount:   workerRatingCount   ?? this.workerRatingCount,
       errorMessage:        errorMessage,
@@ -199,23 +194,24 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   /// Signs the user out with a clean teardown sequence.
   ///
-  /// FIX — Bug: isSigningOut guard prevents double-tap race condition.
-  /// FIX — FCM token cleared from Firestore before sign-out to prevent
-  ///   cross-user notification delivery on shared devices.
+  /// FIX (P2): status: SettingsStatus.signingOut replaces isSigningOut: true.
+  /// FIX: isSigningOut guard prevents double-tap race condition.
+  /// FIX: FCM token cleared from Firestore before sign-out.
   /// FIX (Settings Audit P1): replaced FirebaseAnalytics.instance.logEvent()
   ///   with ref.read(analyticsServiceProvider).logUserSignedOut().
   Future<void> signOut() async {
     if (!mounted) return;
+    // Guard: use compat getter — reads status == SettingsStatus.signingOut
     if (state.isSigningOut) return;
 
-    state = state.copyWith(isSigningOut: true);
+    // FIX (P2): single status field replaces the former isSigningOut bool.
+    state = state.copyWith(status: SettingsStatus.signingOut);
 
     final cachedRoleNotifier = _ref.read(cachedUserRoleProvider.notifier);
     final authService        = _ref.read(authServiceProvider);
     final firestoreService   = _ref.read(firestoreServiceProvider);
     final uid                = authService.user?.uid;
 
-    // FIX: Fire-and-forget analytics via service layer (no direct Firebase call).
     _ref.read(analyticsServiceProvider).logUserSignedOut(
       accountType: state.isWorkerAccount ? 'worker' : 'client',
     );
@@ -223,8 +219,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     try {
       cachedRoleNotifier.state = UserRole.unknown;
 
-      // Clear FCM token from Firestore so the next user on this device
-      // receives their own notifications without inheriting the old token.
       if (uid != null) {
         try {
           await firestoreService.updateUserFcmToken(uid, '');
@@ -249,8 +243,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         cachedRoleNotifier.state = state.isWorkerAccount
             ? UserRole.worker
             : UserRole.client;
+        // FIX (P2): restore idle + error (no separate isSigningOut: false needed)
         state = state.copyWith(
-          isSigningOut: false,
           status:       SettingsStatus.error,
           errorMessage: 'errors.signout_failed',
         );
@@ -260,18 +254,20 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   /// Permanently deletes the Firebase Auth account and wipes local state.
   ///
+  /// FIX (P2): status: SettingsStatus.deletingAccount replaces isDeletingAccount: true.
   /// FIX (Settings Audit P1): replaced FirebaseAnalytics.instance.logEvent()
   ///   with ref.read(analyticsServiceProvider).logUserDeletedAccount().
   Future<String?> deleteAccount() async {
     if (!mounted) return null;
+    // Guard: use compat getter — reads status == SettingsStatus.deletingAccount
     if (state.isDeletingAccount) return null;
 
-    state = state.copyWith(isDeletingAccount: true);
+    // FIX (P2): single status field replaces the former isDeletingAccount bool.
+    state = state.copyWith(status: SettingsStatus.deletingAccount);
 
     final cachedRoleNotifier = _ref.read(cachedUserRoleProvider.notifier);
     final authService        = _ref.read(authServiceProvider);
 
-    // FIX: Fire-and-forget analytics via service layer.
     _ref.read(analyticsServiceProvider).logUserDeletedAccount(
       accountType: state.isWorkerAccount ? 'worker' : 'client',
     );
@@ -288,10 +284,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           cachedRoleNotifier.state = state.isWorkerAccount
               ? UserRole.worker
               : UserRole.client;
+          // FIX (P2): restore idle + error (no separate isDeletingAccount: false needed)
           state = state.copyWith(
-            isDeletingAccount: false,
-            status:            SettingsStatus.error,
-            errorMessage:      errorKey,
+            status:       SettingsStatus.error,
+            errorMessage: errorKey,
           );
         }
         return errorKey;
@@ -307,9 +303,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
             ? UserRole.worker
             : UserRole.client;
         state = state.copyWith(
-          isDeletingAccount: false,
-          status:            SettingsStatus.error,
-          errorMessage:      'errors.delete_account_failed',
+          status:       SettingsStatus.error,
+          errorMessage: 'errors.delete_account_failed',
         );
       }
       return 'errors.delete_account_failed';

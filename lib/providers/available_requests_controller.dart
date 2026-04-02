@@ -40,32 +40,28 @@ extension AvailableRequestsFilterLabel on AvailableRequestsFilter {
 // ============================================================================
 
 class AvailableRequestsState {
-  final List<ServiceRequestEnhancedModel> allRequests;
+  // FIX (P2, P5): replaced isLoading + errorMessage + allRequests triple with
+  // AsyncValue<List<ServiceRequestEnhancedModel>> — matches workerJobsController
+  // gold-standard pattern. Backward-compat getters preserve all call sites.
+  final AsyncValue<List<ServiceRequestEnhancedModel>> requestsAsync;
+
   final AvailableRequestsFilter activeFilter;
-  final bool isLoading;
-  final String? errorMessage;
 
   // Maintained by AvailableRequestsController._bidsSub — the set of request
   // IDs where the current worker has a PENDING bid.
-  // Widgets call hasMyBid(requestId) instead of opening a second stream.
   final Set<String> pendingBidRequestIds;
 
   // FIX (Performance): memoized filtered list — recomputed only when
   // allRequests or activeFilter changes, not on pendingBidRequestIds updates.
-  // FIX (🔴 Critical — S2-cache-bug): _cacheValid sentinel added.
-  // Previously cachedFilterKey was set to newActiveFilter on invalidation,
-  // so `_cachedFilterKey == activeFilter` was always true after any data
-  // update — causing filteredRequests to return const [] every time.
-  // _cacheValid=false forces _computeFiltered() on the next access.
+  // FIX (🔴 Critical — S2-cache-bug): _cacheValid sentinel guards against
+  // stale cache returning const [] after data update.
   final bool _cacheValid;
   final List<ServiceRequestEnhancedModel> _cachedFilteredRequests;
   final AvailableRequestsFilter _cachedFilterKey;
 
   const AvailableRequestsState({
-    this.allRequests = const [],
+    this.requestsAsync = const AsyncValue.loading(),
     this.activeFilter = AvailableRequestsFilter.all,
-    this.isLoading = false,
-    this.errorMessage,
     this.pendingBidRequestIds = const {},
     bool cacheValid = false,
     List<ServiceRequestEnhancedModel>? cachedFiltered,
@@ -74,6 +70,20 @@ class AvailableRequestsState {
         _cachedFilteredRequests = cachedFiltered ?? const [],
         _cachedFilterKey = cachedFilterKey ?? AvailableRequestsFilter.all;
 
+  // ── Backward-compat getters — all call sites unchanged ───────────────────
+
+  /// All loaded requests, or empty list while loading/erroring.
+  List<ServiceRequestEnhancedModel> get allRequests =>
+      requestsAsync.asData?.value ?? const [];
+
+  /// True while the requests stream is initialising or re-loading.
+  bool get isLoading => requestsAsync.isLoading;
+
+  /// Error string if the stream failed, null otherwise.
+  String? get errorMessage => requestsAsync.asError?.error.toString();
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   /// Returns true if the current worker already has a pending bid on [requestId].
   bool hasMyBid(String requestId) =>
       pendingBidRequestIds.contains(requestId);
@@ -81,11 +91,6 @@ class AvailableRequestsState {
   /// Filtered and sorted list — memoized: re-runs only when allRequests or
   /// activeFilter change, not on every pendingBidRequestIds update.
   List<ServiceRequestEnhancedModel> get filteredRequests {
-    // FIX (🔴 Critical — S2-cache-bug):
-    // Guard on _cacheValid prevents returning stale const [] after data update.
-    // When _cacheValid=false (set by copyWith on invalidation), we fall through
-    // to _computeFiltered() which operates on this.allRequests / this.activeFilter
-    // — both of which are already the NEW values on the new state instance.
     if (_cacheValid && _cachedFilterKey == activeFilter) {
       return _cachedFilteredRequests;
     }
@@ -112,33 +117,22 @@ class AvailableRequestsState {
   }
 
   AvailableRequestsState copyWith({
-    List<ServiceRequestEnhancedModel>? allRequests,
+    AsyncValue<List<ServiceRequestEnhancedModel>>? requestsAsync,
     AvailableRequestsFilter? activeFilter,
-    bool? isLoading,
-    String? errorMessage,
     Set<String>? pendingBidRequestIds,
-    bool clearError = false,
-    // Internal — set automatically when allRequests or activeFilter changes.
+    // Internal — set automatically when requestsAsync or activeFilter changes.
     bool invalidateFilterCache = false,
   }) {
-    final newAllRequests   = allRequests ?? this.allRequests;
     final newActiveFilter  = activeFilter ?? this.activeFilter;
     final cacheInvalidated = invalidateFilterCache ||
-        allRequests != null ||
+        requestsAsync != null ||
         activeFilter != null;
 
     return AvailableRequestsState(
-      allRequests:          newAllRequests,
+      requestsAsync:        requestsAsync        ?? this.requestsAsync,
       activeFilter:         newActiveFilter,
-      isLoading:            isLoading ?? this.isLoading,
-      errorMessage:         clearError ? null : (errorMessage ?? this.errorMessage),
       pendingBidRequestIds: pendingBidRequestIds ?? this.pendingBidRequestIds,
-      // FIX (🔴 Critical — S2-cache-bug):
-      // cacheValid=false when invalidated → filteredRequests getter falls
-      // through to _computeFiltered() which uses the new allRequests /
-      // activeFilter values already set on this new state instance.
-      // cacheValid=true when nothing changed → existing cache is valid.
-      cacheValid: !cacheInvalidated,
+      cacheValid:     !cacheInvalidated,
       cachedFiltered: cacheInvalidated ? null : _cachedFilteredRequests,
       cachedFilterKey: cacheInvalidated ? newActiveFilter : _cachedFilterKey,
     );
@@ -168,9 +162,6 @@ class AvailableRequestsController
     if (userId == null) return;
     _workerId = userId;
 
-    // FIX (QA P1): was an unguarded async call — a Firestore timeout or
-    // network error would crash _init() silently, leaving isLoading: true
-    // indefinitely. Now fully wrapped with a user-visible error state.
     try {
       final firestoreService = _ref.read(firestoreServiceProvider);
       _worker = await firestoreService.getWorker(userId);
@@ -178,22 +169,23 @@ class AvailableRequestsController
       if (_worker == null) {
         if (!mounted) return;
         state = state.copyWith(
-          isLoading:    false,
-          errorMessage: 'worker_not_found',
+          requestsAsync: AsyncValue.error(
+            'worker_not_found',
+            StackTrace.current,
+          ),
         );
         return;
       }
 
       _subscribeToRequests();
       _subscribeToBids(userId);
-    } catch (e) {
+    } catch (e, st) {
       if (kDebugMode) {
         debugPrint('[AvailableRequestsController] ERROR in _init: $e');
       }
       if (!mounted) return;
       state = state.copyWith(
-        isLoading:    false,
-        errorMessage: e.toString(),
+        requestsAsync: AsyncValue.error(e, st),
       );
     }
   }
@@ -201,7 +193,9 @@ class AvailableRequestsController
   void _subscribeToRequests() {
     if (_worker == null) return;
 
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+      requestsAsync: const AsyncValue.loading(),
+    );
 
     _requestsSub?.cancel();
     _requestsSub = _ref
@@ -214,17 +208,14 @@ class AvailableRequestsController
       (requests) {
         if (!mounted) return;
         state = state.copyWith(
-          allRequests: requests,
-          isLoading:   false,
-          clearError:  true,
-          // invalidateFilterCache: true is implicit when allRequests != null
+          requestsAsync: AsyncValue.data(requests),
+          // cache invalidation is implicit: requestsAsync != null
         );
       },
-      onError: (e) {
+      onError: (e, StackTrace st) {
         if (!mounted) return;
         state = state.copyWith(
-          isLoading:    false,
-          errorMessage: e.toString(),
+          requestsAsync: AsyncValue.error(e, st),
         );
       },
     );
@@ -259,7 +250,7 @@ class AvailableRequestsController
   void setFilter(AvailableRequestsFilter filter) {
     if (!mounted) return;
     state = state.copyWith(activeFilter: filter);
-    // invalidateFilterCache is implicit when activeFilter != null
+    // cache invalidation is implicit: activeFilter != null
   }
 
   void refresh() {
