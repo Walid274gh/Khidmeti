@@ -27,8 +27,10 @@ class BidsListScreen extends ConsumerWidget {
     final requestAsync = ref.watch(serviceRequestStreamProvider(requestId));
     final bidsAsync    = ref.watch(bidsStreamProvider(requestId));
     final ctrlState    = ref.watch(clientBidsControllerProvider(requestId));
-    final ctrl         = ref.read(
-        clientBidsControllerProvider(requestId).notifier);
+
+    // FIX (RW): ref.read(notifier) was captured as a local variable in build().
+    // It is now called inline inside each callback so Riverpod never holds a
+    // stale notifier reference across rebuilds.
 
     ref.listen(clientBidsControllerProvider(requestId), (prev, next) {
       if (next.errorMessage != null &&
@@ -36,10 +38,14 @@ class BidsListScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.errorMessage!)),
         );
-        ctrl.clearError();
+        ref
+            .read(clientBidsControllerProvider(requestId).notifier)
+            .clearError();
       }
       if (next.success && !(prev?.success ?? false)) {
-        ctrl.resetSuccess();
+        ref
+            .read(clientBidsControllerProvider(requestId).notifier)
+            .resetSuccess();
         context.pushReplacement(
           AppRoutes.requestTracking.replaceAll(':id', requestId),
         );
@@ -56,7 +62,6 @@ class BidsListScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Header ─────────────────────────────────────────────────
-              // FIX: EdgeInsets.fromLTRB → EdgeInsetsDirectional.fromSTEB
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(
                     AppConstants.paddingMd,
@@ -65,7 +70,6 @@ class BidsListScreen extends ConsumerWidget {
                     0),
                 child: Row(
                   children: [
-                    // FIX: Added Semantics wrapper (back button was missing label)
                     Semantics(
                       button: true,
                       label:  context.tr('common.back'),
@@ -130,8 +134,6 @@ class BidsListScreen extends ConsumerWidget {
               // ── Bids list ───────────────────────────────────────────────
               Expanded(
                 child: bidsAsync.when(
-                  // FIX: Replaced CircularProgressIndicator with BidCardSkeleton.
-                  // Rule 3.10: skeleton must match the success layout shape.
                   loading: () => ListView.builder(
                     padding: const EdgeInsetsDirectional.fromSTEB(
                       AppConstants.paddingMd,
@@ -194,10 +196,13 @@ class BidsListScreen extends ConsumerWidget {
                             isDark:     isDark,
                             isAccepting: ctrlState.isAccepting &&
                                 ctrlState.acceptingBidId == bid.id,
-                            onAccept: () => ctrl.acceptBid(
-                              requestId: requestId,
-                              bid:       bid,
-                            ),
+                            onAccept: () => ref
+                                .read(clientBidsControllerProvider(requestId)
+                                    .notifier)
+                                .acceptBid(
+                                  requestId: requestId,
+                                  bid:       bid,
+                                ),
                           ),
                         );
                       },
