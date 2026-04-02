@@ -17,6 +17,11 @@ import '../../utils/logger.dart';
 
 enum EditProfileStatus { loading, idle, saving, success, error }
 
+// Sentinel used so copyWith can distinguish "clear errorMessage" from
+// "leave errorMessage unchanged". Without this, every copyWith call that
+// omits the parameter silently resets a live error to null.
+const _kKeepError = Object();
+
 class EditProfileState {
   final EditProfileStatus status;
   final String  name;
@@ -46,7 +51,8 @@ class EditProfileState {
     String?  professionLabel,
     String?  profileImageUrl,
     bool?    isWorkerAccount,
-    String?  errorMessage,
+    // Pass a String to set, pass null to CLEAR, omit (default sentinel) to KEEP.
+    Object?  errorMessage = _kKeepError,
   }) {
     return EditProfileState(
       status:          status          ?? this.status,
@@ -56,7 +62,9 @@ class EditProfileState {
       professionLabel: professionLabel ?? this.professionLabel,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       isWorkerAccount: isWorkerAccount ?? this.isWorkerAccount,
-      errorMessage:    errorMessage,
+      errorMessage: identical(errorMessage, _kKeepError)
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
 }
@@ -101,6 +109,7 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
             professionLabel: worker.profession,
             profileImageUrl: worker.profileImageUrl,
             isWorkerAccount: true,
+            errorMessage:    null,
           );
         }
         return;
@@ -115,6 +124,7 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
           email:           authService.user?.email ?? user.email,
           phone:           user.phoneNumber ?? '',
           isWorkerAccount: false,
+          errorMessage:    null,
         );
       }
     } catch (e, st) {
@@ -220,6 +230,7 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
           name:            trimmedName,
           phone:           trimmedPhone,
           profileImageUrl: uploadedImageUrl,
+          errorMessage:    null,
         );
       }
       return true;
