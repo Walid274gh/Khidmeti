@@ -35,6 +35,14 @@
 //
 //   When maxPrice == minPrice (all bids equal), the price component collapses
 //   to 0 for all bids and ranking is driven entirely by rating — correct.
+//
+// ALGO FIX (submitBid — workerJobsCompleted field):
+//   workerJobsCompleted was populated from worker.ratingCount instead of
+//   worker.jobsCompleted. ratingCount is the number of ratings received, NOT
+//   the number of jobs completed — these diverge when clients don't always
+//   leave a rating. A worker with 200 completed jobs but only 40 ratings would
+//   appear to clients as having completed 40 jobs — understating experience.
+//   Fix: use worker.jobsCompleted.
 
 import 'dart:math';
 
@@ -109,6 +117,9 @@ class WorkerBidService {
   /// FIX (Critical): status write uses .name ('awaitingSelection') to match
   ///   what ServiceRequestEnhancedModel.toMap() writes.
   /// FIX (Warning): message length capped at _maxMessageLength = 500 chars.
+  /// ALGO FIX (submitBid): workerJobsCompleted now uses worker.jobsCompleted
+  ///   (not worker.ratingCount — ratings ≠ completed jobs when clients skip
+  ///   leaving a review).
   Future<WorkerBidModel> submitBid({
     required String requestId,
     required WorkerModel worker,
@@ -159,7 +170,10 @@ class WorkerBidService {
       workerId: worker.id,
       workerName: worker.name,
       workerAverageRating: worker.averageRating,
-      workerJobsCompleted: worker.ratingCount,
+      // ALGO FIX: use jobsCompleted, not ratingCount.
+      // ratingCount = number of ratings received (clients may skip rating).
+      // jobsCompleted = actual number of jobs finished — the correct field.
+      workerJobsCompleted: worker.jobsCompleted,
       workerProfileImageUrl: worker.profileImageUrl,
       proposedPrice: proposedPrice,
       estimatedMinutes: estimatedMinutes,

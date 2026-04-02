@@ -15,6 +15,10 @@
 // ALGO FIX (composite score): _sortAndLimit previously sorted by distance
 // only, ignoring rating entirely. Replaced with RankingUtils.workerScore
 // (rating 40% + distance 35% + response rate 15% + recency 10%).
+//
+// ALGO FIX (A5): _sortAndLimit now passes a.data.ratingCount as reviewCount
+// to RankingUtils.workerScore() so the cold-start fallback activates for new
+// workers (reviewCount == 0) instead of suppressing them with a zero rating.
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -424,6 +428,10 @@ class SmartSearchService implements SmartSearchServiceInterface {
   /// NEW: RankingUtils.workerScore weights:
   ///   40% Bayesian rating, 35% proximity, 15% response rate, 10% recency.
   ///
+  /// ALGO FIX (A5): pass reviewCount so that workers with zero reviews use
+  /// the globalAverage cold-start fallback rather than being penalised with
+  /// a zero rating score.
+  ///
   /// Workers without response rate or last-active data use safe defaults
   /// (responseRate=1.0, daysSinceActive=0) so they are not penalised.
   List<GeoSearchResult<WorkerModel>> _sortAndLimit(
@@ -438,17 +446,19 @@ class SmartSearchService implements SmartSearchServiceInterface {
       return true;
     }).toList();
 
-    // FIX: composite score — descending (higher score = better match).
+    // FIX (A5): composite score — pass ratingCount for cold-start guard.
     unique.sort((a, b) {
       final scoreA = RankingUtils.workerScore(
         bayesianRatingValue: a.data.averageRating,
         distanceKm:          a.distance,
+        reviewCount:         a.data.ratingCount,   // FIX (A5)
         responseRate:        a.data.responseRate,
         daysSinceActive:     a.data.daysSinceActive,
       );
       final scoreB = RankingUtils.workerScore(
         bayesianRatingValue: b.data.averageRating,
         distanceKm:          b.distance,
+        reviewCount:         b.data.ratingCount,   // FIX (A5)
         responseRate:        b.data.responseRate,
         daysSinceActive:     b.data.daysSinceActive,
       );

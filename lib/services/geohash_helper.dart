@@ -16,6 +16,17 @@
 // MIGRATION: replace GeoHashHelper with GeoHashHelperExtended at all call sites
 // in lib/services/. geo_cell_utils.GeoHashHelper remains the canonical encoder
 // used by geographic_grid_service.dart and the grid layer.
+//
+// ALGO FIX (encode — boundary tie-breaking):
+//   encode() used `lng > mid` (strict greater-than) for the longitude bit
+//   while geo_cell_utils.GeoHashHelper uses `lng >= mid` (greater-or-equal).
+//   When a point falls exactly on a cell boundary (lng == mid), the two
+//   implementations produced different hash strings for the same coordinate,
+//   causing cell-ID mismatches between the grid layer and the service layer.
+//
+//   Fix: changed `lng > mid` → `lng >= mid` to match GeoHashHelper exactly.
+//   The latitude branch already used `lat > mid` (consistent with RFC
+//   geohash convention for latitude), which is left unchanged.
 
 import 'package:flutter/foundation.dart';
 
@@ -96,6 +107,13 @@ class GeoHashHelperExtended {
     12: 0.00015,
   };
 
+  /// Encodes [lat]/[lng] to a geohash of [precision] characters.
+  ///
+  /// ALGO FIX: changed `lng > mid` → `lng >= mid` for the longitude bit
+  /// decision. The previous strict greater-than caused a boundary mismatch
+  /// with GeoHashHelper (geo_cell_utils.dart) when lng fell exactly on a
+  /// cell midpoint — the two helpers produced different hash strings for
+  /// identical coordinates, breaking cell-ID lookups in the grid layer.
   static String encode(double lat, double lng, {int precision = _defaultPrecision}) {
     _validatePrecision(precision);
     _validateCoordinates(lat, lng);
@@ -111,7 +129,8 @@ class GeoHashHelperExtended {
       while (hash.length < precision) {
         if (isEven) {
           final mid = (lngRange[0] + lngRange[1]) / 2;
-          if (lng > mid) {
+          // FIX: >= to match GeoHashHelper boundary convention.
+          if (lng >= mid) {
             bit |= (1 << (_bitsPerChar - 1 - bits));
             lngRange[0] = mid;
           } else {
