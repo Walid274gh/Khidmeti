@@ -1,5 +1,6 @@
 // lib/services/repositories/firestore_cache.dart
 
+import 'dart:collection' show LinkedHashMap;
 import 'package:flutter/foundation.dart';
 
 // ============================================================================
@@ -20,12 +21,26 @@ class _CachedItem<T> {
 // CACHE
 // ============================================================================
 
+/// In-memory TTL cache backed by a [LinkedHashMap].
+///
+/// FIX (A6): replaced `Map<String, _CachedItem<T>>` with [LinkedHashMap]
+/// preserving insertion order. This makes _evictOldest() O(1) — simply
+/// remove the first key — instead of the previous O(n) full scan on every
+/// cache-full write.
+///
+/// Eviction strategy: insertion-order LRU (oldest inserted entry first).
+/// Access does not promote an entry; use [touch] if you need true LRU.
+/// For a read-heavy cache where recency-of-write is a better TTL proxy
+/// than recency-of-read (the common case here), insertion order is correct.
 class FirestoreCache<T> {
   final Duration ttl;
   final int maxSize;
   final String _tag;
 
-  final Map<String, _CachedItem<T>> _store = {};
+  // FIX (A6): LinkedHashMap preserves insertion order, enabling O(1) oldest
+  // entry removal via _store.keys.first without a full scan.
+  final LinkedHashMap<String, _CachedItem<T>> _store =
+      LinkedHashMap<String, _CachedItem<T>>();
 
   FirestoreCache({
     required this.ttl,
@@ -52,6 +67,9 @@ class FirestoreCache<T> {
   // --------------------------------------------------------------------------
 
   void set(String key, T value) {
+    // Remove first so a re-insert moves the key to the end (newest position).
+    // This keeps insertion order accurate when updating an existing entry.
+    _store.remove(key);
     if (_store.length >= maxSize) _evictOldest();
     _store[key] = _CachedItem(value);
   }
@@ -59,6 +77,7 @@ class FirestoreCache<T> {
   void update(String key, T Function(T existing) updater) {
     final existing = _store[key];
     if (existing != null) {
+      // Keep key at its current position — do not promote on update.
       _store[key] = _CachedItem(updater(existing.item));
     }
   }
@@ -83,17 +102,14 @@ class FirestoreCache<T> {
   // Private
   // --------------------------------------------------------------------------
 
+  /// O(1) eviction — removes the oldest-inserted entry.
+  ///
+  /// FIX (A6): the previous implementation iterated all entries to find the
+  /// minimum cachedAt timestamp — O(n) on every cache-full write. With a
+  /// LinkedHashMap the oldest entry is always first; removal is O(1).
   void _evictOldest() {
     if (_store.isEmpty) return;
-    String? oldestKey;
-    DateTime? oldestTime;
-    for (final entry in _store.entries) {
-      if (oldestTime == null ||
-          entry.value.cachedAt.isBefore(oldestTime)) {
-        oldestKey = entry.key;
-        oldestTime = entry.value.cachedAt;
-      }
-    }
-    if (oldestKey != null) _store.remove(oldestKey);
+    // LinkedHashMap.keys.first is the oldest inserted key — O(1).
+    _store.remove(_store.keys.first);
   }
 }
