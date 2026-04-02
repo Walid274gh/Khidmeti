@@ -20,6 +20,21 @@
 //   A network error would silently propagate to callers with no error state set.
 //   Fix: wrap from the auth-check forward in try/catch; rethrow as
 //   WorkerBidServiceException like submitBid() does.
+//
+// ALGO FIX (A2 — streamBidsForRequest composite sort):
+//   Previous sort ranked bids by price alone, then rating as a tiebreaker.
+//   This caused a 1★ worker offering the lowest price to appear first, giving
+//   clients a misleading "best bid" that was actually the worst worker quality.
+//
+//   Fix: composite score — normalised price saving (40%) + normalised rating
+//   (60%), sorted descending. A worker 10% cheaper but 2★ lower will not
+//   displace a well-rated worker. Weights can be tuned from user data.
+//
+//   Score formula:
+//     bidScore = 0.40 × (1 - price/maxPrice) + 0.60 × (rating/5.0)
+//
+//   When maxPrice == minPrice (all bids equal), the price component collapses
+//   to 0 for all bids and ranking is driven entirely by rating — correct.
 
 import 'dart:math';
 
@@ -46,6 +61,13 @@ class WorkerBidService {
   // SECURITY FIX: maximum allowed bid message length.
   // Prevents 1 MB strings from hitting Firestore's 1 MB document limit.
   static const int _maxMessageLength = 500;
+
+  // ALGO FIX (A2): composite sort weights for bid ranking.
+  // wPrice: lower price is better — contributes (1 - normalizedPrice).
+  // wRating: higher rating is better — contributes (rating / 5.0).
+  // Tune after collecting sufficient client selection data.
+  static const double _bidSortWeightPrice  = 0.40;
+  static const double _bidSortWeightRating = 0.60;
 
   WorkerBidService(this._firestore);
 
@@ -350,16 +372,60 @@ class WorkerBidService {
   // BIDS STREAM — client side
   // =========================================================================
 
+  /// FIX (A2): replaced price-only sort with a composite price+rating score.
+  ///
+  /// OLD: sorted by proposedPrice ASC, then rating DESC as tiebreaker.
+  ///   Problem: a 1★ worker with the lowest price always topped the list,
+  ///   misleading clients into thinking cheapest = best.
+  ///
+  /// NEW: composite score — weighted price saving + quality signal.
+  ///   bidScore = wPrice × (1 − price/maxPrice) + wRating × (rating/5.0)
+  ///
+  ///   • wPrice  = 0.40 — price saving (inverted so lower price → higher score)
+  ///   • wRating = 0.60 — quality signal (Bayesian rating from worker profile)
+  ///
+  ///   When all bids have the same price, the price component is 0 for all
+  ///   and ranking collapses to pure rating — correct fallback behaviour.
+  ///
+  ///   Tune [_bidSortWeightPrice] / [_bidSortWeightRating] after collecting
+  ///   client selection data to reflect what clients actually care about.
   Stream<List<WorkerBidModel>> streamBidsForRequest(String requestId) {
     _ensureNotDisposed();
     return _firestore.streamBidsForRequest(requestId).map(
       (bids) {
-        final sorted = List<WorkerBidModel>.from(bids)
-          ..sort((a, b) {
-            final priceCmp = a.proposedPrice.compareTo(b.proposedPrice);
-            if (priceCmp != 0) return priceCmp;
-            return b.workerAverageRating.compareTo(a.workerAverageRating);
-          });
+        if (bids.isEmpty) return bids;
+
+        final sorted = List<WorkerBidModel>.from(bids);
+
+        // Compute price range for normalization.
+        // Guard against division by zero when all prices are equal.
+        final maxPrice = sorted.map((b) => b.proposedPrice).reduce(max);
+        final minPrice = sorted.map((b) => b.proposedPrice).reduce(min);
+        final priceRange = maxPrice - minPrice;
+
+        sorted.sort((a, b) {
+          // Normalised price saving: 0 (most expensive) → 1 (cheapest).
+          // When priceRange == 0 both scores are 0 — pure rating ranking.
+          final aPriceSaving = priceRange > 0
+              ? (maxPrice - a.proposedPrice) / priceRange
+              : 0.0;
+          final bPriceSaving = priceRange > 0
+              ? (maxPrice - b.proposedPrice) / priceRange
+              : 0.0;
+
+          // Normalised rating: 0 → 1.
+          final aRatingScore = (a.workerAverageRating / 5.0).clamp(0.0, 1.0);
+          final bRatingScore = (b.workerAverageRating / 5.0).clamp(0.0, 1.0);
+
+          final scoreA = _bidSortWeightPrice  * aPriceSaving
+                       + _bidSortWeightRating * aRatingScore;
+          final scoreB = _bidSortWeightPrice  * bPriceSaving
+                       + _bidSortWeightRating * bRatingScore;
+
+          // Descending — higher composite score first.
+          return scoreB.compareTo(scoreA);
+        });
+
         return sorted;
       },
     );

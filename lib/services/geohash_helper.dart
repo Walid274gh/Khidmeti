@@ -1,4 +1,21 @@
 // lib/services/geohash_helper.dart
+//
+// FIX (A7 — duplicate class name): renamed GeoHashHelper → GeoHashHelperExtended.
+//
+// geo_cell_utils.dart defines a class also called GeoHashHelper (the canonical
+// pure-Dart geohash implementation used by geographic_grid_service.dart).
+// Having two classes with the same name in the same package caused:
+//   • Dart analyzer "Duplicate definition" errors in files that import both.
+//   • Silent shadowing bugs when one import masked the other, producing wrong
+//     geohash strings depending on import order.
+//
+// GeoHashHelperExtended is the richer service-layer variant (neighbour lookup,
+// radius expansion, cell-ID generation, full decode/bounds). It wraps the same
+// base32 algorithm but adds higher-level utilities not present in geo_cell_utils.
+//
+// MIGRATION: replace GeoHashHelper with GeoHashHelperExtended at all call sites
+// in lib/services/. geo_cell_utils.GeoHashHelper remains the canonical encoder
+// used by geographic_grid_service.dart and the grid layer.
 
 import 'package:flutter/foundation.dart';
 
@@ -18,7 +35,14 @@ class GeoHashException implements Exception {
       'GeoHashException: $message${code != null ? ' (Code: $code)' : ''}';
 }
 
-class GeoHashHelper {
+/// Extended geohash utilities for the service layer.
+///
+/// Provides neighbour traversal, radius expansion, cell-ID generation, and
+/// bounds computation on top of the standard base32 geohash algorithm.
+///
+/// For raw encoding/decoding, prefer [GeoHashHelper] from geo_cell_utils.dart
+/// (no external dependencies, fully unit-testable).
+class GeoHashHelperExtended {
   static const String _base32 = '0123456789bcdefghjkmnpqrstuvwxyz';
   static const int _base32Length = 32;
   static const int _bitsPerChar = 5;
@@ -512,14 +536,14 @@ class GeoHashHelper {
   }
 
   static void _logInfo(String message) {
-    if (kDebugMode) debugPrint('[GeoHashHelper] INFO: $message');
+    if (kDebugMode) debugPrint('[GeoHashHelperExtended] INFO: $message');
   }
 
   static void _logWarning(String message) {
-    if (kDebugMode) debugPrint('[GeoHashHelper] WARNING: $message');
+    if (kDebugMode) debugPrint('[GeoHashHelperExtended] WARNING: $message');
   }
 
   static void _logError(String method, dynamic error) {
-    if (kDebugMode) debugPrint('[GeoHashHelper] ERROR in $method: $error');
+    if (kDebugMode) debugPrint('[GeoHashHelperExtended] ERROR in $method: $error');
   }
 }

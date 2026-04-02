@@ -6,6 +6,12 @@
 // neighbours that's up to 2.4 s of serial latency that can be fully
 // parallelised. Replaced with Future.wait.
 //
+// ALGO FIX (parallelise neighboring wilayas): _searchNeighboringWilayas
+// previously awaited each wilaya search sequentially in a for-loop.
+// With N neighboring wilayas (typically 4–8), that was 400–2400 ms of
+// pure serial latency. Replaced with Future.wait — wall-clock time now
+// determined by the single slowest wilaya fetch, not their sum.
+//
 // ALGO FIX (composite score): _sortAndLimit previously sorted by distance
 // only, ignoring rating entirely. Replaced with RankingUtils.workerScore
 // (rating 40% + distance 35% + response rate 15% + recency 10%).
@@ -340,52 +346,71 @@ class SmartSearchService implements SmartSearchServiceInterface {
     }
   }
 
+  /// FIX (A1): replaced sequential for-loop with Future.wait to parallelise
+  /// all neighboring wilaya searches.
+  ///
+  /// OLD (serial): each wilaya awaited one at a time.
+  ///   With 4–8 neighbours × ~100–300 ms per Firestore fetch = 400–2400 ms
+  ///   of pure serial latency baked into every search that expands beyond the
+  ///   user's own wilaya.
+  ///
+  /// NEW (parallel): all wilaya fetches run concurrently via Future.wait.
+  ///   Wall-clock time = slowest single wilaya fetch, regardless of count.
+  ///   Typical improvement: 3–8× faster for the neighboring-wilaya stage.
+  ///
+  /// Note: searchedWilayaCodes is still updated after results arrive to avoid
+  /// duplicate fetches on future expansion stages.
   Future<List<GeoSearchResult<WorkerModel>>> _searchNeighboringWilayas(
     String serviceType,
     SearchContext context,
   ) async {
-    final results = <GeoSearchResult<WorkerModel>>[];
     final neighboringWilayas =
         wilayaManager.getNeighboringWilayas(context.userWilayaCode);
 
-    _logInfo('Searching ${neighboringWilayas.length} neighboring wilayas');
+    final unchecked = neighboringWilayas
+        .where((w) => !context.searchedWilayaCodes.contains(w.code))
+        .toList();
 
-    for (final wilaya in neighboringWilayas) {
-      if (context.searchedWilayaCodes.contains(wilaya.code)) {
-        continue;
-      }
+    if (unchecked.isEmpty) return [];
 
-      try {
-        final workers = await firestoreService.getWorkersInWilaya(
-          wilayaCode: wilaya.code,
-          serviceType: serviceType,
-          onlineOnly: true,
-        );
+    _logInfo('Searching ${unchecked.length} neighboring wilayas (parallel)');
 
-        context.searchedWilayaCodes.add(wilaya.code);
+    // FIX: fetch all neighboring wilayas concurrently.
+    final perWilayaResults = await Future.wait(
+      unchecked.map((wilaya) async {
+        try {
+          final workers = await firestoreService.getWorkersInWilaya(
+            wilayaCode: wilaya.code,
+            serviceType: serviceType,
+            onlineOnly: true,
+          );
 
-        final wilayaResults = workers
-            .map((worker) {
-              final distance =
-                  worker.distanceTo(context.userLat, context.userLng);
+          // Mark as searched regardless of result count to prevent re-fetch.
+          context.searchedWilayaCodes.add(wilaya.code);
 
-              return GeoSearchResult<WorkerModel>(
-                data: worker,
-                distance: distance,
-                cellId: worker.cellId ?? '',
-                wilayaCode: worker.wilayaCode ?? wilaya.code,
-                source: SearchResultSource.neighboringWilaya,
-              );
-            })
-            .where((result) => result.distance <= context.maxRadius)
-            .toList();
+          return workers
+              .map((worker) {
+                final distance =
+                    worker.distanceTo(context.userLat, context.userLng);
 
-        results.addAll(wilayaResults);
-      } catch (e) {
-        _logWarning('Error searching wilaya ${wilaya.code}: $e');
-      }
-    }
+                return GeoSearchResult<WorkerModel>(
+                  data: worker,
+                  distance: distance,
+                  cellId: worker.cellId ?? '',
+                  wilayaCode: worker.wilayaCode ?? wilaya.code,
+                  source: SearchResultSource.neighboringWilaya,
+                );
+              })
+              .where((result) => result.distance <= context.maxRadius)
+              .toList();
+        } catch (e) {
+          _logWarning('Error searching wilaya ${wilaya.code}: $e');
+          return <GeoSearchResult<WorkerModel>>[];
+        }
+      }),
+    );
 
+    final results = perWilayaResults.expand((r) => r).toList();
     _logInfo('Found ${results.length} workers in neighboring wilayas');
     return results;
   }
