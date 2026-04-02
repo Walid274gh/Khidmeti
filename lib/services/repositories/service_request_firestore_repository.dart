@@ -2,11 +2,25 @@
 //
 // TASK 2 FIX — Added streamWorkerAssignedRequests().
 //
-// NEW METHOD:
-//   streamWorkerAssignedRequests(workerId, {limit}): simple single-stream query
-//   for requests assigned to a specific worker. Used by WorkerHomeController
-//   dashboard. Previously the controller built this query via
-//   FirebaseFirestore.instance directly.
+// ALGO FIX — submitClientRating: replaced simple running average with
+// Bayesian average. Also persists ratingSum field so Bayesian is computable
+// from stored data without requiring raw review history.
+//
+// Bayesian formula: (m × C + Σratings) / (m + n)
+//   C = globalAverage (3.5 — recalibrate after 100+ real ratings)
+//   m = minReviews    (10   — tune based on platform worker density)
+//   n = reviewCount
+//   Σratings = ratingSum (new Firestore field — see manual steps below)
+//
+// Simple average defect: a worker with 1× 5★ had averageRating = 5.0,
+// outranking a 500× 4.8★ worker in search results. Bayesian pulls low-volume
+// ratings toward the global average, preventing cold-start inflation.
+//
+// MIGRATION NOTE (manual):
+//   Existing worker documents lack the ratingSum field.
+//   On first write, ratingSum is derived from averageRating × ratingCount
+//   (backward-compatible fallback in the transaction below).
+//   Run a backfill Cloud Function to pre-populate ratingSum for all workers.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,6 +38,11 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   static const String notificationsCollection = 'notifications';
 
   static const int _maxBidsToDecline = 50;
+
+  // ── Bayesian rating parameters ────────────────────────────────────────────
+  // Calibrate both after 100+ real reviews in production.
+  static const double _bayesianGlobalAvg = 3.5; // C — global platform average
+  static const int    _bayesianMinReviews = 10; // m — confidence threshold
 
   ServiceRequestFirestoreRepository(super.firestore);
 
@@ -273,17 +292,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // TASK 2 — WORKER HOME ASSIGNED REQUESTS STREAM
   // --------------------------------------------------------------------------
 
-  /// Streams service requests assigned to [workerId], ordered by createdAt
-  /// descending, limited to [limit] docs.
-  ///
-  /// This is a simpler single-stream query vs. streamWorkerServiceRequests
-  /// (which merges assigned + open marketplace listings for the browse view).
-  /// WorkerHomeController uses this for the dashboard summary — only requests
-  /// with this worker's ID, no open marketplace entries.
-  ///
-  /// Previously WorkerHomeController._subscribeToRequests() constructed this
-  /// query directly via FirebaseFirestore.instance. Now fully injected through
-  /// firestoreServiceProvider, making the controller testable.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerAssignedRequests(
       String workerId, {int limit = 30}) {
     if (workerId.trim().isEmpty) {
@@ -536,6 +544,21 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // RATING
   // --------------------------------------------------------------------------
 
+  /// FIX: replaced simple running average with Bayesian average.
+  ///
+  /// Simple average defect: a worker with 1× 5★ had averageRating = 5.0,
+  /// outranking a worker with 500× 4.8★ in search results. Bayesian rating
+  /// pulls new workers with few reviews toward the global platform average,
+  /// preventing cold-start workers from dominating rankings.
+  ///
+  /// Bayesian formula: (m × C + Σratings) / (m + n)
+  ///   C = [_bayesianGlobalAvg] = 3.5  (recalibrate after 100+ reviews)
+  ///   m = [_bayesianMinReviews] = 10  (tune based on worker density)
+  ///
+  /// ratingSum is persisted so Bayesian can be recomputed correctly on future
+  /// writes without needing to re-read raw review history. On first write for
+  /// existing workers, ratingSum is derived from averageRating × ratingCount
+  /// as a backward-compatible fallback (see comment below).
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
@@ -585,19 +608,35 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
               (workerSnap.data()?['averageRating'] as num?)
                   ?.toDouble() ??
               0.0;
+
+          // FIX: use stored ratingSum for Bayesian accuracy.
+          // Backward-compatible fallback: if ratingSum is missing (existing
+          // worker documents before this migration), derive it from
+          // averageRating × ratingCount. Run a backfill Cloud Function to
+          // pre-populate ratingSum on all existing worker documents.
+          final oldSum =
+              (workerSnap.data()?['ratingSum'] as num?)?.toDouble() ??
+              (oldAvg * oldCount);
+
           final newCount = oldCount + 1;
-          final newAvg = ((oldAvg * oldCount) + stars) / newCount;
+          final newSum   = oldSum + stars;
+
+          // Bayesian average: (m × C + Σratings) / (m + n)
+          final newBayesianAvg =
+              (_bayesianMinReviews * _bayesianGlobalAvg + newSum) /
+              (_bayesianMinReviews + newCount);
 
           tx.update(workerRef, {
-            'averageRating': newAvg,
-            'ratingCount': newCount,
-            'lastRating': stars,
-            'lastRatedAt': Timestamp.now(),
+            'averageRating': newBayesianAvg, // Bayesian, not simple avg
+            'ratingSum':     newSum,         // persisted for future writes
+            'ratingCount':   newCount,
+            'lastRating':    stars,
+            'lastRatedAt':   Timestamp.now(),
           });
         }
       }).timeout(FirestoreRepositoryBase.operationTimeout);
 
-      logInfo('Rating submitted: $stars ★ for $requestId');
+      logInfo('Rating submitted: $stars ★ for $requestId (Bayesian avg updated)');
     } catch (e) {
       logError('submitClientRating', e);
       if (e is FirestoreServiceException) rethrow;
