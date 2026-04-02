@@ -43,6 +43,30 @@ class WorkerModel extends Equatable {
   // Firestore documents that do not yet have the field.
   final int jobsCompleted;
 
+  // ALGO FIX: responseRate and daysSinceActive added to unlock the full
+  // composite ranking score in SmartSearchService._sortAndLimit().
+  //
+  // Previously the ranking fell back to (data as dynamic).responseRate which
+  // always returned null → defaulted to 1.0 / 0, masking real signal.
+  //
+  // responseRate (0.0–1.0):
+  //   Fraction of job requests the worker accepted vs. received.
+  //   Computed server-side by the onJobAction Cloud Function and written to
+  //   the worker document. fromMap defaults to 1.0 so existing workers are
+  //   not penalised before backfill.
+  //
+  // daysSinceActive (0–∞):
+  //   Days since the worker's last isOnline=true → isOnline=false transition,
+  //   or 0 if currently online. Stored as lastActiveAt (Timestamp) and
+  //   computed at read time so it stays accurate without re-writes.
+  //   fromMap computes it from lastActiveAt if present; defaults to 0.
+  //
+  // Firestore fields:
+  //   workers/{id}.responseRate      — double, written by Cloud Function
+  //   workers/{id}.lastActiveAt      — Timestamp, written by presence system
+  final double responseRate;
+  final int    daysSinceActive;
+
   const WorkerModel({
     required this.id,
     required this.name,
@@ -61,6 +85,8 @@ class WorkerModel extends Equatable {
     this.averageRating = 0.0,
     this.ratingCount = 0,
     this.jobsCompleted = 0,
+    this.responseRate = 1.0,
+    this.daysSinceActive = 0,
   });
 
   factory WorkerModel.fromMap(Map<String, dynamic> map, String id) {
@@ -85,6 +111,16 @@ class WorkerModel extends Equatable {
       // Fallback to ratingCount for documents that pre-date this field.
       jobsCompleted:
           map['jobsCompleted'] as int? ?? map['ratingCount'] as int? ?? 0,
+      // Default 1.0 — existing workers are not penalised before Cloud Function backfill.
+      responseRate:
+          (map['responseRate'] as num?)?.toDouble() ?? 1.0,
+      // Compute from lastActiveAt Timestamp if available; default 0 (treat as active).
+      daysSinceActive: () {
+        final ts = map['lastActiveAt'] as Timestamp?;
+        if (ts == null) return 0;
+        final diff = DateTime.now().difference(ts.toDate());
+        return diff.inDays.clamp(0, 9999);
+      }(),
     );
   }
 
@@ -107,6 +143,10 @@ class WorkerModel extends Equatable {
       'averageRating': averageRating,
       'ratingCount': ratingCount,
       'jobsCompleted': jobsCompleted,
+      // responseRate and lastActiveAt are owned by Cloud Functions —
+      // not written by the client. Excluded from toMap() intentionally
+      // to prevent accidental overwrites. They are read-only from the
+      // client perspective (populated via fromMap).
     };
   }
 
@@ -139,6 +179,8 @@ class WorkerModel extends Equatable {
     double? averageRating,
     int? ratingCount,
     int? jobsCompleted,
+    double? responseRate,
+    int? daysSinceActive,
   }) {
     return WorkerModel(
       id: id ?? this.id,
@@ -172,6 +214,8 @@ class WorkerModel extends Equatable {
       averageRating: averageRating ?? this.averageRating,
       ratingCount: ratingCount ?? this.ratingCount,
       jobsCompleted: jobsCompleted ?? this.jobsCompleted,
+      responseRate: responseRate ?? this.responseRate,
+      daysSinceActive: daysSinceActive ?? this.daysSinceActive,
     );
   }
 
@@ -194,5 +238,7 @@ class WorkerModel extends Equatable {
         averageRating,
         ratingCount,
         jobsCompleted,
+        responseRate,
+        daysSinceActive,
       ];
 }
