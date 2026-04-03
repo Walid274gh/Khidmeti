@@ -1,4 +1,14 @@
 // lib/screens/service_request/widgets/step_service_type.dart
+//
+// [AUTO FIX] _isAsap: replaced day/month/year equality check with a full
+//   DateTime comparison. Previously, _isAsap returned true for any time on
+//   today's date — including "today at 23:59" — which is not ASAP. The correct
+//   semantic is: the scheduled datetime is within the next 2 hours of now,
+//   meaning the worker should arrive as soon as possible.
+//
+//   The 2-hour window matches the typical request-to-arrival SLA and is wide
+//   enough to survive normal GPS/form interaction delays without prematurely
+//   de-highlighting the ASAP pill.
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -47,11 +57,26 @@ class StepServiceType extends StatelessWidget {
 
   // ── Schedule detection helpers ────────────────────────────────────────────
 
+  /// [AUTO FIX] Full DateTime comparison: ASAP means the combined scheduled
+  /// date+time is within 2 hours of now — not merely on today's calendar date.
+  ///
+  /// OLD (wrong): checked day/month/year equality only — "today at 23:59"
+  ///   would highlight the ASAP pill even though that is hours away.
+  ///
+  /// NEW (correct): build a full DateTime from scheduledDate + scheduledTime,
+  ///   then check that it falls within the [now, now + 2h] window.
   bool get _isAsap {
     final now = DateTime.now();
-    return scheduledDate.day == now.day &&
-        scheduledDate.month == now.month &&
-        scheduledDate.year == now.year;
+    final scheduled = DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      scheduledTime.hour,
+      scheduledTime.minute,
+    );
+    final twoHoursFromNow = now.add(const Duration(hours: 2));
+    // Active if scheduled is in the past (already overdue ASAP) or within 2h.
+    return !scheduled.isAfter(twoHoursFromNow);
   }
 
   bool get _isTodayEvening {
@@ -102,7 +127,6 @@ class StepServiceType extends StatelessWidget {
           const SizedBox(height: AppConstants.spacingLg),
 
           // ── Circular chip row — mirrors HomeServiceGrid ───────────
-          // Overflow of services handled by "Tout voir" → sheet with search.
           ServiceSelectionRow(
             selected: selected,
             isDark: isDark,
