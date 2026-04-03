@@ -43,6 +43,16 @@
 //   leave a rating. A worker with 200 completed jobs but only 40 ratings would
 //   appear to clients as having completed 40 jobs — understating experience.
 //   Fix: use worker.jobsCompleted.
+//
+// [LOGIC-APPLY FIX] submitBid — own-request guard:
+//   A worker could submit a bid on a request they created themselves (a user
+//   who registered as both a client and a worker using the same account).
+//   This poisons the bid list with a self-referential entry and could let a
+//   malicious actor game the bidding system.
+//
+//   Fix: inside the transaction, compare reqData['userId'] with worker.id.
+//   If they match, throw WorkerBidServiceException with code OWN_REQUEST.
+//   This check runs inside the atomic transaction so it cannot be raced.
 
 import 'dart:math';
 
@@ -120,6 +130,8 @@ class WorkerBidService {
   /// ALGO FIX (submitBid): workerJobsCompleted now uses worker.jobsCompleted
   ///   (not worker.ratingCount — ratings ≠ completed jobs when clients skip
   ///   leaving a review).
+  /// [LOGIC-APPLY FIX] own-request guard: prevents a worker from bidding on
+  ///   a request they created themselves. Check runs inside the transaction.
   Future<WorkerBidModel> submitBid({
     required String requestId,
     required WorkerModel worker,
@@ -214,6 +226,19 @@ class WorkerBidService {
         }
 
         final reqData = reqSnap.data()!;
+
+        // [LOGIC-APPLY FIX] own-request guard — inside the transaction so
+        // it cannot be raced. Compares the request creator's userId with the
+        // bidding worker's id. A dual-role account (user who is also a worker)
+        // must not be allowed to bid on their own service request.
+        final requestUserId = reqData['userId'] as String?;
+        if (requestUserId != null && requestUserId == worker.id) {
+          throw WorkerBidServiceException(
+            'Cannot submit a bid on your own service request',
+            code: 'OWN_REQUEST',
+          );
+        }
+
         final statusStr = reqData['status'] as String? ?? '';
 
         // Accept both .name ('open', 'awaitingSelection') and legacy
