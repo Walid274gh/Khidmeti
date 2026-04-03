@@ -32,6 +32,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   // finished — and reports it directly to the controller.
   bool _brandingAnimationDone = false;
 
+  // FIX [S6]: retry counter used as a key discriminator for SplashBranding.
+  // Each call to retry() increments this counter, which forces Flutter to
+  // destroy and re-create the SplashBranding widget — replaying the animation.
+  // Without this, retrying after an error leaves _brandingAnimationDone=true
+  // on the controller (preserved by [S1]) but the widget tree is the same
+  // object, so onAnimationComplete() never fires a second time.
+  int _retryCount = 0;
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
@@ -55,8 +63,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   void _resetGate() {
-    // Only the UI-owned flag needs resetting. The controller resets its own
-    // internal state (including the timer) inside initialize().
+    // FIX [S6]: increment _retryCount so SplashBranding gets a new UniqueKey
+    // and Flutter rebuilds it from scratch, re-triggering the animation.
+    // _brandingAnimationDone is intentionally NOT reset here — the controller's
+    // [S1] fix will already have preserved _isAnimationComplete=true when the
+    // animation completed before the error. The two fixes work together:
+    //   • [S1] in controller: if animation was done, keep the gate open.
+    //   • [S6] in screen: if animation was NOT done, force a fresh widget so
+    //     the animation fires again and the gate can be opened.
+    if (!_brandingAnimationDone) {
+      setState(() => _retryCount++);
+    }
+    // Always reset the local tracking flag so the screen stays consistent.
     _brandingAnimationDone = false;
   }
 
@@ -133,7 +151,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   const SizedBox(height: AppConstants.spacingXl),
 
                   // ── Branding ───────────────────────────────────────────
+                  // FIX [S6]: ValueKey built from _retryCount forces Flutter
+                  // to destroy + re-create SplashBranding on each retry, so
+                  // the animation replays and onAnimationComplete() fires again.
+                  // On the first render _retryCount=0, so the key is stable and
+                  // the widget is never needlessly rebuilt during normal flow.
                   SplashBranding(
+                    key:                 ValueKey('branding_$_retryCount'),
                     isDark:              isDark,
                     onAnimationComplete: _onBrandingAnimationComplete,
                   ),
