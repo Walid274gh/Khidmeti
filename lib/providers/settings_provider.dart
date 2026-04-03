@@ -10,6 +10,13 @@
 // FIX (Settings Audit P1): SettingsNotifier was calling
 // FirebaseAnalytics.instance.logEvent() directly from the state layer.
 // Fix: replaced with ref.read(analyticsServiceProvider) calls.
+//
+// FIX [AUTO] deleteAccount — FCM tokens cleared before Auth deletion.
+// FIX [AUTO] deleteAccount — prefs.clear() moved after confirmed deletion so
+//   re-authentication (requires-recent-login) leaves prefs intact and the
+//   account remains accessible.
+// FIX [AUTO] deleteAccount — prefs.clear() replaced with targeted key removal
+//   so unrelated local preferences (theme, locale, etc.) survive.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -257,6 +264,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// FIX (P2): status: SettingsStatus.deletingAccount replaces isDeletingAccount: true.
   /// FIX (Settings Audit P1): replaced FirebaseAnalytics.instance.logEvent()
   ///   with ref.read(analyticsServiceProvider).logUserDeletedAccount().
+  /// FIX [AUTO]: FCM tokens cleared before Auth deletion (best-effort).
+  /// FIX [AUTO]: prefs cleared AFTER confirmed deletion so requires-recent-login
+  ///   errors leave the account accessible with prefs intact.
+  /// FIX [AUTO]: prefs.clear() replaced with targeted key removal — only
+  ///   auth/account keys are wiped; unrelated prefs (theme, locale, etc.) survive.
   Future<String?> deleteAccount() async {
     if (!mounted) return null;
     // Guard: use compat getter — reads status == SettingsStatus.deletingAccount
@@ -267,6 +279,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
     final cachedRoleNotifier = _ref.read(cachedUserRoleProvider.notifier);
     final authService        = _ref.read(authServiceProvider);
+    final firestoreService   = _ref.read(firestoreServiceProvider);
+    final uid                = authService.user?.uid;
 
     _ref.read(analyticsServiceProvider).logUserDeletedAccount(
       accountType: state.isWorkerAccount ? 'worker' : 'client',
@@ -275,9 +289,26 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     try {
       cachedRoleNotifier.state = UserRole.unknown;
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // FIX [AUTO]: clear FCM tokens from Firestore before deleting the Auth
+      // account. This is best-effort — a failure here does not abort deletion,
+      // but Cloud Function cleanup (idempotent) is the authoritative backstop.
+      if (uid != null) {
+        try {
+          await firestoreService.updateUserFcmToken(uid, '');
+          if (state.isWorkerAccount) {
+            await firestoreService.updateWorkerFcmToken(uid, '');
+          }
+          AppLogger.info(
+              'SettingsNotifier.deleteAccount: FCM tokens cleared uid=$uid');
+        } catch (fcmError) {
+          AppLogger.warning(
+              'SettingsNotifier.deleteAccount: FCM cleanup failed — $fcmError');
+        }
+      }
 
+      // FIX [AUTO]: attempt deletion BEFORE clearing prefs. If Auth requires
+      // re-authentication (requires-recent-login), the error is returned here
+      // and prefs remain intact so the user stays logged in and can retry.
       final errorKey = await authService.deleteAccount();
       if (errorKey != null) {
         if (mounted) {
@@ -291,6 +322,20 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           );
         }
         return errorKey;
+      }
+
+      // Deletion confirmed — now safe to remove auth-related local data.
+      // FIX [AUTO]: targeted removal instead of prefs.clear() so unrelated
+      // preferences are not destroyed (theme, locale, notification settings…).
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(PrefKeys.accountRole);
+        // Extend this list with any other auth-scoped pref keys as they are added.
+        AppLogger.info('SettingsNotifier.deleteAccount: local auth prefs cleared');
+      } catch (prefsError) {
+        // Non-fatal — account is already deleted; local cleanup is best-effort.
+        AppLogger.warning(
+            'SettingsNotifier.deleteAccount: prefs cleanup failed — $prefsError');
       }
 
       return null;

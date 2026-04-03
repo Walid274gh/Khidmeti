@@ -77,12 +77,21 @@ class SplashController extends StateNotifier<SplashState> {
   // Mutex: prevents concurrent initialize() calls (e.g. double-tap retry).
   bool _isInitializing = false;
 
+  // FIX [AUTO]: stored Timer reference so it can be cancelled on retry —
+  // prevents a stale timer from a prior init firing into a fresh session.
+  Timer? _minDurationTimer;
+
   /// Minimum time the splash is visible — prevents a jarring instant transition
   /// on fast devices where auth resolves before the logo animation finishes.
   static const Duration _kMinSplashDuration = Duration(seconds: 3);
 
   /// Global timeout for the full init sequence.
   static const Duration _globalInitTimeout  = Duration(seconds: 15);
+
+  /// Timeout applied to the Firestore role-resolution call.
+  // FIX [AUTO]: isolated timeout so a slow Firestore read doesn't consume the
+  // entire global init budget. 5 s is generous on 3G; falls back to client.
+  static const Duration _kRoleResolveTimeout = Duration(seconds: 5);
 
   SplashController(this._ref) : super(const SplashState());
 
@@ -98,6 +107,11 @@ class SplashController extends StateNotifier<SplashState> {
       _isAnimationComplete  = false;
       _isAuthChecked        = false;
       _isMinDurationElapsed = false;
+
+      // FIX [AUTO]: cancel any in-flight timer from a previous initialize()
+      // call so stale callbacks cannot fire into this fresh session.
+      _minDurationTimer?.cancel();
+      _minDurationTimer = null;
 
       if (!mounted) return;
       state = const SplashState(phase: SplashPhase.initializing);
@@ -172,7 +186,9 @@ class SplashController extends StateNotifier<SplashState> {
   // --------------------------------------------------------------------------
 
   void _armMinDurationTimer() {
-    Future.delayed(_kMinSplashDuration, () {
+    // FIX [AUTO]: assign to _minDurationTimer so initialize() can cancel it
+    // on retry before arming a fresh timer, preventing double-fire.
+    _minDurationTimer = Timer(_kMinSplashDuration, () {
       if (!mounted) return;
       _isMinDurationElapsed = true;
       _updateState();
@@ -198,11 +214,31 @@ class SplashController extends StateNotifier<SplashState> {
 
   /// Resolves role from Firestore on cold launch and caches it in-memory
   /// and in SharedPreferences.
+  ///
+  /// FIX [AUTO]: wrapped in a 5-second timeout so a stalled Firestore call
+  /// does not consume the full global init budget. On timeout the role falls
+  /// back to client — the same safe default used for other network errors.
   Future<void> _resolveAndCacheRole(String uid) async {
     try {
       final firestoreService = _ref.read(firestoreServiceProvider);
-      final worker = await firestoreService.getWorker(uid);
-      final role   = worker != null ? UserRole.worker : UserRole.client;
+
+      // FIX [AUTO]: apply per-call timeout independently of the global init
+      // timeout so role resolution cannot monopolise the full 15 s budget.
+      final worker = await firestoreService
+          .getWorker(uid)
+          .timeout(
+            _kRoleResolveTimeout,
+            onTimeout: () {
+              AppLogger.warning(
+                'SplashController._resolveAndCacheRole: '
+                '${_kRoleResolveTimeout.inSeconds}s timeout — '
+                'falling back to client role for uid=$uid',
+              );
+              return null; // treat as "not a worker" — safe fallback
+            },
+          );
+
+      final role = worker != null ? UserRole.worker : UserRole.client;
 
       // FIX (Suggestion 1): use setCachedUserRole helper instead of direct
       // state write so the write-guard contract is respected.
