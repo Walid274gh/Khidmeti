@@ -1,4 +1,15 @@
 // lib/services/service_request_service.dart
+//
+// [AUTO FIX] completeServiceRequest: status guard updated from
+//   ServiceStatus.accepted → ServiceStatus.bidSelected to match the hybrid bid
+//   model. The `accepted` status is never set in the current flow, so the old
+//   guard made it impossible to complete any job.
+//
+// [AUTO FIX] _validateCoordinates: added (0.0, 0.0) zero-coordinate guard.
+//   lat=0.0/lng=0.0 is the default value emitted before the device GPS lock
+//   is acquired (Null Island, Gulf of Guinea). Submitting a request with these
+//   coordinates places it in the wrong wilaya and makes it invisible to workers
+//   in the client's actual location.
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -111,16 +122,8 @@ class ServiceRequestService {
             },
           );
 
-      // FIX (Backend P0): ID was previously a millisecond timestamp, which is
-      // not collision-safe when two users submit within the same millisecond.
-      // A duplicate ID caused a silent Firestore overwrite of the first request.
       final requestId = _generateRequestId();
 
-      // FIX (Architect P0): New requests are created with ServiceStatus.open
-      // so they are immediately visible to workers via streamAvailableRequests.
-      // The previous status (ServiceStatus.pending) was not included in any
-      // worker-facing query, making every newly submitted request invisible
-      // until a non-existent transition job ran.
       final request = ServiceRequestEnhancedModel(
         id: requestId,
         userId: userId.trim(),
@@ -195,12 +198,6 @@ class ServiceRequestService {
   }
 
   // DEPRECATED (Architect P0): This method belongs to the pre-hybrid model.
-  // It validates against ServiceStatus.pending and sets ServiceStatus.accepted —
-  // neither status participates in the hybrid bid flow. Calling this method on
-  // a request that is in bidSelected or inProgress state will corrupt its status.
-  //
-  // USE INSTEAD: WorkerBidService.acceptBid() — performs the correct
-  // acceptBidTransaction (open → bidSelected) with full atomicity.
   @Deprecated(
     'Use WorkerBidService.acceptBid() instead. '
     'This method operates on the legacy ServiceStatus.pending / accepted model '
@@ -219,6 +216,15 @@ class ServiceRequestService {
     );
   }
 
+  /// [AUTO FIX] Status guard updated: ServiceStatus.accepted → bidSelected.
+  ///
+  /// In the hybrid bid model the request transitions:
+  ///   open → awaitingSelection → bidSelected → inProgress → completed
+  ///
+  /// `accepted` is a legacy status that is never written in the current flow.
+  /// The old guard (`accepted || inProgress`) made completeServiceRequest
+  /// unreachable via the normal worker-completes-job path because the request
+  /// would always be in `bidSelected` or `inProgress` — never `accepted`.
   Future<void> completeServiceRequest({
     required String requestId,
     String? workerNotes,
@@ -252,10 +258,13 @@ class ServiceRequestService {
         );
       }
 
-      if (request.status != ServiceStatus.accepted &&
+      // [AUTO FIX] Accept bidSelected (hybrid model) OR inProgress.
+      // Legacy `accepted` status is never set in the hybrid bid flow.
+      if (request.status != ServiceStatus.bidSelected &&
           request.status != ServiceStatus.inProgress) {
         throw ServiceRequestServiceException(
-          'Service request cannot be completed. Current status: ${request.status}',
+          'Service request cannot be completed. Current status: ${request.status.name}. '
+          'Expected bidSelected or inProgress.',
           code: 'INVALID_STATUS',
         );
       }
@@ -556,7 +565,21 @@ class ServiceRequestService {
     }
   }
 
+  /// [AUTO FIX] Added zero-coordinate guard (lat=0.0, lng=0.0).
+  ///
+  /// (0.0, 0.0) is "Null Island" in the Gulf of Guinea — the default value
+  /// returned by position APIs before a real GPS fix is obtained. Submitting
+  /// a request with these coordinates assigns it to the wrong wilaya and makes
+  /// it invisible to workers in the client's actual location.
   void _validateCoordinates(double latitude, double longitude) {
+    if (latitude == 0.0 && longitude == 0.0) {
+      throw ServiceRequestServiceException(
+        'Location not yet acquired. Please wait for a valid GPS fix before '
+        'submitting a request.',
+        code: 'LOCATION_NOT_ACQUIRED',
+      );
+    }
+
     if (latitude < -90 || latitude > 90) {
       throw ServiceRequestServiceException(
         'Invalid latitude: $latitude (must be between -90 and 90)',
@@ -615,10 +638,6 @@ class ServiceRequestService {
     }
   }
 
-  // FIX (Backend P0): Changed from millisecond timestamp to UUID v4.
-  // The timestamp approach is not collision-safe: two simultaneous submissions
-  // within the same millisecond produce the same ID and a silent Firestore
-  // overwrite destroys the first request with no error.
   String _generateRequestId() {
     return const Uuid().v4();
   }

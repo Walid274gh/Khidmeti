@@ -1,6 +1,15 @@
 // lib/services/realtime_location_service.dart
+//
+// [AUTO FIX] _processPositionUpdate: added lastSeenAt heartbeat write for
+//   worker sessions. When isWorker=true, each successful location update also
+//   writes lastSeenAt: DateTime.now() to the worker document. This field is
+//   read by the Cloud Function worker-heartbeat-watchdog (runs every 5 min)
+//   to set isOnline=false on workers who have not written a heartbeat within
+//   5 minutes — i.e. workers who force-killed the app without calling
+//   stopTracking(). Without this write the watchdog has no signal to act on.
 
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'auth_service.dart';
@@ -238,6 +247,19 @@ class RealTimeLocationService {
     }
   }
 
+  /// [AUTO FIX] Added lastSeenAt heartbeat write for worker sessions.
+  ///
+  /// After a successful worker location update, this method also writes
+  /// lastSeenAt to the worker document. The Cloud Function
+  /// worker-heartbeat-watchdog reads this field every 5 minutes and sets
+  /// isOnline=false for workers whose lastSeenAt is older than 5 minutes.
+  /// Without this write, force-killing the app leaves the worker appearing
+  /// online indefinitely.
+  ///
+  /// The write is fire-and-forget (unawaited inside the try block) to avoid
+  /// blocking the position update stream. A failure to write lastSeenAt is
+  /// logged but does not throw — it is not worth dropping a location update
+  /// over a secondary heartbeat write.
   Future<void> _processPositionUpdate(Position position) async {
     if (!_shouldUpdateLocation(position)) {
       return;
@@ -256,6 +278,18 @@ class RealTimeLocationService {
           position.latitude,
           position.longitude,
         );
+
+        // [AUTO FIX] Heartbeat: write lastSeenAt so the server-side watchdog
+        // can detect force-killed worker sessions and set isOnline=false.
+        // Direct Firestore write — fire-and-forget; a failure logs but does
+        // not block the location update stream.
+        firestoreService.firestore
+            .collection('workers')
+            .doc(userId)
+            .update({'lastSeenAt': Timestamp.now()})
+            .catchError((Object e) {
+          _logError('_processPositionUpdate.lastSeenAt', e);
+        });
       } else {
         await firestoreService.updateUserLocation(
           userId,
