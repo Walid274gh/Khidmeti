@@ -47,6 +47,14 @@
 // [AUTO FIX] submitClientRating: replaced hardcoded 'workers' string with
 //   _workersCollection constant to eliminate magic strings and ease future
 //   collection renames.
+//
+// [B3/B7 FIX] streamWorkerServiceRequests:
+//   assignedSub: added .limit(50) — prevents scanning a worker's full history.
+//   openSub: added optional wilayaCode scoping + .limit(50) — replaces the
+//   previous platform-wide scan (.where('workerId', isNull: true) with no
+//   geographic or profession filter). When wilayaCode is provided the query is
+//   restricted to the worker's wilaya; without it the stream still falls back
+//   to unscoped (backward-compatible) but is capped at 50 documents.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -211,8 +219,22 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
             _parseRequestList(s.docs, 'streamUserServiceRequests'));
   }
 
+  // [B3/B7 FIX] Signature extended with optional wilayaCode parameter.
+  //
+  // assignedSub: added .limit(50) — a worker's full job history could be
+  // thousands of documents; cap to the most recent 50.
+  //
+  // openSub: two changes:
+  //   1. Added .where('wilayaCode', isEqualTo: wilayaCode) when wilayaCode
+  //      is supplied — replaces the previous platform-wide scan that read
+  //      every open/awaitingSelection request across all regions.
+  //   2. Added .limit(50) — caps unscoped fallback (backward-compatible).
+  //
+  // Callers that already know the worker's wilayaCode (WorkerJobsController)
+  // should pass it in. Callers that cannot yet provide it fall back to the
+  // unscoped query, which is now at least bounded to 50 documents.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerServiceRequests(
-      String workerId) {
+      String workerId, {int? wilayaCode}) {
     if (workerId.trim().isEmpty) {
       logWarning(
           'streamWorkerServiceRequests called with empty workerId');
@@ -237,10 +259,12 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
     controller = StreamController<List<ServiceRequestEnhancedModel>>.broadcast(
       onListen: () {
+        // [B3 FIX] Added .limit(50) — prevents full history scans.
         assignedSub = firestore
             .collection(serviceRequestsCollection)
             .where('workerId', isEqualTo: workerId)
             .orderBy('createdAt', descending: true)
+            .limit(50)
             .snapshots()
             .listen(
           (s) {
@@ -254,14 +278,26 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
           },
         );
 
-        openSub = firestore
+        // [B7 FIX] Added wilayaCode scoping + .limit(50).
+        // When wilayaCode is known, the query is restricted to the worker's
+        // wilaya instead of scanning all open requests platform-wide.
+        // Without wilayaCode the query falls back to unscoped but is still
+        // capped at 50 documents (vs. the previous unbounded scan).
+        Query<Map<String, dynamic>> openQuery = firestore
             .collection(serviceRequestsCollection)
             .where('status', whereIn: [
               ServiceStatus.open.name,
               ServiceStatus.awaitingSelection.name,
             ])
-            .where('workerId', isNull: true)
+            .where('workerId', isNull: true);
+
+        if (wilayaCode != null) {
+          openQuery = openQuery.where('wilayaCode', isEqualTo: wilayaCode);
+        }
+
+        openSub = openQuery
             .orderBy('createdAt', descending: true)
+            .limit(50)
             .snapshots()
             .listen(
           (s) {
@@ -576,9 +612,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         final req = ServiceRequestEnhancedModel.fromMap(
             reqSnap.data()!, reqSnap.id);
 
-        // [AUTO FIX] Status guard: accept bidSelected (hybrid model) or
-        // inProgress. The old guard checked for `accepted` which is the
-        // legacy pre-bid status and is never reached in the hybrid flow.
         if (req.status != ServiceStatus.bidSelected &&
             req.status != ServiceStatus.inProgress) {
           throw FirestoreServiceException(
@@ -613,10 +646,7 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
   /// [AUTO FIX] cancelRequest: wrapped in a Firestore transaction that
   /// atomically sets the request status to cancelled AND batch-declines all
-  /// pending bids on that request. Without this transaction a worker could
-  /// have their bid accepted in the same instant the client cancels, leaving
-  /// the request in bidSelected state while the client believes it is
-  /// cancelled.
+  /// pending bids on that request.
   Future<void> cancelRequest(String requestId) async {
     ensureNotDisposed();
     if (requestId.trim().isEmpty) {
@@ -656,11 +686,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
       }).timeout(const Duration(seconds: 20));
 
-      // Batch-decline all pending bids outside the transaction.
-      // Firestore transactions cannot include collection-group queries,
-      // so we do this as a best-effort post-cancel batch write.
-      // The acceptBidTransaction guard on the bid side ensures no bid
-      // can be accepted after the request is cancelled.
       final pendingBids = await firestore
           .collection(workerBidsCollection)
           .where('serviceRequestId', isEqualTo: requestId)
@@ -724,14 +749,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // RATING
   // --------------------------------------------------------------------------
 
-  /// FIX: replaced simple running average with Bayesian average.
-  /// [LOGIC-APPLY FIX]: added isRatedByClient guard — throws ALREADY_RATED
-  /// inside the transaction if the request was already rated. This prevents
-  /// double-writes on network-retry or rapid double-tap scenarios. The check
-  /// runs inside the transaction so it is atomic with the write.
-  /// [AUTO FIX]: replaced hardcoded 'workers' string with _workersCollection
-  /// constant. Avoids magic strings without creating a circular import with
-  /// FirestoreService.
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
@@ -764,11 +781,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         final req = ServiceRequestEnhancedModel.fromMap(
             reqSnap.data()!, reqSnap.id);
 
-        // [LOGIC-APPLY FIX] isRatedByClient guard — atomic inside transaction.
-        // Prevents double-rating on network retry or rapid double-tap.
-        // Without this guard a second tap/retry would overwrite the first
-        // rating and increment the worker's ratingCount a second time,
-        // corrupting the Bayesian average permanently.
         if (req.isRatedByClient) {
           throw FirestoreServiceException(
             'Request has already been rated by the client',
@@ -783,7 +795,6 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
 
         if (req.workerId != null && req.workerId!.isNotEmpty) {
-          // [AUTO FIX] Use _workersCollection constant instead of 'workers'.
           final workerRef =
               firestore.collection(_workersCollection).doc(req.workerId!);
           final workerSnap = await tx.get(workerRef);
