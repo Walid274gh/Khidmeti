@@ -28,6 +28,14 @@
 //
 //   The check uses a simple regex: r'^/worker/[^/]+$' which matches
 //   /worker/<id> (single segment) and rejects /worker/jobs/<id>/bid etc.
+//
+// [LOGIC-APPLY FIX] Deep-link restoration after login:
+//   Added pendingDeepLinkProvider (StateProvider<String?>) to capture the
+//   originally-requested path when the redirect guard pushes a user to /login.
+//   After successful auth the redirect reads and clears the stored path,
+//   navigating the user to their original destination instead of /home.
+//   Auth-specific paths (splash, login, register, forgotPassword,
+//   emailVerification) are never stored as pending deep links.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +71,23 @@ import '../utils/localization.dart';
 import '../utils/logger.dart';
 
 // ============================================================================
+// DEEP-LINK RESTORATION PROVIDER
+// ============================================================================
+
+// FIX [AUTO]: stores the path a guest was trying to reach before being
+// redirected to /login. After successful authentication the redirect reads and
+// clears this value, sending the user to their original destination rather than
+// always landing on /home.
+//
+// Usage (redirect function):
+//   • On unauthenticated access: write currentPath → pendingDeepLinkProvider
+//   • On successful auth:        read + clear → navigate to stored path
+//
+// Only non-auth paths are stored (splash / login / register /
+// forgotPassword / emailVerification are never treated as deep links).
+final pendingDeepLinkProvider = StateProvider<String?>((ref) => null);
+
+// ============================================================================
 // ROUTER PROVIDER
 // ============================================================================
 
@@ -85,6 +110,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   // Matches /worker/<single-segment> only — e.g. /worker/abc123.
   // Does NOT match /worker/jobs/... or any deeper path.
   final _workerProfilePattern = RegExp(r'^/worker/[^/]+$');
+
+  // FIX [AUTO]: auth-specific paths that must never be saved as a pending
+  // deep link (storing them would cause a post-login redirect loop).
+  const _authPaths = {
+    AppRoutes.splash,
+    AppRoutes.login,
+    AppRoutes.register,
+    AppRoutes.forgotPassword,
+    AppRoutes.emailVerification,
+  };
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -126,7 +161,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
 
-      if (!isLoggedIn && !isOnAuth) return AppRoutes.login;
+      if (!isLoggedIn && !isOnAuth) {
+        // FIX [AUTO]: capture the originally-requested path so we can restore
+        // it after the user successfully authenticates. Auth-specific paths
+        // are excluded to prevent post-login redirect loops.
+        if (!_authPaths.contains(currentPath)) {
+          ref.read(pendingDeepLinkProvider.notifier).state = currentPath;
+          AppLogger.debug(
+            'Redirect: stored pending deep link → $currentPath',
+          );
+        }
+        return AppRoutes.login;
+      }
 
       if (isLoggedIn && !authService.emailVerified &&
           !isOnVerify && !isOnAuth) {
@@ -139,6 +185,31 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       if (isLoggedIn && isOnAuth) {
         if (cachedRole == UserRole.unknown) return null;
+
+        // FIX [AUTO]: after successful auth, restore the pending deep link if
+        // one was captured before the login redirect. Clear it regardless so
+        // it is not accidentally replayed on a future navigation event.
+        final pendingLink =
+            ref.read(pendingDeepLinkProvider.notifier).state;
+        if (pendingLink != null) {
+          ref.read(pendingDeepLinkProvider.notifier).state = null;
+          AppLogger.info(
+            'Redirect: restoring pending deep link → $pendingLink',
+          );
+          // Role guard: workers-only paths must not be restored for clients.
+          final isWorkerOnlyPath =
+              pendingLink.startsWith('/worker') &&
+              !_workerProfilePattern.hasMatch(pendingLink);
+          if (isWorkerOnlyPath && cachedRole == UserRole.client) {
+            AppLogger.debug(
+              'Redirect: pending deep link $pendingLink is worker-only — '
+              'redirecting client to /home instead',
+            );
+            return AppRoutes.home;
+          }
+          return pendingLink;
+        }
+
         return AppRoutes.home;
       }
 
