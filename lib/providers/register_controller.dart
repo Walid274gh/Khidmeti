@@ -129,9 +129,6 @@ class RegisterController extends StateNotifier<RegisterState> {
     if (state.isLoading) return null;
     if (profession.trim().isEmpty) return 'register.error.service_required';
 
-    // FIX [A11]: terms must be accepted before any social registration path,
-    // not just email/password. Without this guard a worker could bypass the
-    // legal requirement by tapping a social button instead of the email form.
     if (!state.termsAccepted) {
       state = state.copyWith(
         status:       RegisterStatus.error,
@@ -172,11 +169,7 @@ class RegisterController extends StateNotifier<RegisterState> {
     }
 
     // FIX [A10]: read uid from FirebaseAuth.instance.currentUser instead of
-    // _authService.user. After signInWithGoogle/Facebook/Apple returns, the
-    // Firebase SDK has already updated currentUser synchronously, but the
-    // _authService.user field is only refreshed when the authStateChanges()
-    // stream listener fires — which may be deferred by a microtask on slow
-    // devices, causing uid to be null and silently aborting the flow.
+    // _authService.user to avoid transient null after social sign-in.
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       AppLogger.info(
@@ -185,10 +178,29 @@ class RegisterController extends StateNotifier<RegisterState> {
       return null;
     }
 
-    final upgradeError = await _authService.linkSocialWorkerProfession(
-      uid:        uid,
-      profession: profession,
-    );
+    // FIX [2/3]: Wrapped linkSocialWorkerProfession in try/catch.
+    // Previously an unexpected exception (e.g. network loss mid-flight after
+    // social auth succeeded) would propagate unhandled through the controller,
+    // leaving the UI stuck in a loading state with no error shown to the user.
+    // Now any exception is caught, the state is updated to show an error, and
+    // the method returns a localizable error key consistent with the rest of
+    // the social sign-in flow.
+    String? upgradeError;
+    try {
+      upgradeError = await _authService.linkSocialWorkerProfession(
+        uid:        uid,
+        profession: profession,
+      );
+    } catch (e) {
+      AppLogger.error('RegisterController: linkSocialWorkerProfession threw', e);
+      if (mounted) {
+        state = state.copyWith(
+          status:       RegisterStatus.error,
+          errorMessage: 'errors.sign_up_generic',
+        );
+      }
+      return 'errors.sign_up_generic';
+    }
 
     if (upgradeError != null) {
       AppLogger.warning(
@@ -223,9 +235,6 @@ class RegisterController extends StateNotifier<RegisterState> {
   Future<String?> signInWithSocialAsClient({required String provider}) async {
     if (state.isLoading) return null;
 
-    // FIX [A11]: terms must be accepted before any social registration path.
-    // Previously only the email form checked termsAccepted; social buttons
-    // skipped this entirely, allowing registration without legal consent.
     if (!state.termsAccepted) {
       state = state.copyWith(
         status:       RegisterStatus.error,
@@ -265,9 +274,7 @@ class RegisterController extends StateNotifier<RegisterState> {
       return authError;
     }
 
-    // FIX [A10]: read uid from FirebaseAuth.instance.currentUser instead of
-    // _authService.user for the same reason as in signInWithSocialAsWorker —
-    // prevents a transient null uid from aborting a successful client sign-in.
+    // FIX [A10]: read uid from FirebaseAuth.instance.currentUser.
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       AppLogger.info(
@@ -300,9 +307,6 @@ class RegisterController extends StateNotifier<RegisterState> {
     try {
       final isWorker = role == UserRole.worker;
 
-      // FIX (Suggestion 1): use setCachedUserRole helper instead of direct
-      // state write — ensures write-guard contract is respected and prevents
-      // race conditions with LoginController writing concurrently.
       setCachedUserRole(_ref, role, force: true);
 
       final prefs = await SharedPreferences.getInstance();
@@ -314,7 +318,6 @@ class RegisterController extends StateNotifier<RegisterState> {
       AppLogger.info('RegisterController: cached role=$role');
     } catch (e) {
       AppLogger.error('RegisterController._cacheRole', e);
-      // On failure, read the previously persisted role.
       try {
         final prefs     = await SharedPreferences.getInstance();
         final persisted = prefs.getString(PrefKeys.accountRole);
