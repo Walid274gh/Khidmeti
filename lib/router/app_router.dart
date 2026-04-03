@@ -13,6 +13,21 @@
 //
 // Option A: CompositeListenable imported from lib/utils/composite_listenable.dart
 // (kept as a shared public utility used by other files in the project).
+//
+// [LOGIC-APPLY FIX] Role guard — submit-bid route security:
+//   The previous client guard checked:
+//     isOnWorkerRoute && !currentPath.startsWith('/worker/')
+//   This excluded ALL paths beginning with '/worker/' from the guard,
+//   intending to allow clients to view /worker/:id (worker profile).
+//   But it also allowed clients to reach /worker/jobs/:id/bid — workers-only.
+//
+//   Fix: replaced the broad exclusion with a precise allowlist.
+//   Clients may access paths matching '/worker/:id' (worker profile view).
+//   All other /worker/* paths — including /worker/jobs/... — are worker-only.
+//   Clients reaching them are redirected to AppRoutes.home.
+//
+//   The check uses a simple regex: r'^/worker/[^/]+$' which matches
+//   /worker/<id> (single segment) and rejects /worker/jobs/<id>/bid etc.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +80,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     userIdentityListenable.dispose();
     listenable.dispose();
   });
+
+  // [LOGIC-APPLY FIX] Regex for worker-profile paths that clients may access.
+  // Matches /worker/<single-segment> only — e.g. /worker/abc123.
+  // Does NOT match /worker/jobs/... or any deeper path.
+  final _workerProfilePattern = RegExp(r'^/worker/[^/]+$');
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -122,12 +142,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
-      // Block clients from any /worker-* route except /worker-profile
+      // [LOGIC-APPLY FIX] Tightened role guard for worker routes.
+      //
+      // OLD guard: blocked /worker-* routes but exempted ALL /worker/* paths
+      //   with `!currentPath.startsWith('/worker/')`. This inadvertently
+      //   allowed clients to reach /worker/jobs/:id/bid.
+      //
+      // NEW guard: clients may only access paths matching the worker-profile
+      //   pattern (/worker/<id>). All other /worker/* paths — including
+      //   /worker/jobs/:id, /worker/jobs/:id/bid — are worker-only.
+      //
+      // The guard still allows /worker-jobs (branch route) to be handled by
+      // the nav-bar visibility logic rather than a hard redirect, so we only
+      // apply the strict path block inside the /worker/* namespace.
       if (isLoggedIn &&
           isOnWorkerRoute &&
-          !currentPath.startsWith('/worker/') &&
           cachedRole == UserRole.client) {
-        return AppRoutes.home;
+        final isWorkerProfilePath = _workerProfilePattern.hasMatch(currentPath);
+        if (!isWorkerProfilePath) {
+          return AppRoutes.home;
+        }
       }
 
       // Redirect /worker-home to /home — unified screen
@@ -227,6 +261,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // Worker profile — real screen, workerId from path parameter.
+      // Accessible to both roles — clients view worker profiles before
+      // selecting a bid. Pattern: /worker/:id (single segment only).
       GoRoute(
         path: AppRoutes.workerProfile,
         name: 'worker-profile',
@@ -302,6 +338,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           JobDetailScreen(jobId: s.pathParameters['id'] ?? ''),
         ),
       ),
+
+      // [LOGIC-APPLY FIX] submit-bid route — worker-only.
+      // The redirect guard now blocks clients from /worker/jobs/* paths,
+      // so a client who deep-links or guesses this URL is redirected to
+      // /home before this pageBuilder ever runs. The guard is the
+      // authoritative enforcement point; the route definition is unchanged.
       GoRoute(
         path: '/worker/jobs/:id/bid',
         name: 'submit-bid',
