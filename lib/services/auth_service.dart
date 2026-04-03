@@ -20,6 +20,7 @@ class AuthService extends ChangeNotifier {
   static const Duration _authInitTimeout = Duration(seconds: 10);
   static const Duration _signOutDelay = Duration(milliseconds: 500);
   static const Duration _signOutFirestoreTimeout = Duration(seconds: 5);
+  static const Duration _firebaseAuthTimeout = Duration(seconds: 10);
 
   static const int _minPasswordLength = AppConstants.minPasswordLength;
 
@@ -116,14 +117,15 @@ class AuthService extends ChangeNotifier {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
-      );
+      ).timeout(_firebaseAuthTimeout);
       if (credential.user != null && !credential.user!.emailVerified) {
         _logWarning(
           'User email not verified: ${_maskEmail(credential.user?.email)}',
         );
       }
 
-      await credential.user?.reload();
+      await credential.user?.reload()
+          .timeout(_firebaseAuthTimeout);
       _user = _auth.currentUser;
 
       _logInfo('User signed in: ${credential.user?.uid}');
@@ -131,6 +133,9 @@ class AuthService extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       _logError('signIn', e);
       return _getSignInErrorKey(e.code);
+    } on TimeoutException {
+      _logError('signIn', 'timeout');
+      return 'errors.network';
     } catch (e) {
       _logError('signIn', e);
       return 'errors.sign_in_generic';
@@ -418,7 +423,7 @@ class AuthService extends ChangeNotifier {
       credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
-      );
+      ).timeout(_firebaseAuthTimeout);
 
       final userId = credential.user!.uid;
 
@@ -471,6 +476,10 @@ class AuthService extends ChangeNotifier {
       _logError('signUp', e);
       await _cleanupFailedSignUp(credential);
       return _getSignUpErrorKey(e.code);
+    } on TimeoutException {
+      _logError('signUp', 'timeout');
+      await _cleanupFailedSignUp(credential);
+      return 'errors.network';
     } catch (e) {
       _logError('signUp', e);
       await _cleanupFailedSignUp(credential);
@@ -553,12 +562,16 @@ class AuthService extends ChangeNotifier {
     if (!_emailRegex.hasMatch(email.trim())) return 'errors.email_invalid';
     try {
       _setLoading(true);
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      await _auth.sendPasswordResetEmail(email: email.trim())
+          .timeout(_firebaseAuthTimeout);
       _logInfo('Password reset email sent to: ${_maskEmail(email)}');
       return null;
     } on FirebaseAuthException catch (e) {
       _logError('resetPassword', e);
       return _getResetPasswordErrorKey(e.code);
+    } on TimeoutException {
+      _logError('resetPassword', 'timeout');
+      return 'errors.network';
     } catch (e) {
       _logError('resetPassword', e);
       return 'errors.unknown';
@@ -632,10 +645,14 @@ class AuthService extends ChangeNotifier {
     }
     _lastVerificationCheck = now;
     try {
-      await _auth.currentUser?.reload();
+      await _auth.currentUser?.reload()
+          .timeout(_firebaseAuthTimeout);
       _user = _auth.currentUser;
       notifyListeners();
       return _user?.emailVerified ?? false;
+    } on TimeoutException {
+      _logError('reloadAndCheckEmailVerification', 'timeout');
+      return false;
     } catch (e) {
       _logError('reloadAndCheckEmailVerification', e);
       return false;
@@ -695,7 +712,8 @@ class AuthService extends ChangeNotifier {
     try {
       _setLoading(true);
       final uid = currentUser.uid;
-      await currentUser.delete();
+      await currentUser.delete()
+          .timeout(_firebaseAuthTimeout);
       _logInfo('Account permanently deleted: $uid');
       return null;
     } on FirebaseAuthException catch (e) {
@@ -704,6 +722,9 @@ class AuthService extends ChangeNotifier {
         return 'errors.requires_recent_login';
       }
       return 'errors.delete_account_failed';
+    } on TimeoutException {
+      _logError('deleteAccount', 'timeout');
+      return 'errors.network';
     } catch (e) {
       _logError('deleteAccount', e);
       return 'errors.delete_account_failed';

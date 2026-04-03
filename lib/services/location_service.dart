@@ -24,6 +24,7 @@ class LocationServiceException implements Exception {
 class LocationService {
   static const Duration positionTimeout = Duration(seconds: 10);
   static const Duration lastPositionCacheTTL = Duration(minutes: 5);
+  static const Duration _requestServiceTimeout = Duration(seconds: 30);
   static const LocationAccuracy defaultAccuracy = LocationAccuracy.high;
   static const int defaultDistanceFilter = 10;
   static const int minDistanceFilter = 0;
@@ -89,10 +90,18 @@ class LocationService {
 
       // `_locationPlugin.requestService()` triggers the ResolvableApiException
       // Google dialog — exactly the one shown in Image 2.
-      final enabled = await _locationPlugin.requestService();
+      final enabled = await _locationPlugin.requestService()
+          .timeout(_requestServiceTimeout);
 
       _logInfo('requestLocationService result: $enabled');
       return enabled;
+    } on TimeoutException {
+      _logError('requestLocationService', 'timeout after ${_requestServiceTimeout.inSeconds}s');
+      // Graceful fallback: open the OS settings page.
+      try {
+        await Geolocator.openLocationSettings();
+      } catch (_) {}
+      return false;
     } catch (e) {
       _logError('requestLocationService', e);
       // Graceful fallback: open the OS settings page.

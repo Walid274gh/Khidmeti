@@ -32,6 +32,7 @@ class AudioService {
   static const int      minFileSizeBytes             = 1000;
   static const Duration uploadTimeout               = Duration(minutes: 5);
   static const Duration _periodicDurationInterval   = Duration(seconds: 1);
+  static const Duration _recorderTimeout            = Duration(seconds: 10);
 
   final AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer   _player   = AudioPlayer();
@@ -107,7 +108,7 @@ class AudioService {
           numChannels: 1,
         ),
         path: recordingPath,
-      );
+      ).timeout(_recorderTimeout);
 
       _setRecordingState(true);
       _startRecordingDurationTimer();
@@ -117,6 +118,13 @@ class AudioService {
       _currentRecordingPath = null;
       AppLogger.error('AudioService.startRecording', e);
       if (e is AudioServiceException) rethrow;
+      if (e is TimeoutException) {
+        throw AudioServiceException(
+          "Démarrage de l'enregistrement trop long",
+          code: 'START_RECORDING_TIMEOUT',
+          originalError: e,
+        );
+      }
       throw AudioServiceException(
         "Erreur lors du démarrage de l'enregistrement",
         code: 'START_RECORDING_FAILED',
@@ -132,7 +140,8 @@ class AudioService {
     }
 
     try {
-      final path = await _recorder.stop();
+      final path = await _recorder.stop()
+          .timeout(_recorderTimeout);
       _setRecordingState(false);
       _durationSubscription?.cancel();
 
@@ -149,6 +158,13 @@ class AudioService {
       _durationSubscription?.cancel();
       AppLogger.error('AudioService.stopRecording', e);
       if (e is AudioServiceException) rethrow;
+      if (e is TimeoutException) {
+        throw AudioServiceException(
+          "Arrêt de l'enregistrement trop long",
+          code: 'STOP_RECORDING_TIMEOUT',
+          originalError: e,
+        );
+      }
       throw AudioServiceException(
         "Erreur lors de l'arrêt de l'enregistrement",
         code:          'STOP_RECORDING_FAILED',
