@@ -44,9 +44,14 @@
 //   Prevents unbounded reads that could exhaust Firestore read quotas on
 //   high-traffic accounts.
 //
+// [B8 FIX] submitClientRating: replaced private `_workersCollection = 'workers'`
+//   constant with `FirestoreService.workersCollection` to eliminate the
+//   duplication and keep a single canonical collection name across the codebase.
+//   Import added: `import '../firestore_service.dart' show FirestoreService;`
+//
 // [AUTO FIX] submitClientRating: replaced hardcoded 'workers' string with
-//   _workersCollection constant to eliminate magic strings and ease future
-//   collection renames.
+//   FirestoreService.workersCollection constant to eliminate magic strings and
+//   ease future collection renames.
 //
 // [B3/B7 FIX] streamWorkerServiceRequests:
 //   assignedSub: added .limit(50) — prevents scanning a worker's full history.
@@ -65,16 +70,17 @@ import '../../models/service_request_enhanced_model.dart';
 import '../../models/service_request_model.dart';
 import '../../models/worker_bid_model.dart';
 import 'firestore_repository_base.dart';
+// [B8 FIX] Import FirestoreService to reference the canonical workersCollection
+// constant instead of duplicating the string literal here.
+import '../firestore_service.dart' show FirestoreService;
 
 class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   static const String serviceRequestsCollection = 'service_requests';
   static const String workerBidsCollection = 'worker_bids';
   static const String notificationsCollection = 'notifications';
 
-  // [AUTO FIX] Named constant to replace the hardcoded 'workers' string in
-  // submitClientRating(). Avoids importing FirestoreService (would be circular)
-  // while still eliminating the magic string.
-  static const String _workersCollection = 'workers';
+  // [B8 FIX] Removed: static const String _workersCollection = 'workers';
+  // Use FirestoreService.workersCollection everywhere instead.
 
   static const int _maxBidsToDecline = 50;
 
@@ -795,8 +801,10 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
 
         if (req.workerId != null && req.workerId!.isNotEmpty) {
+          // [B8 FIX] FirestoreService.workersCollection replaces the removed
+          // private _workersCollection constant — single source of truth.
           final workerRef =
-              firestore.collection(_workersCollection).doc(req.workerId!);
+              firestore.collection(FirestoreService.workersCollection).doc(req.workerId!);
           final workerSnap = await tx.get(workerRef);
 
           final oldCount =
