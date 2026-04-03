@@ -72,6 +72,8 @@ class _EmailVerificationScreenState
   Future<void> _pollVerification() async {
     if (_checkingVerification || _signingOut || !mounted) return;
     final authService = ref.read(authServiceProvider);
+    // Background poll uses the default forceReload: false — respects the
+    // 3-second cooldown so we never hammer Firebase on high-frequency polling.
     final isVerified  = await authService.reloadAndCheckEmailVerification();
     if (isVerified && mounted) {
       AppLogger.info(
@@ -89,7 +91,15 @@ class _EmailVerificationScreenState
     setState(() => _checkingVerification = true);
 
     final authService = ref.read(authServiceProvider);
-    final isVerified  = await authService.reloadAndCheckEmailVerification();
+
+    // FIX [A12]: pass forceReload: true so the 3-second cooldown is bypassed.
+    // Without this, tapping "I Verified" within 3 seconds of the automatic
+    // poll would skip the Firebase reload entirely and return the cached
+    // (stale, unverified) result — making the button appear broken even when
+    // the user has already clicked the verification link in their email.
+    final isVerified  = await authService.reloadAndCheckEmailVerification(
+      forceReload: true,
+    );
 
     if (!mounted) return;
     setState(() => _checkingVerification = false);
