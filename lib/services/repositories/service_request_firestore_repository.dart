@@ -30,6 +30,10 @@
 //   Reads the live request inside the transaction and validates that status is
 //   bidSelected or inProgress before writing completed. Prevents a second
 //   completeJob call from re-completing an already-completed request.
+//
+// [LOGIC-APPLY FIX] submitClientRating: added isRatedByClient guard inside the
+//   transaction. If req.isRatedByClient == true the transaction throws
+//   ALREADY_RATED immediately, preventing double-writes on retry/tap scenarios.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -687,6 +691,10 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // --------------------------------------------------------------------------
 
   /// FIX: replaced simple running average with Bayesian average.
+  /// [LOGIC-APPLY FIX]: added isRatedByClient guard — throws ALREADY_RATED
+  /// inside the transaction if the request was already rated. This prevents
+  /// double-writes on network-retry or rapid double-tap scenarios. The check
+  /// runs inside the transaction so it is atomic with the write.
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
@@ -718,6 +726,18 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
 
         final req = ServiceRequestEnhancedModel.fromMap(
             reqSnap.data()!, reqSnap.id);
+
+        // [LOGIC-APPLY FIX] isRatedByClient guard — atomic inside transaction.
+        // Prevents double-rating on network retry or rapid double-tap.
+        // Without this guard a second tap/retry would overwrite the first
+        // rating and increment the worker's ratingCount a second time,
+        // corrupting the Bayesian average permanently.
+        if (req.isRatedByClient) {
+          throw FirestoreServiceException(
+            'Request has already been rated by the client',
+            code: 'ALREADY_RATED',
+          );
+        }
 
         tx.update(reqRef, {
           'clientRating': stars,
