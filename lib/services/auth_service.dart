@@ -602,9 +602,26 @@ class AuthService extends ChangeNotifier {
   DateTime? _lastVerificationCheck;
   static const Duration _verificationCheckCooldown = Duration(seconds: 3);
 
-  Future<bool> reloadAndCheckEmailVerification() async {
+  /// Reloads the Firebase user and checks email verification status.
+  ///
+  /// FIX [A1]: added [forceReload] parameter. When `true` the 3-second
+  /// cooldown is bypassed, which is required for manual user-triggered checks.
+  ///
+  /// Problem without this fix: the polling timer fires every 30s, so under
+  /// normal use the cooldown is never an issue. But if the user taps the
+  /// "I verified" button within 3s of an automatic poll, `_auth.currentUser
+  /// ?.reload()` is skipped and the method returns the cached (unverified)
+  /// result — making the button appear broken even if the email was verified.
+  ///
+  /// Usage:
+  ///   • Polling timer (background, low priority):   forceReload: false (default)
+  ///   • "I Verified" button (user-initiated):        forceReload: true
+  Future<bool> reloadAndCheckEmailVerification({
+    bool forceReload = false,
+  }) async {
     final now = DateTime.now();
-    if (_lastVerificationCheck != null &&
+    if (!forceReload &&
+        _lastVerificationCheck != null &&
         now.difference(_lastVerificationCheck!) < _verificationCheckCooldown) {
       return _user?.emailVerified ?? false;
     }
