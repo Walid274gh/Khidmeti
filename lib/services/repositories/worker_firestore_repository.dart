@@ -24,6 +24,11 @@
 // WorkerModel.fromMap or model_extensions) accurately reflects time offline.
 // When isOnline=true we do NOT overwrite lastActiveAt — going back online
 // doesn't reset "last seen offline" (that would be semantically wrong).
+//
+// [AUTO FIX] streamOnlineWorkersByWilayas: added .limit(150) to cap Firestore
+// reads. Without a limit, a wilaya with hundreds of online workers would
+// return all documents on every snapshot, exhausting read quota unnecessarily.
+// 150 covers the busiest known wilaya with headroom; tune upward if needed.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -127,6 +132,11 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
   ///
   /// The controller still handles distance filtering and sorting on the
   /// returned list — those are business concerns, not data concerns.
+  ///
+  /// [AUTO FIX] Added .limit(150) — caps Firestore reads per snapshot.
+  /// Without a limit a busy wilaya (e.g. Algiers) could return thousands of
+  /// worker documents on every real-time update, exhausting read quota.
+  /// 150 covers the busiest known wilaya with headroom; increase if needed.
   Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) {
     if (wilayaCodes.isEmpty) {
       logWarning('streamOnlineWorkersByWilayas called with empty wilayaCodes');
@@ -136,6 +146,7 @@ class WorkerFirestoreRepository extends FirestoreRepositoryBase {
         .collection(workersCollection)
         .where('isOnline', isEqualTo: true)
         .where('wilayaCode', whereIn: wilayaCodes)
+        .limit(150)
         .snapshots()
         .handleError((Object e) => logError('streamOnlineWorkersByWilayas', e))
         .map((s) => s.docs.map((doc) {

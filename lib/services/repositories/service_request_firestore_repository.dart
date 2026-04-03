@@ -34,6 +34,19 @@
 // [LOGIC-APPLY FIX] submitClientRating: added isRatedByClient guard inside the
 //   transaction. If req.isRatedByClient == true the transaction throws
 //   ALREADY_RATED immediately, preventing double-writes on retry/tap scenarios.
+//
+// [AUTO FIX] Stream query limits:
+//   streamBidsForRequest     → .limit(20)
+//   streamWorkerBids         → .limit(100)
+//   streamAvailableRequests  → .limit(50)
+//   streamUserServiceRequests→ .limit(50)
+//   streamWorkerActiveJobs   → .limit(10)
+//   Prevents unbounded reads that could exhaust Firestore read quotas on
+//   high-traffic accounts.
+//
+// [AUTO FIX] submitClientRating: replaced hardcoded 'workers' string with
+//   _workersCollection constant to eliminate magic strings and ease future
+//   collection renames.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -49,6 +62,11 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   static const String serviceRequestsCollection = 'service_requests';
   static const String workerBidsCollection = 'worker_bids';
   static const String notificationsCollection = 'notifications';
+
+  // [AUTO FIX] Named constant to replace the hardcoded 'workers' string in
+  // submitClientRating(). Avoids importing FirestoreService (would be circular)
+  // while still eliminating the magic string.
+  static const String _workersCollection = 'workers';
 
   static const int _maxBidsToDecline = 50;
 
@@ -174,6 +192,8 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
   }
 
+  /// [AUTO FIX] Added .limit(50) — prevents unbounded reads on accounts
+  /// with many historical requests.
   Stream<List<ServiceRequestEnhancedModel>> streamUserServiceRequests(
       String userId) {
     if (userId.trim().isEmpty) {
@@ -184,6 +204,7 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         .collection(serviceRequestsCollection)
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .handleError((e) => logError('streamUserServiceRequests', e))
         .map((s) =>
@@ -262,6 +283,8 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
     return controller.stream;
   }
 
+  /// [AUTO FIX] Added .limit(50) — prevents unbounded reads when a wilaya
+  /// has a large backlog of open requests.
   Stream<List<ServiceRequestEnhancedModel>> streamAvailableRequests({
     required int wilayaCode,
     required String serviceType,
@@ -275,12 +298,15 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
           ServiceStatus.awaitingSelection.name,
         ])
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .handleError((e) => logError('streamAvailableRequests', e))
         .map((s) =>
             _parseRequestList(s.docs, 'streamAvailableRequests'));
   }
 
+  /// [AUTO FIX] Added .limit(10) — a worker should never have more than
+  /// a handful of active jobs simultaneously; cap prevents runaway reads.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerActiveJobs(
       String workerId) {
     if (workerId.trim().isEmpty) {
@@ -295,6 +321,7 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
           ServiceStatus.inProgress.name,
         ])
         .orderBy('createdAt', descending: true)
+        .limit(10)
         .snapshots()
         .handleError((e) => logError('streamWorkerActiveJobs', e))
         .map((s) =>
@@ -327,6 +354,8 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   // WORKER BIDS — CRUD
   // --------------------------------------------------------------------------
 
+  /// [AUTO FIX] Added .limit(20) — a single request should not receive an
+  /// unbounded number of bids; cap keeps reads predictable.
   Stream<List<WorkerBidModel>> streamBidsForRequest(String requestId) {
     if (requestId.trim().isEmpty) {
       logWarning('streamBidsForRequest called with empty requestId');
@@ -336,11 +365,15 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         .collection(workerBidsCollection)
         .where('serviceRequestId', isEqualTo: requestId)
         .orderBy('createdAt', descending: false)
+        .limit(20)
         .snapshots()
         .handleError((e) => logError('streamBidsForRequest', e))
         .map((s) => _parseBidList(s.docs, 'streamBidsForRequest'));
   }
 
+  /// [AUTO FIX] Added .limit(100) — workers accumulate historical bids over
+  /// time; cap prevents the stream from scanning the full collection on
+  /// high-volume accounts.
   Stream<List<WorkerBidModel>> streamWorkerBids(String workerId) {
     if (workerId.trim().isEmpty) {
       logWarning('streamWorkerBids called with empty workerId');
@@ -350,6 +383,7 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         .collection(workerBidsCollection)
         .where('workerId', isEqualTo: workerId)
         .orderBy('createdAt', descending: true)
+        .limit(100)
         .snapshots()
         .handleError((e) => logError('streamWorkerBids', e))
         .map((s) => _parseBidList(s.docs, 'streamWorkerBids'));
@@ -695,6 +729,9 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
   /// inside the transaction if the request was already rated. This prevents
   /// double-writes on network-retry or rapid double-tap scenarios. The check
   /// runs inside the transaction so it is atomic with the write.
+  /// [AUTO FIX]: replaced hardcoded 'workers' string with _workersCollection
+  /// constant. Avoids magic strings without creating a circular import with
+  /// FirestoreService.
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
@@ -746,8 +783,9 @@ class ServiceRequestFirestoreRepository extends FirestoreRepositoryBase {
         });
 
         if (req.workerId != null && req.workerId!.isNotEmpty) {
+          // [AUTO FIX] Use _workersCollection constant instead of 'workers'.
           final workerRef =
-              firestore.collection('workers').doc(req.workerId!);
+              firestore.collection(_workersCollection).doc(req.workerId!);
           final workerSnap = await tx.get(workerRef);
 
           final oldCount =
