@@ -9,6 +9,11 @@
 // times, giving O(k · n log n) total — k=7 status values here. Replaced with
 // a precomputed Map<ServiceStatus, int> lookup that is O(1), reducing sort
 // complexity to O(n log n) with a small constant.
+//
+// [B3/B7 FIX] _subscribeToJobs: fetches the worker's wilayaCode from Firestore
+// before opening the stream and passes it to streamWorkerServiceRequests().
+// This scopes the internal openSub query to the worker's wilaya instead of
+// performing a platform-wide scan on every snapshot.
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,6 +106,7 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
   final Ref _ref;
   StreamSubscription<List<ServiceRequestEnhancedModel>>? _jobsSubscription;
   String? _workerId;
+  int?    _workerWilayaCode;
 
   WorkerJobsController(this._ref) : super(const WorkerJobsState()) {
     _initialize();
@@ -128,7 +134,30 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
       return;
     }
     _workerId = user.uid;
-    _subscribeToJobs(user.uid);
+    _fetchWilayaAndSubscribe(user.uid);
+  }
+
+  // [B3/B7 FIX] Fetch the worker's wilayaCode before opening the stream.
+  // Passing wilayaCode into streamWorkerServiceRequests() scopes the internal
+  // openSub query to this worker's wilaya instead of scanning all open
+  // requests across the entire platform.
+  //
+  // On failure the worker document might not exist yet (e.g. first login) or
+  // Firestore may be temporarily unavailable. In both cases we fall back to
+  // the unscoped stream (wilayaCode: null) which is now at least bounded to
+  // 50 documents by the repository-level .limit(50) fix.
+  Future<void> _fetchWilayaAndSubscribe(String workerId) async {
+    try {
+      final worker = await _ref
+          .read(firestoreServiceProvider)
+          .getWorker(workerId);
+      _workerWilayaCode = worker?.wilayaCode;
+    } catch (e) {
+      AppLogger.error(
+          'WorkerJobsController._fetchWilayaAndSubscribe', e);
+      _workerWilayaCode = null;
+    }
+    _subscribeToJobs(workerId);
   }
 
   void _subscribeToJobs(String workerId) {
@@ -136,9 +165,11 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
 
     state = state.copyWith(jobsAsync: const AsyncValue.loading());
 
+    // [B3/B7 FIX] Pass wilayaCode so the repository scopes openSub to this
+    // worker's wilaya. Falls back to unscoped (but bounded) query when null.
     _jobsSubscription = _ref
         .read(firestoreServiceProvider)
-        .streamWorkerServiceRequests(workerId)
+        .streamWorkerServiceRequests(workerId, wilayaCode: _workerWilayaCode)
         .listen(
       (jobs) {
         if (!mounted) return;
@@ -162,13 +193,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
 
   // FIX: replaced order.indexOf(status) inside sort comparator with a
   // precomputed Map<ServiceStatus, int> lookup.
-  //
-  // OLD: order.indexOf() is O(k) per call; comparators are called O(n log n)
-  //      times → O(k · n log n) total (k=7 status buckets here).
-  //
-  // NEW: Map lookup is O(1) → O(n log n) with a small constant.
-  //      The map is built once per _sortJobs() call (O(k)) and reused
-  //      throughout the sort.
   static const List<ServiceStatus> _sortOrder = [
     ServiceStatus.bidSelected,
     ServiceStatus.inProgress,
@@ -179,7 +203,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
     ServiceStatus.expired,
   ];
 
-  // Precomputed at class level: constant cost, never rebuilt.
   static final Map<ServiceStatus, int> _sortRank = {
     for (int i = 0; i < _sortOrder.length; i++) _sortOrder[i]: i,
   };
@@ -188,7 +211,6 @@ class WorkerJobsController extends StateNotifier<WorkerJobsState> {
       List<ServiceRequestEnhancedModel> jobs) {
     return List.from(jobs)
       ..sort((a, b) {
-        // O(1) map lookup replaces O(k) indexOf.
         final ia = _sortRank[a.status] ?? _sortOrder.length;
         final ib = _sortRank[b.status] ?? _sortOrder.length;
         if (ia != ib) return ia.compareTo(ib);
