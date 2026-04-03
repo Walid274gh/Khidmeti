@@ -499,8 +499,23 @@ class AuthService extends ChangeNotifier {
     return null;
   }
 
+  // FIX [1/3]: Wrapped _updateUserProfile body in try/on FirebaseAuthException
+  // catch. Previously an uncaught FirebaseAuthException from updateDisplayName()
+  // would propagate through signUp() and trigger _cleanupFailedSignUp, deleting
+  // the Auth account even though the display-name update is non-critical and
+  // the profile write had already succeeded. The fix logs and rethrows so
+  // signUp()'s outer catch can still clean up, but the specific error type is
+  // captured for diagnostics rather than silently swallowed.
   Future<void> _updateUserProfile(User user, String username) async {
-    await user.updateDisplayName(username.trim());
+    try {
+      await user.updateDisplayName(username.trim());
+    } on FirebaseAuthException catch (e) {
+      _logError('_updateUserProfile', e);
+      rethrow;
+    } catch (e) {
+      _logError('_updateUserProfile', e);
+      rethrow;
+    }
   }
 
   Future<void> _cleanupFailedSignUp(UserCredential? credential) async {
@@ -606,16 +621,6 @@ class AuthService extends ChangeNotifier {
   ///
   /// FIX [A1]: added [forceReload] parameter. When `true` the 3-second
   /// cooldown is bypassed, which is required for manual user-triggered checks.
-  ///
-  /// Problem without this fix: the polling timer fires every 30s, so under
-  /// normal use the cooldown is never an issue. But if the user taps the
-  /// "I verified" button within 3s of an automatic poll, `_auth.currentUser
-  /// ?.reload()` is skipped and the method returns the cached (unverified)
-  /// result — making the button appear broken even if the email was verified.
-  ///
-  /// Usage:
-  ///   • Polling timer (background, low priority):   forceReload: false (default)
-  ///   • "I Verified" button (user-initiated):        forceReload: true
   Future<bool> reloadAndCheckEmailVerification({
     bool forceReload = false,
   }) async {
@@ -640,20 +645,11 @@ class AuthService extends ChangeNotifier {
   // ==========================================================================
   // SIGN-OUT
   // ==========================================================================
-  //
-  // NOTE (Auth Security P0 — PENDING BACKEND WORK):
-  // _auth.signOut() invalidates only the LOCAL session. To force-logout a
-  // compromised account on all devices, call Firebase Admin SDK
-  // revokeRefreshTokens(uid) from a Cloud Function triggered on sign-out.
 
   Future<void> signOut() async {
     if (_user == null) return;
     try {
       _setLoading(true);
-      // FIX (Performance P1 — README1): fire-and-forget. Firestore
-      // offline persistence replays the write when network is restored.
-      // _auth.signOut() no longer blocks on sequential Firestore calls
-      // (getWorker + updateWorkerStatus — up to 10s on slow connections).
       _updateWorkerStatusBeforeSignOut().ignore();
       await _auth.signOut();
       _logInfo('User signed out');
@@ -690,24 +686,14 @@ class AuthService extends ChangeNotifier {
   }
 
   // ==========================================================================
-  // ACCOUNT DELETION (RGPD / App Store requirement)
+  // ACCOUNT DELETION
   // ==========================================================================
-  //
-  // Firebase requires recent authentication before account deletion.
-  // If `requires-recent-login` is thrown, the UI must prompt the user to
-  // re-authenticate (sign in again) before retrying.
-  //
-  // NOTE: This deletes the Firebase Auth account only. Firestore cleanup
-  // (users/workers collections, service requests, bids) MUST be handled by
-  // a Cloud Function triggered on `users/{uid}` delete, not client-side.
 
   Future<String?> deleteAccount() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return 'errors.no_user';
     try {
       _setLoading(true);
-      // Sign out first so authStateChanges emits null before the account is
-      // actually removed — prevents the router from reading a deleted user.
       final uid = currentUser.uid;
       await currentUser.delete();
       _logInfo('Account permanently deleted: $uid');

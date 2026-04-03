@@ -50,10 +50,7 @@ class SpeechToTextService {
     await _stt.listen(
       onResult: (SpeechRecognitionResult result) {
         // FIX: guard against premature final results — require at least
-        // 2 words before treating a result as final. STT sometimes fires
-        // isFinal=true on a single misrecognized word (e.g. "plan B")
-        // before the user has finished speaking. The 2-word minimum gives
-        // Gemini enough context for accurate intent extraction.
+        // 2 words before treating a result as final.
         final words     = result.recognizedWords.trim().split(' ')
             .where((w) => w.isNotEmpty)
             .toList();
@@ -68,12 +65,34 @@ class SpeechToTextService {
     );
   }
 
+  // FIX [3/3 — stopListening]: Added try/catch around _stt.stop().
+  // The speech_to_text plugin can throw a PlatformException on some Android
+  // devices when stop() is called in a state where the platform channel is
+  // already torn down (e.g. app goes to background mid-utterance). Without
+  // this guard the exception propagated unhandled through HomeSearchController
+  // .stopListening(), bypassing the recording-failed error state and leaving
+  // the controller frozen in HomeSearchStatus.listening with no recovery path.
   Future<void> stopListening() async {
-    if (_stt.isListening) await _stt.stop();
+    if (!_stt.isListening) return;
+    try {
+      await _stt.stop();
+    } catch (e) {
+      debugPrint('[STT] stopListening error: $e');
+    }
   }
 
+  // FIX [3/3 — cancelListening]: Added try/catch around _stt.cancel()
+  // for the same reason as stopListening(). cancelListening() is called
+  // from HomeSearchController.reset() and dispose(), both of which may fire
+  // during widget disposal — a point where the platform channel can already
+  // be in an unstable state on some devices.
   Future<void> cancelListening() async {
-    if (_stt.isListening) await _stt.cancel();
+    if (!_stt.isListening) return;
+    try {
+      await _stt.cancel();
+    } catch (e) {
+      debugPrint('[STT] cancelListening error: $e');
+    }
   }
 
   void dispose() {
