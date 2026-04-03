@@ -6,12 +6,12 @@ import '../../../models/message_enums.dart';
 import '../../../models/service_request_enhanced_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
-import '../../../utils/localization.dart'; // ADDED — required for context.tr()
+import '../../../utils/localization.dart';
 import 'job_accept_decline_row.dart';
 import 'job_complete_btn.dart';
 import 'job_completed_badge.dart';
 import 'job_loading_btn.dart';
-import 'whatsapp_circle_btn.dart'; // REPLACED: inline _WhatsAppCircleBtn
+import 'whatsapp_circle_btn.dart';
 
 // ============================================================================
 // JOB DETAIL FAB ROW — flat surface, no BackdropFilter
@@ -20,6 +20,16 @@ import 'whatsapp_circle_btn.dart'; // REPLACED: inline _WhatsAppCircleBtn
 //   • _WhatsAppCircleBtn extracted to WhatsAppCircleBtn (whatsapp_circle_btn.dart)
 //   • context: removed from JobAcceptDeclineRow, JobCompleteBtn, JobCompletedBadge
 //     (those widgets now obtain context from their own build() parameter)
+//
+// [LOGIC-APPLY FIX] bidSelected branch:
+//   Previously bidSelected fell through to SizedBox.shrink() — the worker
+//   had no FAB action after their bid was accepted and could not start the job
+//   from the detail screen. Fix: added an explicit bidSelected branch that
+//   shows a "Start Job" CTA (styled with accentColor). When tapped it calls
+//   the new [onStart] callback.
+//
+//   onStart is nullable so existing callers that have not yet wired the
+//   callback compile without changes. Pass null to disable the button.
 // ============================================================================
 
 class JobDetailFabRow extends StatelessWidget {
@@ -32,6 +42,11 @@ class JobDetailFabRow extends StatelessWidget {
   final VoidCallback onDecline;
   final VoidCallback onComplete;
 
+  /// [LOGIC-APPLY FIX] onStart — called when the worker taps "Start Job"
+  /// while the request is in bidSelected status. Nullable for backward
+  /// compatibility: pass null to render the button in a disabled state.
+  final VoidCallback? onStart;
+
   const JobDetailFabRow({
     super.key,
     required this.job,
@@ -42,6 +57,7 @@ class JobDetailFabRow extends StatelessWidget {
     required this.onAccept,
     required this.onDecline,
     required this.onComplete,
+    this.onStart, // nullable — backward-compatible addition
   });
 
   bool get _isTerminal =>
@@ -72,12 +88,11 @@ class JobDetailFabRow extends StatelessWidget {
         child: Row(
           children: [
             // ── WhatsApp circle (always visible) ─────────────────────
-            // REPLACED: inline _WhatsAppCircleBtn → shared WhatsAppCircleBtn
             WhatsAppCircleBtn(
               phone:    userPhone,
               isDark:   isDark,
               label:    context.tr('worker_jobs.chat_with_client'),
-              size:     46, // FAB-row variant: larger with glow
+              size:     46,
             ),
 
             const SizedBox(width: AppConstants.spacingMd),
@@ -86,25 +101,111 @@ class JobDetailFabRow extends StatelessWidget {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                child: _isTerminal
-                    ? JobCompletedBadge(isDark: isDark)         // context: removed
-                    : isLoading
-                        ? JobLoadingBtn(accentColor: accentColor)
-                        : job.status == ServiceStatus.pending
-                            ? JobAcceptDeclineRow(               // context: removed
-                                onAccept:  onAccept,
-                                onDecline: onDecline,
-                              )
-                            : (job.status == ServiceStatus.accepted ||
-                                    job.status == ServiceStatus.inProgress)
-                                ? JobCompleteBtn(               // context: removed
-                                    accentColor: accentColor,
-                                    onTap:       onComplete,
-                                  )
-                                : const SizedBox.shrink(),
+                child: _buildPrimaryCta(context),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // [LOGIC-APPLY FIX] extracted into _buildPrimaryCta() so the
+  // AnimatedSwitcher key changes correctly for every distinct status.
+  Widget _buildPrimaryCta(BuildContext context) {
+    if (_isTerminal) {
+      return JobCompletedBadge(
+        key:    const ValueKey('terminal'),
+        isDark: isDark,
+      );
+    }
+
+    if (isLoading) {
+      return JobLoadingBtn(
+        key:         const ValueKey('loading'),
+        accentColor: accentColor,
+      );
+    }
+
+    switch (job.status) {
+      case ServiceStatus.pending:
+        return JobAcceptDeclineRow(
+          key:       const ValueKey('pending'),
+          onAccept:  onAccept,
+          onDecline: onDecline,
+        );
+
+      // [LOGIC-APPLY FIX] bidSelected branch.
+      // A worker whose bid was accepted sees a "Start Job" button here.
+      // Without this branch the FAB was blank — workers were stuck with
+      // no action path on the detail screen.
+      case ServiceStatus.bidSelected:
+        return _StartJobBtn(
+          key:         const ValueKey('bidSelected'),
+          accentColor: accentColor,
+          onTap:       onStart,
+          isDark:      isDark,
+        );
+
+      case ServiceStatus.accepted:
+      case ServiceStatus.inProgress:
+        return JobCompleteBtn(
+          key:         const ValueKey('inProgress'),
+          accentColor: accentColor,
+          onTap:       onComplete,
+        );
+
+      default:
+        return const SizedBox.shrink(key: ValueKey('noop'));
+    }
+  }
+}
+
+// ============================================================================
+// _StartJobBtn
+// [LOGIC-APPLY FIX] New private widget for the bidSelected CTA.
+// Styled consistently with JobCompleteBtn — same height, accent colour,
+// rounded corners. Label key: 'worker_jobs.start_job'.
+// ============================================================================
+
+class _StartJobBtn extends StatelessWidget {
+  final Color        accentColor;
+  final VoidCallback? onTap;
+  final bool          isDark;
+
+  const _StartJobBtn({
+    super.key,
+    required this.accentColor,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label:  context.tr('worker_jobs.start_job'),
+      child: SizedBox(
+        width:  double.infinity,
+        height: 46,
+        child: ElevatedButton.icon(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accentColor,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+            ),
+          ),
+          icon:  const Icon(Icons.play_arrow_rounded, size: 20),
+          label: Text(
+            context.tr('worker_jobs.start_job'),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color:      Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
         ),
       ),
     );

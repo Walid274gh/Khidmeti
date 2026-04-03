@@ -11,11 +11,18 @@ import '../../../utils/localization.dart';
 import 'job_icon_btn.dart';
 import 'job_text_btn.dart';
 import 'job_primary_btn.dart';
-import 'whatsapp_circle_btn.dart'; // REPLACED: inline _WhatsAppIconBtn
+import 'whatsapp_circle_btn.dart';
 
 // CHANGES:
 //   • _WhatsAppIconBtn removed — replaced by shared WhatsAppCircleBtn
 //     (whatsapp_circle_btn.dart) with size: 40
+//
+// [LOGIC-APPLY FIX] bidSelected branch:
+//   The status-based primary actions section previously had no case for
+//   bidSelected — the row was blank after a client accepted the worker's bid.
+//   Fix: added bidSelected to show a "Start Job" primary button alongside the
+//   existing WhatsApp + location icons. Calls [onStart] which is nullable for
+//   backward compatibility with existing callers.
 class JobActionButtons extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool      isLoading;
@@ -27,6 +34,11 @@ class JobActionButtons extends StatelessWidget {
   final VoidCallback onDecline;
   final VoidCallback onLocation;
   final VoidCallback? onMedia;
+
+  /// [LOGIC-APPLY FIX] onStart — called when the worker taps "Start Job"
+  /// from the list-row action bar in bidSelected status. Nullable for
+  /// backward compatibility; pass null to show the button disabled.
+  final VoidCallback? onStart;
 
   const JobActionButtons({
     super.key,
@@ -40,6 +52,7 @@ class JobActionButtons extends StatelessWidget {
     required this.onDecline,
     required this.onLocation,
     required this.onMedia,
+    this.onStart, // nullable — backward-compatible addition
   });
 
   bool get _isCompleted =>
@@ -52,13 +65,12 @@ class JobActionButtons extends StatelessWidget {
     return Row(
       children: [
         // ── WhatsApp contact button ───────────────────────────────────
-        // REPLACED: inline _WhatsAppIconBtn → shared WhatsAppCircleBtn
         WhatsAppCircleBtn(
           phone:    job.userPhone,
           isDark:   isDark,
           disabled: isLoading,
           label:    context.tr('worker_jobs.chat_with_client'),
-          size:     40, // inline-row variant: smaller, no glow
+          size:     40,
         ),
         const SizedBox(width: AppConstants.spacingXs),
 
@@ -110,6 +122,26 @@ class JobActionButtons extends StatelessWidget {
                       onAccept();
                     },
             ),
+
+          // [LOGIC-APPLY FIX] bidSelected branch.
+          // The client has selected this worker's bid — the worker now
+          // needs to start the job. Previously this status showed nothing
+          // in the action bar. Fix: show a "Start Job" primary button.
+          ] else if (job.status == ServiceStatus.bidSelected) ...[
+            JobPrimaryBtn(
+              label: context.tr('worker_jobs.start_job'),
+              icon:  Icons.play_arrow_rounded,
+              color: accentColor,
+              onTap: isLoading
+                  ? null
+                  : onStart != null
+                      ? () {
+                          HapticFeedback.mediumImpact();
+                          onStart!();
+                        }
+                      : null,
+            ),
+
           ] else if (job.status == ServiceStatus.accepted ||
               job.status == ServiceStatus.inProgress) ...[
             JobPrimaryBtn(
