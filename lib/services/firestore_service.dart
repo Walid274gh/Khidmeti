@@ -12,6 +12,10 @@
 //   • streamWorkerAssignedRequests(workerId, {limit}): delegates to
 //     ServiceRequestFirestoreRepository.streamWorkerAssignedRequests(). Used
 //     by WorkerHomeController dashboard.
+//
+// [B3/B7 FIX] streamWorkerServiceRequests facade: forwarded new optional
+//   wilayaCode parameter to the repository so callers can scope the openSub
+//   query to the worker's wilaya instead of scanning platform-wide.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -121,13 +125,10 @@ class FirestoreService {
   // ── TASK 2 — new worker stream facades ───────────────────────────────────
 
   /// Streams online workers whose wilayaCode is in [wilayaCodes].
-  /// Used by HomeController for geo-scoped worker discovery.
-  /// Replaces direct FirebaseFirestore.instance usage in _subscribeToNearbyWorkers.
   Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) =>
       _workers.streamOnlineWorkersByWilayas(wilayaCodes);
 
   /// Fallback: streams all online workers up to [limit] (no wilaya filter).
-  /// Used by HomeController._subscribeFallback when wilaya lookup fails.
   Stream<List<WorkerModel>> streamOnlineWorkersUnscoped({int limit = 100}) =>
       _workers.streamOnlineWorkersUnscoped(limit: limit);
 
@@ -146,9 +147,15 @@ class FirestoreService {
   Stream<List<ServiceRequestEnhancedModel>> streamUserServiceRequests(
           String userId) =>
       _requests.streamUserServiceRequests(userId);
+
+  // [B3/B7 FIX] Forwarded optional wilayaCode to the repository so the
+  // openSub query inside streamWorkerServiceRequests() is geo-scoped when
+  // the caller knows the worker's wilaya. Callers that cannot yet provide
+  // wilayaCode continue to work via the unscoped fallback (now bounded to 50).
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerServiceRequests(
-          String workerId) =>
-      _requests.streamWorkerServiceRequests(workerId);
+          String workerId, {int? wilayaCode}) =>
+      _requests.streamWorkerServiceRequests(workerId, wilayaCode: wilayaCode);
+
   Stream<List<ServiceRequestEnhancedModel>> streamAvailableRequests({
     required int wilayaCode, required String serviceType,
   }) => _requests.streamAvailableRequests(
@@ -184,9 +191,6 @@ class FirestoreService {
 
   // ── TASK 2 — new request stream facade ───────────────────────────────────
 
-  /// Streams service requests assigned to [workerId], ordered by createdAt
-  /// descending, limited to [limit]. Used by WorkerHomeController dashboard.
-  /// Replaces direct FirebaseFirestore.instance usage in _subscribeToRequests.
   Stream<List<ServiceRequestEnhancedModel>> streamWorkerAssignedRequests(
       String workerId, {int limit = 30}) =>
       _requests.streamWorkerAssignedRequests(workerId, limit: limit);
