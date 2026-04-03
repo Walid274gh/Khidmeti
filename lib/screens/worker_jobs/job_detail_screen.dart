@@ -5,7 +5,14 @@
 //     context: parameter removed (field deleted from their constructors)
 //   • JobCompletedBadge, JobAcceptDeclineRow, JobCompleteBtn:
 //     context: parameter removed
+//
+// [AUTO FIX] job-not-found branch: when job is null (cancelled or deleted),
+//   show a user-visible cancellation message and automatically redirect to the
+//   worker jobs list after 3 seconds. Previously the branch silently showed a
+//   plain text label with no navigation, leaving the worker stuck on a dead
+//   screen.
 
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +28,7 @@ import '../../models/service_request_enhanced_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
-import '../../utils/system_ui_overlay.dart'; // NEW import
+import '../../utils/system_ui_overlay.dart';
 import '../../providers/worker_jobs_controller.dart';
 import '../../providers/available_requests_controller.dart';
 import '../../providers/core_providers.dart';
@@ -50,6 +57,31 @@ class JobDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
+  /// [AUTO FIX] Tracks whether a redirect has already been scheduled so we
+  /// don't re-schedule on every rebuild while waiting for the timer.
+  bool _redirectScheduled = false;
+
+  @override
+  void dispose() {
+    // Timer is captured by the closure; no explicit cancel needed because
+    // we guard with `mounted` inside the callback.
+    super.dispose();
+  }
+
+  /// [AUTO FIX] Schedule a 3-second redirect to the worker jobs list.
+  /// Called once when the job-not-found state is first detected. The `mounted`
+  /// check inside the callback prevents navigation after the widget has been
+  /// disposed (e.g. user manually navigated away before the timer fires).
+  void _scheduleRedirect() {
+    if (_redirectScheduled) return;
+    _redirectScheduled = true;
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      context.go(AppRoutes.workerJobs);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark       = Theme.of(context).brightness == Brightness.dark;
@@ -64,18 +96,81 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             .where((j) => j.id == widget.jobId)
             .firstOrNull;
 
+    // ── [AUTO FIX] Job not found — cancellation message + auto-redirect ──────
+    //
+    // This branch is reached when the job was cancelled or deleted while the
+    // worker was viewing it. Previously this showed a silent plain-text label
+    // with no navigation, leaving the worker stranded.
+    //
+    // Now:
+    //   1. Show a visible cancellation notice with an icon, message, and
+    //      countdown hint so the worker understands what happened.
+    //   2. Auto-navigate to /worker-jobs after 3 seconds.
+    //   3. Provide a manual "Go back" button for workers who don't want to wait.
     if (job == null) {
+      _scheduleRedirect();
+
       return Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         appBar: AppBar(
+          backgroundColor:
+              isDark ? AppTheme.darkSurface : Colors.white,
           leading: IconButton(
-            icon:      const Icon(AppIcons.back),
-            onPressed: () => context.pop(),
+            icon: const Icon(AppIcons.back),
+            onPressed: () => context.go(AppRoutes.workerJobs),
           ),
         ),
         body: Center(
-          child: Text(context.tr('worker_jobs.job_not_found')),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.cancel_outlined,
+                  size: 64,
+                  color: isDark
+                      ? AppTheme.darkSecondaryText
+                      : AppTheme.lightSecondaryText,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  context.tr('worker_jobs.job_cancelled_title'),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  context.tr('worker_jobs.job_cancelled_message'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.tr('worker_jobs.job_cancelled_redirect_hint'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => context.go(AppRoutes.workerJobs),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: Text(context.tr('worker_jobs.back_to_jobs')),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -84,7 +179,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     final isLoading    = actionStatus.isLoading;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: systemOverlayStyle(isDark), // REPLACED inline block
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor:
             isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
@@ -167,7 +262,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       icon:      AppTheme.getProfessionIcon(job.serviceType),
                       iconColor: AppTheme.getProfessionColor(job.serviceType, isDark),
                       isDark:    isDark,
-                      // CHANGE: context: removed
                       child: JobServiceDetailsContent(job: job, isDark: isDark),
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
@@ -216,7 +310,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       icon:      Icons.calendar_today_rounded,
                       iconColor: accentColor,
                       isDark:    isDark,
-                      // CHANGE: context: removed
                       child: JobScheduleContent(job: job, isDark: isDark),
                     ),
                     const SizedBox(height: AppConstants.spacingMd),
@@ -257,7 +350,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       icon:      Icons.timeline_rounded,
                       iconColor: AppTheme.cyanBlue,
                       isDark:    isDark,
-                      // CHANGE: context: removed
                       child: JobTimelineContent(job: job, isDark: isDark),
                     ),
                   ],
