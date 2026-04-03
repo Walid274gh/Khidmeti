@@ -53,6 +53,12 @@
 //   Fix: inside the transaction, compare reqData['userId'] with worker.id.
 //   If they match, throw WorkerBidServiceException with code OWN_REQUEST.
 //   This check runs inside the atomic transaction so it cannot be raced.
+//
+// [AUTO FIX] acceptBid, startJob, completeJob, submitClientRating:
+//   These methods had no try/catch, so network errors and FirestoreService
+//   exceptions surfaced as untyped exceptions at the controller layer.
+//   Fix: each method now wraps its Firestore call in the same
+//   try/on WorkerBidServiceException/catch pattern used by submitBid().
 
 import 'dart:math';
 
@@ -287,23 +293,37 @@ class WorkerBidService {
   // BID ACCEPTANCE (client action)
   // =========================================================================
 
+  /// [AUTO FIX] Wrapped in try/catch matching the submitBid() pattern.
+  /// Previously unhandled exceptions from acceptBidTransaction() would
+  /// propagate as untyped errors to the ClientBidsController.
   Future<void> acceptBid({
     required String requestId,
     required WorkerBidModel bid,
   }) async {
     _ensureNotDisposed();
 
-    await _firestore.acceptBidTransaction(
-      requestId: requestId,
-      bidId: bid.id,
-      workerId: bid.workerId,
-      workerName: bid.workerName,
-      agreedPrice: bid.proposedPrice,
-    );
+    try {
+      await _firestore.acceptBidTransaction(
+        requestId: requestId,
+        bidId: bid.id,
+        workerId: bid.workerId,
+        workerName: bid.workerName,
+        agreedPrice: bid.proposedPrice,
+      );
 
-    await _deleteMarker(bid.workerId, requestId);
+      await _deleteMarker(bid.workerId, requestId);
 
-    _logInfo('Bid accepted: ${bid.id} — worker ${bid.workerId} on $requestId');
+      _logInfo('Bid accepted: ${bid.id} — worker ${bid.workerId} on $requestId');
+    } on WorkerBidServiceException {
+      rethrow;
+    } catch (e) {
+      _logError('acceptBid', e);
+      throw WorkerBidServiceException(
+        'Failed to accept bid',
+        code: 'ACCEPT_BID_FAILED',
+        originalError: e,
+      );
+    }
   }
 
   // =========================================================================
@@ -387,24 +407,52 @@ class WorkerBidService {
   // JOB LIFECYCLE
   // =========================================================================
 
+  /// [AUTO FIX] Wrapped in try/catch matching the submitBid() pattern.
+  /// Previously unhandled exceptions from _firestore.startJob() would
+  /// propagate as untyped errors to JobActionController / MissionController.
   Future<void> startJob(String requestId) async {
     _ensureNotDisposed();
-    await _firestore.startJob(requestId);
-    _logInfo('Job started: $requestId');
+    try {
+      await _firestore.startJob(requestId);
+      _logInfo('Job started: $requestId');
+    } on WorkerBidServiceException {
+      rethrow;
+    } catch (e) {
+      _logError('startJob', e);
+      throw WorkerBidServiceException(
+        'Failed to start job',
+        code: 'START_JOB_FAILED',
+        originalError: e,
+      );
+    }
   }
 
+  /// [AUTO FIX] Wrapped in try/catch matching the submitBid() pattern.
+  /// Previously unhandled exceptions from _firestore.completeJob() would
+  /// propagate as untyped errors to JobActionController / MissionController.
   Future<void> completeJob({
     required String requestId,
     String? workerNotes,
     double? finalPrice,
   }) async {
     _ensureNotDisposed();
-    await _firestore.completeJob(
-      requestId: requestId,
-      workerNotes: workerNotes,
-      finalPrice: finalPrice,
-    );
-    _logInfo('Job completed: $requestId');
+    try {
+      await _firestore.completeJob(
+        requestId: requestId,
+        workerNotes: workerNotes,
+        finalPrice: finalPrice,
+      );
+      _logInfo('Job completed: $requestId');
+    } on WorkerBidServiceException {
+      rethrow;
+    } catch (e) {
+      _logError('completeJob', e);
+      throw WorkerBidServiceException(
+        'Failed to complete job',
+        code: 'COMPLETE_JOB_FAILED',
+        originalError: e,
+      );
+    }
   }
 
   // =========================================================================
@@ -474,17 +522,31 @@ class WorkerBidService {
   // RATING
   // =========================================================================
 
+  /// [AUTO FIX] Wrapped in try/catch matching the submitBid() pattern.
+  /// Previously unhandled exceptions from _firestore.submitClientRating()
+  /// would propagate as untyped errors to RatingController.
   Future<void> submitClientRating({
     required String requestId,
     required int stars,
     String? comment,
   }) async {
     _ensureNotDisposed();
-    await _firestore.submitClientRating(
-      requestId: requestId,
-      stars: stars,
-      comment: comment,
-    );
+    try {
+      await _firestore.submitClientRating(
+        requestId: requestId,
+        stars: stars,
+        comment: comment,
+      );
+    } on WorkerBidServiceException {
+      rethrow;
+    } catch (e) {
+      _logError('submitClientRating', e);
+      throw WorkerBidServiceException(
+        'Failed to submit rating',
+        code: 'SUBMIT_RATING_FAILED',
+        originalError: e,
+      );
+    }
   }
 
   // =========================================================================

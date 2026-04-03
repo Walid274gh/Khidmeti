@@ -7,6 +7,11 @@
 //   to set isOnline=false on workers who have not written a heartbeat within
 //   5 minutes — i.e. workers who force-killed the app without calling
 //   stopTracking(). Without this write the watchdog has no signal to act on.
+//
+// [AUTO FIX] _processPositionUpdate: replaced hardcoded 'workers' string with
+//   FirestoreService.workersCollection constant in the lastSeenAt heartbeat
+//   write. Eliminates the magic string so collection renames propagate
+//   automatically and avoids divergence from the main repository constant.
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -260,6 +265,10 @@ class RealTimeLocationService {
   /// blocking the position update stream. A failure to write lastSeenAt is
   /// logged but does not throw — it is not worth dropping a location update
   /// over a secondary heartbeat write.
+  ///
+  /// [AUTO FIX] Uses FirestoreService.workersCollection instead of the
+  /// hardcoded 'workers' string. This ensures the collection name stays in
+  /// sync with the rest of the codebase via a single source of truth.
   Future<void> _processPositionUpdate(Position position) async {
     if (!_shouldUpdateLocation(position)) {
       return;
@@ -283,8 +292,9 @@ class RealTimeLocationService {
         // can detect force-killed worker sessions and set isOnline=false.
         // Direct Firestore write — fire-and-forget; a failure logs but does
         // not block the location update stream.
+        // Uses FirestoreService.workersCollection (not hardcoded 'workers').
         firestoreService.firestore
-            .collection('workers')
+            .collection(FirestoreService.workersCollection)
             .doc(userId)
             .update({'lastSeenAt': Timestamp.now()})
             .catchError((Object e) {
