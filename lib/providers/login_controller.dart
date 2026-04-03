@@ -1,5 +1,6 @@
 // lib/providers/login_controller.dart
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,13 +65,17 @@ class LoginController extends StateNotifier<LoginState> {
       return;
     }
 
-    final uid = _authService.user?.uid;
+    // FIX [A7]: use FirebaseAuth.instance.currentUser?.uid instead of
+    // _authService.user?.uid. After signIn() returns, the Firebase Auth
+    // SDK has updated currentUser synchronously, but _authService.user is
+    // populated by the authStateChanges() stream listener which may not
+    // have fired yet on slow devices — causing a null uid and defaulting
+    // to client role even for workers.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       await _resolveAndPersistRole(uid);
       _ref.read(analyticsServiceProvider).logUserSignedIn(provider: 'email');
     } else {
-      // FIX (Suggestion 1): use setCachedUserRole instead of direct write so
-      // the write-guard contract is respected and race conditions are prevented.
       setCachedUserRole(_ref, UserRole.client);
       AppLogger.warning('LoginController: uid null after signIn');
     }
@@ -181,7 +186,14 @@ class LoginController extends StateNotifier<LoginState> {
   // ==========================================================================
 
   Future<void> _postSocialSignIn({required String provider}) async {
-    final uid = _authService.user?.uid;
+    // FIX [A7]: read uid directly from FirebaseAuth.instance.currentUser
+    // instead of _authService.user. The social sign-in methods in AuthService
+    // await signInWithCredential() before returning, so currentUser is already
+    // set synchronously by the Firebase SDK at this point. However
+    // _authService.user is only updated when the authStateChanges() stream
+    // listener fires, which may be deferred by one microtask cycle on slow
+    // devices — making _authService.user?.uid transiently null here.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       AppLogger.info(
           'LoginController: social sign-in cancelled (uid null) — resetting to initial');

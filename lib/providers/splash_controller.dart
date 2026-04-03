@@ -104,7 +104,15 @@ class SplashController extends StateNotifier<SplashState> {
     _isInitializing = true;
 
     try {
-      _isAnimationComplete  = false;
+      // FIX [S1]: Do NOT reset _isAnimationComplete if it's already true.
+      // The branding animation is a one-time event — if an error occurred
+      // after the animation finished and the user taps retry, we must not
+      // re-arm the animation gate or _updateState() will never fire (the
+      // screen does not re-run the animation, so onAnimationComplete() will
+      // never be called again). Only reset it when it hasn't completed yet.
+      if (!_isAnimationComplete) {
+        _isAnimationComplete = false; // gate stays closed until animation fires
+      }
       _isAuthChecked        = false;
       _isMinDurationElapsed = false;
 

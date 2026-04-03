@@ -1,5 +1,6 @@
 // lib/providers/register_controller.dart
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -128,6 +129,17 @@ class RegisterController extends StateNotifier<RegisterState> {
     if (state.isLoading) return null;
     if (profession.trim().isEmpty) return 'register.error.service_required';
 
+    // FIX [A11]: terms must be accepted before any social registration path,
+    // not just email/password. Without this guard a worker could bypass the
+    // legal requirement by tapping a social button instead of the email form.
+    if (!state.termsAccepted) {
+      state = state.copyWith(
+        status:       RegisterStatus.error,
+        errorMessage: 'register.error.terms_required',
+      );
+      return 'register.error.terms_required';
+    }
+
     state = state.copyWith(status: RegisterStatus.loading, clearError: true);
     AppLogger.info(
         'RegisterController: worker social sign-in attempt provider=$provider');
@@ -159,7 +171,13 @@ class RegisterController extends StateNotifier<RegisterState> {
       return authError;
     }
 
-    final uid = _authService.user?.uid;
+    // FIX [A10]: read uid from FirebaseAuth.instance.currentUser instead of
+    // _authService.user. After signInWithGoogle/Facebook/Apple returns, the
+    // Firebase SDK has already updated currentUser synchronously, but the
+    // _authService.user field is only refreshed when the authStateChanges()
+    // stream listener fires — which may be deferred by a microtask on slow
+    // devices, causing uid to be null and silently aborting the flow.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       AppLogger.info(
           'RegisterController: worker social sign-in cancelled (uid null)');
@@ -205,6 +223,17 @@ class RegisterController extends StateNotifier<RegisterState> {
   Future<String?> signInWithSocialAsClient({required String provider}) async {
     if (state.isLoading) return null;
 
+    // FIX [A11]: terms must be accepted before any social registration path.
+    // Previously only the email form checked termsAccepted; social buttons
+    // skipped this entirely, allowing registration without legal consent.
+    if (!state.termsAccepted) {
+      state = state.copyWith(
+        status:       RegisterStatus.error,
+        errorMessage: 'register.error.terms_required',
+      );
+      return 'register.error.terms_required';
+    }
+
     state = state.copyWith(status: RegisterStatus.loading, clearError: true);
     AppLogger.info(
         'RegisterController: client social sign-in attempt provider=$provider');
@@ -236,7 +265,10 @@ class RegisterController extends StateNotifier<RegisterState> {
       return authError;
     }
 
-    final uid = _authService.user?.uid;
+    // FIX [A10]: read uid from FirebaseAuth.instance.currentUser instead of
+    // _authService.user for the same reason as in signInWithSocialAsWorker —
+    // prevents a transient null uid from aborting a successful client sign-in.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       AppLogger.info(
           'RegisterController: client social sign-in cancelled (uid null)');

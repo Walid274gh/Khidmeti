@@ -17,6 +17,12 @@
 //   account remains accessible.
 // FIX [AUTO] deleteAccount — prefs.clear() replaced with targeted key removal
 //   so unrelated local preferences (theme, locale, etc.) survive.
+//
+// FIX [L1] signOut — prefs.remove(PrefKeys.accountRole) moved AFTER
+//   authService.signOut() succeeds. Previously it was called BEFORE signOut,
+//   meaning that if signOut threw an exception the role pref was already wiped
+//   — leaving the user in a broken state where the app thought they were a
+//   client even though they were still authenticated as a worker.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -206,6 +212,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// FIX: FCM token cleared from Firestore before sign-out.
   /// FIX (Settings Audit P1): replaced FirebaseAnalytics.instance.logEvent()
   ///   with ref.read(analyticsServiceProvider).logUserSignedOut().
+  /// FIX [L1]: prefs.remove(PrefKeys.accountRole) moved AFTER
+  ///   authService.signOut() succeeds. Previously it was before signOut, so
+  ///   any exception from signOut left the pref wiped while the user was still
+  ///   authenticated — causing a client-role fallback on the next cold launch
+  ///   even for authenticated workers. Now the pref is only removed once
+  ///   sign-out is confirmed; on failure it is left intact and the role is
+  ///   restored in the catch block.
   Future<void> signOut() async {
     if (!mounted) return;
     // Guard: use compat getter — reads status == SettingsStatus.signingOut
@@ -238,10 +251,20 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         }
       }
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(PrefKeys.accountRole);
-
+      // FIX [L1]: authService.signOut() is called BEFORE prefs.remove so
+      // that if signOut throws (e.g. network error), prefs remain intact and
+      // the user can retry without losing their locally-cached role.
       await authService.signOut();
+
+      // Pref removed only after confirmed sign-out success.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(PrefKeys.accountRole);
+      } catch (prefsError) {
+        // Non-fatal — the auth session is already ended; stale pref is
+        // harmless and will be overwritten on the next successful sign-in.
+        AppLogger.warning('signOut: prefs.remove failed — $prefsError');
+      }
 
     } catch (e) {
       AppLogger.error('SettingsNotifier.signOut', e);
