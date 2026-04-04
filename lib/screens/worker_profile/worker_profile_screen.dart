@@ -160,11 +160,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                               color:      bgColor,
                               fontSize:   AppConstants.fontSizeXl,
                               fontWeight: FontWeight.w700,
-                              shadows: const [
-                                Shadow(
-                                    color: Color(0xAA000000),
-                                    blurRadius: 3),
-                              ],
+                              shadows: AppTheme.profileCardTextShadow,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -175,11 +171,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                             style: TextStyle(
                               color:   bgColor.withOpacity(0.75),
                               fontSize: AppConstants.fontSizeSm,
-                              shadows: const [
-                                Shadow(
-                                    color: Color(0xAA000000),
-                                    blurRadius: 3),
-                              ],
+                              shadows: AppTheme.profileCardTextShadow,
                             ),
                           ),
                           const SizedBox(height: AppConstants.spacingXs),
@@ -251,13 +243,13 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                       onPressed:
                           _isContacting ? null : _openWhatsApp,
                       style: ElevatedButton.styleFrom(
-                        // White/dark background: icon colours are visible
+                        // Use AppTheme token for dark surface
                         backgroundColor: isDark
-                            ? const Color(0xFF1B2B1B)
+                            ? AppTheme.whatsAppDarkSurface
                             : Colors.white,
                         foregroundColor: kWhatsAppGreen,
                         disabledBackgroundColor: isDark
-                            ? const Color(0xFF1B2B1B).withOpacity(0.4)
+                            ? AppTheme.whatsAppDarkSurface.withOpacity(0.4)
                             : Colors.white.withOpacity(0.4),
                         elevation: 0,
                         side: BorderSide(
@@ -341,9 +333,7 @@ class _OnlineBadge extends StatelessWidget {
             color:      bgColor.withOpacity(0.85),
             fontSize:   AppConstants.fontSizeXxs,
             fontWeight: FontWeight.w600,
-            shadows: const [
-              Shadow(color: Color(0xAA000000), blurRadius: 2)
-            ],
+            shadows: AppTheme.profileCardTextShadow,
           ),
         ),
       ],
