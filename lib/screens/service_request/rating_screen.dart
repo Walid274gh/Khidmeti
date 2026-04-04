@@ -81,8 +81,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                       child: GestureDetector(
                         onTap: () => context.pop(),
                         child: Container(
-                          width:  40,
-                          height: 40,
+                          width:  48,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: (isDark ? Colors.white : Colors.black)
                                 .withOpacity(0.07),
