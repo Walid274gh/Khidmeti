@@ -393,7 +393,7 @@ class _AddressFooter extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color:      textColor,
                       fontWeight: address.isNotEmpty && !isDragging
-                          ? FontWeight.w500
+                          ? FontWeight.w400
                           : FontWeight.w400,
                     ),
                 maxLines: 2,

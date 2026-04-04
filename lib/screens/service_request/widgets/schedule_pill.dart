@@ -81,7 +81,7 @@ class SchedulePill extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontSize: AppConstants.fontSizeXxs,
                       fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
+                          isActive ? FontWeight.w700 : FontWeight.w400,
                       color: isActive
                           ? Colors.white
                           : (isDark
