@@ -64,7 +64,7 @@ class JobMediaGallery extends StatelessWidget {
                             height: 100,
                             color: isDark
                                 ? AppTheme.darkSurfaceVariant
-                                : Colors.grey[200],
+                                : AppTheme.lightSurfaceVariant,
                             child: Icon(
                               Icons.play_circle_fill_rounded,
                               color: isDark
@@ -84,14 +84,14 @@ class JobMediaGallery extends StatelessWidget {
                               height: 100,
                               color: isDark
                                   ? AppTheme.darkSurfaceVariant
-                                  : Colors.grey[200],
+                                  : AppTheme.lightSurfaceVariant,
                             ),
                             errorWidget: (_, __, ___) => Container(
                               width: 100,
                               height: 100,
                               color: isDark
                                   ? AppTheme.darkSurfaceVariant
-                                  : Colors.grey[200],
+                                  : AppTheme.lightSurfaceVariant,
                               child: const Icon(Icons.broken_image_rounded,
                                   color: Colors.grey),
                             ),
@@ -130,4 +130,3 @@ class JobMediaGallery extends StatelessWidget {
     );
   }
 }
-

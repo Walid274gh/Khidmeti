@@ -118,7 +118,8 @@ class JobCard extends StatelessWidget {
                       isDark:       isDark,
                     ),
 
-                    const SizedBox(height: 10),
+                    // FIX [spacing]: was SizedBox(height: 10) — off 4dp grid.
+                    const SizedBox(height: AppConstants.spacingSm),
 
                     Text(
                       job.description,
@@ -132,7 +133,8 @@ class JobCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: 10),
+                    // FIX [spacing]: was SizedBox(height: 10) — off 4dp grid.
+                    const SizedBox(height: AppConstants.spacingSm),
 
                     Wrap(
                       spacing:    AppConstants.spacingXs,
