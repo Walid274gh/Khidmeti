@@ -69,17 +69,10 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
   // FIX (Search P1 — multilingual filter):
   // The original filter was: i.label.toLowerCase().contains(q)
   // This breaks when the app language differs from what the user types.
-  // Examples:
-  //   • App in French, user types "سباك" → no match for "Plombier"
-  //   • App in Arabic, user types "blombi" → no match for "سبّاك"
-  //   • App in any language, user types "klim" → no match
-  //
   // Fix: two-pass filter:
   //   Pass 1 — label match in the current UI language (existing behaviour)
   //   Pass 2 — ProfessionResolver.resolve(query) returns a type key;
   //             if it matches an item's type, that item is included.
-  // This means the grid always responds correctly regardless of the language
-  // the user types in, or the phonetic variant they use.
   List<_CategoryItem> get _filtered {
     if (_query.isEmpty) return _allItems;
 
@@ -219,14 +212,6 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
                               : AppTheme.lightText,
                         ),
                         decoration: InputDecoration(
-                          // FIX (UI P1 — focused inner border):
-                          // Same root cause as AdvancedSearchBar: the global
-                          // InputDecorationTheme defines focusedBorder with an
-                          // OutlineInputBorder stroke. Setting only
-                          // `border: InputBorder.none` does not prevent
-                          // Flutter from applying focusedBorder on focus.
-                          // All three border states must be explicitly set to
-                          // InputBorder.none to suppress the inner frame.
                           border:         InputBorder.none,
                           enabledBorder:  InputBorder.none,
                           focusedBorder:  InputBorder.none,
@@ -241,8 +226,6 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
                               ),
                           isDense:        true,
                           contentPadding: EdgeInsets.zero,
-                          // Transparent fill — the parent Container provides
-                          // the surface colour.
                           filled:         true,
                           fillColor:      Colors.transparent,
                         ),
@@ -303,8 +286,6 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
 }
 
 // ── Category tile — circular borderless design ────────────────────────────────
-// Mirrors home_service_grid.dart _ServiceChip: circle icon + label below,
-// no card container, no rectangular border.
 
 class _CategoryTile extends StatelessWidget {
   final _CategoryItem item;
@@ -343,7 +324,11 @@ class _CategoryTile extends StatelessWidget {
                 size:  AppConstants.iconSizeMd,
               ),
             ),
-            SizedBox(height: AppConstants.spacingXs + 3),
+            // FIX [WARN]: was `SizedBox(height: AppConstants.spacingXs + 3)`
+            // — token arithmetic is a code smell; 4+3=7 is off the 4dp grid.
+            // Replaced with AppConstants.cardIconLabelGap (8dp) which matches
+            // the gap used in home_service_grid.dart.
+            SizedBox(height: AppConstants.cardIconLabelGap),
             // ── Label ─────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -352,8 +337,6 @@ class _CategoryTile extends StatelessWidget {
               child: Text(
                 item.label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      // Dark mode: white text (darkText), same as "Voir tout".
-                      // Light mode: muted secondary — quieter on bright bg.
                       color: isDark
                           ? AppTheme.darkText
                           : AppTheme.lightSecondaryText,

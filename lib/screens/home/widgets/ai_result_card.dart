@@ -71,8 +71,12 @@ class AiResultCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                        // FIX [CRITICAL]: was `'services.\${intent.profession}'`
+                        // — the backslash escaped the $ preventing Dart string
+                        // interpolation. The widget always rendered the literal
+                        // key string instead of the translated service name.
                         intent.profession != null
-                            ? context.tr('services.\${intent.profession}')
+                            ? context.tr('services.${intent.profession}')
                             : context.tr('home.filter_all'),
                         style: Theme.of(context)
                             .textTheme
@@ -111,7 +115,7 @@ class AiResultCard extends StatelessWidget {
                         BorderRadius.circular(AppConstants.radiusXs),
                   ),
                   child: Text(
-                    '\$pct%',
+                    '$pct%',
                     style: TextStyle(
                       fontSize:   AppConstants.fontSizeXs,
                       fontWeight: FontWeight.w700,

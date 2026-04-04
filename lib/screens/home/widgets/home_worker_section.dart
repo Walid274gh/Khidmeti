@@ -202,7 +202,7 @@ class _AvailabilityToggle extends StatelessWidget {
                 ),
               ),
               // Toggle switch
-              _ToggleSwitch(isOn: isOnline),
+              _ToggleSwitch(isOn: isOnline, isDark: isDark),
             ],
           ),
         ),
@@ -213,18 +213,27 @@ class _AvailabilityToggle extends StatelessWidget {
 
 class _ToggleSwitch extends StatelessWidget {
   final bool isOn;
-  const _ToggleSwitch({required this.isOn});
+  final bool isDark;
+  const _ToggleSwitch({required this.isOn, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final onColor = AppTheme.onlineGreen;
+    // FIX [CRITICAL]: was `const Color(0xFF3A3550)` — hardcoded value not in
+    // AppTheme. Replaced with AppTheme.darkSurfaceVariant for dark mode and
+    // AppTheme.lightSurfaceVariant for light mode so the off-track colour
+    // stays within the design system.
+    final offTrackColor = isDark
+        ? AppTheme.darkSurfaceVariant
+        : AppTheme.lightSurfaceVariant;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width:  38,
       height: 20,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: isOn ? onColor : const Color(0xFF3A3550),
+        color: isOn ? onColor : offTrackColor,
       ),
       child: AnimatedAlign(
         duration: const Duration(milliseconds: 200),
@@ -260,8 +269,6 @@ class _RoiStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final surface = isDark ? AppTheme.darkSurface : AppTheme.lightSurface;
-    final border  = isDark ? AppTheme.darkBorder  : AppTheme.lightBorder;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -370,8 +377,8 @@ class _DemandBar extends StatelessWidget {
     final barColor = isHigh
         ? AppTheme.recordingRed
         : isMedium
-            ? AppTheme.darkAccent
-            : AppTheme.darkSecondaryText;
+            ? (isDark ? AppTheme.darkAccent : AppTheme.lightAccent)
+            : (isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText);
     final fillRatio = (pendingCount / 8.0).clamp(0.0, 1.0);
     final label = isHigh
         ? context.tr('worker_home.demand_high')
@@ -469,8 +476,6 @@ class _DemandBar extends StatelessWidget {
 
 class _NearbyJobTile extends StatelessWidget {
   // FIX (P0 — Engineer): was `final dynamic job` — lost all type safety.
-  // All field accesses (job.profession, job.location?.address, etc.) were
-  // untyped; a field rename would cause a silent runtime crash.
   final ServiceRequestEnhancedModel job;
   final bool                         isDark;
 
@@ -520,8 +525,6 @@ class _NearbyJobTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    // FIX (Compiler): was job.profession — field doesn't exist.
-                    // ServiceRequestEnhancedModel uses serviceType.
                     job.serviceType.isNotEmpty
                         ? job.serviceType
                         : context.tr('home.filter_all'),
@@ -535,8 +538,6 @@ class _NearbyJobTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    // FIX (Compiler): was job.location?.address — field doesn't exist.
-                    // ServiceRequestEnhancedModel uses userAddress.
                     job.userAddress.isNotEmpty
                         ? job.userAddress
                         : context.tr('worker_home.location_unknown'),
@@ -576,4 +577,3 @@ class _NearbyJobTile extends StatelessWidget {
     );
   }
 }
-

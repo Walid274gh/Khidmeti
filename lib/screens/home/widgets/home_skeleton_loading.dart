@@ -10,7 +10,10 @@ import '../../../utils/constants.dart';
 const double _kBarHeight   = 48.0;  // matches AdvancedSearchBar pill height
 const double _kAiBtnHeight = 34.0;  // matches "Recherche IA" button height
 const double _kCardW       = 72.0;  // matches HomeServiceGrid card width
-const double _kCardH       = 84.0;  // matches HomeServiceGrid card height
+// FIX [CRITICAL]: was 84.0 — mismatched home_service_grid.dart _kCardH (80).
+// Layout jank: skeleton cards were 4dp taller than real cards, causing a
+// visible height jump when content loaded.
+const double _kCardH       = 80.0;  // matches HomeServiceGrid card height
 const double _kCtaH        = 54.0;  // matches AppConstants.buttonHeight
 
 // ============================================================================
@@ -70,10 +73,10 @@ class _SkeletonTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        top:    AppConstants.heroPaddingTop,     // 38.0
-        left:   AppConstants.heroPaddingH,      // 24.0
-        right:  AppConstants.heroPaddingH,      // 24.0
-        bottom: AppConstants.heroPaddingBottom,  // 30.0
+        top:    AppConstants.heroPaddingTop,
+        left:   AppConstants.heroPaddingH,
+        right:  AppConstants.heroPaddingH,
+        bottom: AppConstants.heroPaddingBottom,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,5 +233,3 @@ class _Bone extends StatelessWidget {
     );
   }
 }
-
-

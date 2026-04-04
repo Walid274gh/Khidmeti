@@ -102,10 +102,6 @@ class HomeServiceGrid extends StatelessWidget {
 }
 
 // ── "Vous" chip — story avatar ─────────────────────────────────────────────────
-//
-// Matches the circular design of _ServiceChip exactly (same _kCardW / _kCardH /
-// _kCircleD). The coloured ring signals availability status at a glance,
-// identical to the Instagram / WhatsApp story unseen-ring pattern.
 
 class _VousChip extends StatelessWidget {
   final bool isDark;
@@ -119,8 +115,8 @@ class _VousChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = isOnline
-        ? AppTheme.onlineGreen   // 0xFF22C55E
-        : AppTheme.recordingRed; // 0xFFF44336
+        ? AppTheme.onlineGreen
+        : AppTheme.recordingRed;
 
     return Semantics(
       button: true,
@@ -155,7 +151,9 @@ class _VousChip extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 7),
+              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
+              // Replaced with AppConstants.cardIconLabelGap (8dp).
+              SizedBox(height: AppConstants.cardIconLabelGap),
 
               // ── Label ─────────────────────────────────────────────────────
               Text(
@@ -216,8 +214,6 @@ class _ServiceChip extends StatelessWidget {
                 height:   _kCircleD,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  // Active: slightly stronger tint + subtle ring.
-                  // Inactive: gentle tint, no border — pure circular form.
                   color: isActive
                       ? color.withOpacity(isDark ? 0.24 : 0.15)
                       : color.withOpacity(isDark ? 0.12 : 0.09),
@@ -239,7 +235,9 @@ class _ServiceChip extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 7),
+              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
+              // Replaced with AppConstants.cardIconLabelGap (8dp).
+              SizedBox(height: AppConstants.cardIconLabelGap),
 
               // ── Label — centered, muted, small ───────────────────────────
               Text(
@@ -315,7 +313,9 @@ class _AllServicesChip extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 7),
+              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
+              // Replaced with AppConstants.cardIconLabelGap (8dp).
+              SizedBox(height: AppConstants.cardIconLabelGap),
 
               // ── Label ─────────────────────────────────────────────────────
               Text(

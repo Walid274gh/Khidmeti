@@ -64,6 +64,10 @@ class HomeTopBar extends ConsumerWidget {
           RichText(
             text: TextSpan(
               style: TextStyle(
+                // FIX [WARN]: was bare `fontSize: 32` bypassing textTheme.
+                // headlineLarge in this project is 38px; using it would change
+                // the design. A custom 32px hero size is intentional here, so
+                // we keep the value but document it explicitly.
                 fontSize:      32,
                 fontWeight:    FontWeight.w700,
                 letterSpacing: -1.2,
@@ -99,7 +103,8 @@ class HomeTopBar extends ConsumerWidget {
                 color:    accent.withOpacity(0.4),
               ),
 
-          const SizedBox(height: 6),
+          // FIX [WARN]: was SizedBox(height: 6) — off 4dp grid.
+          const SizedBox(height: AppConstants.spacingXs),
 
           // ── Subtitle — staggered: delay 400 ms ────────────────────────────
           Text(
@@ -114,7 +119,8 @@ class HomeTopBar extends ConsumerWidget {
               .fade(delay: 400.ms, duration: 800.ms)
               .slideY(begin: 0.2, end: 0, delay: 400.ms, duration: 800.ms),
 
-          const SizedBox(height: 10),
+          // FIX [WARN]: was SizedBox(height: 10) — off 4dp grid.
+          const SizedBox(height: AppConstants.spacingSm),
 
           // ── Location row — staggered: delay 700 ms ────────────────────────
           // FIX (UI — duplicate pin): LocationAddressDisplay._AddressText
