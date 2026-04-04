@@ -30,9 +30,9 @@ class WorkerMapMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Best worker: gold accent. Others: profession colour.
+    // Best worker: warningAmber token. Others: profession colour.
     final color = isBest
-        ? const Color(0xFFFFB800)
+        ? AppTheme.warningAmber
         : AppTheme.getProfessionColor(worker.profession, isDark);
     final icon  = AppTheme.getProfessionIcon(worker.profession);
     final size  = isBest ? 52.0 : 44.0;
@@ -83,7 +83,7 @@ class WorkerMapMarker extends StatelessWidget {
                       child: Icon(
                         Icons.star_rounded,
                         size:  13,
-                        color: Color(0xFFFFB800),
+                        color: AppTheme.warningAmber,
                       ),
                     ),
                   ),
@@ -134,4 +134,3 @@ class _PointerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

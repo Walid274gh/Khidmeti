@@ -57,7 +57,8 @@ class HomeTopBar extends ConsumerWidget {
             ],
           ),
 
-          const SizedBox(height: 18),
+          // FIX [spacing]: was SizedBox(height: 18) — off 4dp grid.
+          const SizedBox(height: AppConstants.spacingMd),
 
           // ── Hero question — entrance: fade + slide up + shimmer ────────────
           RichText(
