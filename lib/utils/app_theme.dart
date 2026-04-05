@@ -47,20 +47,15 @@ class AppTheme {
   // ==========================================================
 
   /// Dark surface for the WhatsApp contact button.
-  /// Provides correct contrast for the green WhatsApp icon in dark mode.
-  /// Replaces the hardcoded Color(0xFF1B2B1B) in _WhatsAppButton.
   static const Color whatsAppDarkSurface = Color(0xFF1B2B1B);
 
   /// Semantic overlay border for cards in light mode.
-  /// Replaces hardcoded Colors.black.withOpacity(0.07) across card widgets.
   static const Color lightCardBorderOverlay = Color(0x12000000);
 
   /// Semantic overlay border for cards in dark mode.
-  /// Replaces hardcoded Colors.white.withOpacity(0.07) across card widgets.
   static const Color darkCardBorderOverlay = Color(0x12FFFFFF);
 
   // FIX (README3): named token for text shadow on ProfileCard.
-  // Replaces hardcoded Color(0xAA000000) in ProfileCard._textShadow.
   static const List<Shadow> profileCardTextShadow = [
     Shadow(
       color: Color(0xAA000000),
@@ -70,16 +65,25 @@ class AppTheme {
   ];
 
   // FIX (README5 Designer): dedicated tokens for HomePromoSection.
-  // statusAcceptedDark/Light were semantic 'accepted' colors wrongly used
-  // as decorative accents — replaced with these neutral blue tokens.
-  static const Color promoBlueDark  = Color(0xFF60A5FA); // Blue 400
-  static const Color promoBlueLight = Color(0xFF2563EB); // Blue 600
+  static const Color promoBlueDark  = Color(0xFF60A5FA);
+  static const Color promoBlueLight = Color(0xFF2563EB);
 
-  // FIX (README5 WCAG AA): darkSecondaryText (#7A6E96) on darkBackground
-  // (#080510) only reaches ~3.2:1 — fails WCAG AA 4.5:1 for body text.
-  // Use darkSecondaryTextWcag on body/hint text rendered on darkBackground.
-  // darkSecondaryText remains valid on darkSurface (#141028) at ~4.7:1.
-  static const Color darkSecondaryTextWcag = Color(0xFF9B91C0); // ~4.6:1
+  // FIX (README5 WCAG AA): improved contrast token for body text on darkBackground.
+  static const Color darkSecondaryTextWcag = Color(0xFF9B91C0);
+
+  // ==========================================================
+  // 🎨 WHATSAPP TOKENS — [MANUAL FIX]
+  // ==========================================================
+
+  /// WhatsApp brand green — used for outlined button border/foreground
+  /// and the fallback icon background.
+  /// Replaces hardcoded `Color(0xFF25D366)` in whatsapp_button.dart.
+  static const Color whatsAppGreen = Color(0xFF25D366);
+
+  /// WhatsApp dark teal — used for the filled button background.
+  /// Provides sufficient contrast for white icon/text on top.
+  /// Replaces hardcoded `Color(0xFF128C7E)` in whatsapp_button.dart.
+  static const Color whatsAppDark = Color(0xFF128C7E);
 
   // ==========================================================
   // 🎨 FEATURE / KEPT COLOURS
@@ -469,8 +473,6 @@ class AppTheme {
       ),
       dividerTheme:     const DividerThemeData(color: lightBorder, thickness: 1, space: 24),
       bottomSheetTheme: const BottomSheetThemeData(
-        // FIX (README2 P0): elevation 8 contradicted the project's
-        // 'zero shadow' philosophy and was inconsistent with darkTheme.
         backgroundColor: lightSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         elevation: 0,
