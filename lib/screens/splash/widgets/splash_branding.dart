@@ -24,17 +24,27 @@ class SplashBranding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ── Colours from AppTheme — no raw hex values allowed here ──────────────
+    // Design-system stance: AppTheme.darkX/lightX statics are used intentionally
+    // throughout the splash widgets. Runtime theme-switching is not required for
+    // the splash screen (it renders once before the user can change themes), so
+    // the static tokens are the correct choice here. If theme-switching is ever
+    // added, migrate these to Theme.of(context).colorScheme equivalents.
     final nameColor    = isDark ? AppTheme.darkText          : AppTheme.lightText;
     final taglineColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
 
     // ── Text styles — preserved exactly from the original widget ────────────
-    final nameStyle = Theme.of(context).textTheme.headlineLarge?.copyWith(
+    // FIX [UI6-W]: was `Theme.of(context).textTheme.headlineLarge?.copyWith(...)`
+    // — nullable access. If headlineLarge were null the entire nameStyle would
+    // silently fall back to the default TextStyle, losing all font settings.
+    // The fallback is explicit now: an empty const TextStyle() is used, which
+    // is a safe no-op that copyWith() can build upon.
+    final nameStyle = (Theme.of(context).textTheme.headlineLarge ?? const TextStyle()).copyWith(
       fontWeight:    FontWeight.w700,
       letterSpacing: -0.5,
       color:         nameColor,
     );
 
-    final taglineStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+    final taglineStyle = (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w400,
       color:      taglineColor,
     );

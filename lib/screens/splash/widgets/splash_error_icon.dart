@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../providers/splash_controller.dart';
 import '../../../utils/app_theme.dart';
+import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 
 
@@ -19,7 +20,11 @@ class SplashErrorIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final errorColor = isDark ? AppTheme.darkError : AppTheme.lightError;
+    // FIX [UI1-W]: was `errorColor.withOpacity(0.10)` — inline opacity call.
+    // Replaced with pre-baked const tokens AppTheme.darkErrorSubtle /
+    // AppTheme.lightErrorSubtle (both encode 10% alpha in the hex value).
+    final errorColor      = isDark ? AppTheme.darkError       : AppTheme.lightError;
+    final errorColorSubtle = isDark ? AppTheme.darkErrorSubtle : AppTheme.lightErrorSubtle;
 
     // FIX (QA / a11y P1): was missing a Semantics wrapper entirely.
     // VoiceOver / TalkBack users received no announcement when the error state
@@ -37,15 +42,23 @@ class SplashErrorIcon extends StatelessWidget {
       liveRegion: true,
       child: Container(
         key:    const ValueKey('error'),
-        width:  200,
-        height: 200,
+        // FIX [UI4-W]: was raw literals width: 200 / height: 200.
+        // AppConstants.splashErrorCircleSize = 200.0 is the canonical token.
+        width:  AppConstants.splashErrorCircleSize,
+        height: AppConstants.splashErrorCircleSize,
         decoration: BoxDecoration(
-          color:        errorColor.withOpacity(0.10),
-          borderRadius: BorderRadius.circular(100),
+          color: errorColorSubtle,
+          // FIX [UI4-W]: was BorderRadius.circular(100) — magic number derived
+          // from half of 200. Now computed from the token so it stays in sync
+          // if splashErrorCircleSize ever changes.
+          borderRadius: BorderRadius.circular(AppConstants.splashErrorCircleSize / 2),
         ),
         child: Icon(
           _iconForErrorType(errorType),
-          size:  80,
+          // FIX [UI4-W]: was bare size: 80 — no AppConstants token.
+          // AppConstants.iconSizeHero = 80.0 is the declared token for
+          // display-scale decorative icons beyond the standard icon scale.
+          size:  AppConstants.iconSizeHero,
           color: errorColor,
         ),
       ),

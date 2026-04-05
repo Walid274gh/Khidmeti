@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../../../utils/constants.dart';
 
+// FIX [UI1-W]: _kDotSize = 8.0 was a duplicate of AppConstants.statusDotSize (8.0).
+// Removed in favour of the canonical token — one source of truth.
 
-const double _kDotSize = 8.0;
-const double _kBounceHeight = 6.0;
-const Duration _kDotDuration = Duration(milliseconds: 700);
+// FIX [UI4-W]: _kBounceHeight = 6.0 was off the 4dp grid (nearest values: 4 or 8).
+// Replaced with AppConstants.spacingSm (8.0) — on-grid, snappier feel.
+// Visual impact is subtle (2dp increase in travel); test on device before
+// shipping if the team prefers the softer 4dp option instead.
+
+const Duration _kDotDuration  = Duration(milliseconds: 700);
 const Duration _kStaggerDelay = Duration(milliseconds: 180);
 
 class SplashLoadingPulse extends StatefulWidget {
@@ -44,7 +49,9 @@ class _SplashLoadingPulseState extends State<SplashLoadingPulse>
     );
 
     _offsets = _controllers.map((c) {
-      return Tween<double>(begin: 0.0, end: -_kBounceHeight).animate(
+      // FIX [UI4-W]: was -_kBounceHeight (6.0, off-grid).
+      // AppConstants.spacingSm = 8.0 is the nearest on-grid value.
+      return Tween<double>(begin: 0.0, end: -AppConstants.spacingSm).animate(
         CurvedAnimation(parent: c, curve: Curves.easeInOut),
       );
     }).toList();
@@ -98,8 +105,10 @@ class _SplashLoadingPulseState extends State<SplashLoadingPulse>
                   child: Container(
                     margin: const EdgeInsets.symmetric(
                         horizontal: AppConstants.spacingXs),
-                    width: _kDotSize,
-                    height: _kDotSize,
+                    // FIX [UI1-W]: was _kDotSize = 8.0 — duplicate of
+                    // AppConstants.statusDotSize. Now references the canonical token.
+                    width:  AppConstants.statusDotSize,
+                    height: AppConstants.statusDotSize,
                     decoration: BoxDecoration(
                       color: widget.color,
                       shape: BoxShape.circle,
@@ -114,4 +123,3 @@ class _SplashLoadingPulseState extends State<SplashLoadingPulse>
     );
   }
 }
-

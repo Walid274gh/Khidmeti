@@ -8,9 +8,13 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'splash_loading_pulse.dart';
 
+// FIX [UI1-W]: _kStatusAreaHeight = 64.0 removed — dead constant.
+// The height is now owned by AppConstants.splashStatusAreaHeight and read
+// directly in SplashScreen, which is the only place that sets the SizedBox.
+// SplashBottomStatus itself is sized by its parent, not self-declared.
+
 const double _kRetryButtonMinWidth  = 120.0;
 const double _kRetryButtonMinHeight = 48.0;
-const double _kStatusAreaHeight     = 64.0;
 
 class SplashBottomStatus extends StatelessWidget {
   final SplashState  controller;
@@ -57,9 +61,12 @@ class SplashBottomStatus extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                 ),
               ),
+              // FIX [UI6-W]: was `const TextStyle(fontWeight: FontWeight.w600)` —
+              // inline style bypasses theme. labelLarge is already w600/13sp/Inter
+              // per TextTheme — no visual change, but now theme-driven.
               child: Text(
                 context.tr('common.retry'),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.labelLarge,
               ),
             ),
           ),
