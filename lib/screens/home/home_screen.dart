@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/home_controller.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../utils/system_ui_overlay.dart';          // NEW
 import 'widgets/advanced_search_bar.dart';
 import 'widgets/fullscreen_map_controls.dart';
@@ -197,7 +198,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       AdvancedSearchBar(),
                       HomeQuickActions(),
                       HomePromoSection(),
-                      SizedBox(height: 80),
+                      // [S1 FIX]: was SizedBox(height: 80) — raw literal.
+                      // Replaced with AppConstants.fabClearance (80dp named token).
+                      SizedBox(height: AppConstants.fabClearance),
                     ],
                   ),
                 ),
