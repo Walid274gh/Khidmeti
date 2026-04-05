@@ -95,6 +95,30 @@ class AppTheme {
   );
 
   // ==========================================================
+  // 🎨 SHIMMER / SKELETON TOKENS
+  // ==========================================================
+
+  /// Base shimmer colour for dark theme skeleton screens.
+  /// Equivalent to darkText (0xFFF0EAFF) at ~7% opacity.
+  /// Alpha: round(0.07 × 255) = 18 = 0x12.
+  static const Color shimmerBaseDark = Color(0x12F0EAFF);
+
+  /// Highlight shimmer colour for dark theme skeleton screens.
+  /// Equivalent to darkText (0xFFF0EAFF) at ~15% opacity.
+  /// Alpha: round(0.15 × 255) = 38 = 0x26.
+  static const Color shimmerHighlightDark = Color(0x26F0EAFF);
+
+  /// Base shimmer colour for light theme skeleton screens.
+  /// Equivalent to lightText (0xFF12041C) at ~5% opacity.
+  /// Alpha: round(0.05 × 255) = 13 = 0x0D.
+  static const Color shimmerBaseLight = Color(0x0D12041C);
+
+  /// Highlight shimmer colour for light theme skeleton screens.
+  /// Equivalent to lightText (0xFF12041C) at ~10% opacity.
+  /// Alpha: round(0.10 × 255) = 26 = 0x1A.
+  static const Color shimmerHighlightLight = Color(0x1A12041C);
+
+  // ==========================================================
   // 🎨 WHATSAPP TOKENS
   // ==========================================================
 
