@@ -140,6 +140,9 @@ class AppConstants {
   static const double iconContainerSm  = 28.0;
   static const double iconContainerMd  = 32.0;
   static const double iconContainerLg  = 36.0;
+  // [W8 FIX]: 40dp icon container token — sits between iconContainerLg (36)
+  // and iconSizeXl (48). Used in HomeCtaButton square icon container.
+  static const double iconContainerXl  = 40.0;
   static const double buttonIconSize   = 20.0;
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;

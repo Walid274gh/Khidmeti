@@ -130,14 +130,9 @@ class AppTheme {
   // ==========================================================
 
   static const Color aiPrimary          = Color(0xFF6C47FF);
-  static const Color warningOrange      = Color(0xFFFB923C);
   static const Color onlineGreen        = Color(0xFF22C55E);
   static const Color recordingRed       = Color(0xFFF44336);
-  static const Color iconPink           = Color(0xFFEC4899);
   static const Color signOutRed         = Color(0xFFEF4444);
-  static const Color iconViolet         = Color(0xFF8B5CF6);
-  static const Color iconEmerald        = Color(0xFF10B981);
-  static const Color iconIndigo         = Color(0xFF6366F1);
   static const Color priorityNormalDark = Color(0xFF34D399);
   static const Color warningAmber       = Color(0xFFFBBF24);
   static const Color cyanBlue           = Color(0xFF06B6D4);
@@ -172,9 +167,12 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         brightness:              Brightness.dark,
         primary:                 darkAccent,
-        onPrimary:               darkBackground,
+        // [C2 FIX]: was darkBackground (0xFF080510) — map marker / location
+        // dot borders read colorScheme.onPrimary expecting white, but got
+        // near-black. Corrected to Colors.white.
+        onPrimary:               Colors.white,
         secondary:               darkAccent,
-        onSecondary:             darkBackground,
+        onSecondary:             Colors.white,
         surface:                 darkSurface,
         onSurface:               darkText,
         surfaceContainerLowest:  darkBackground,
@@ -227,7 +225,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: darkAccent,
-          foregroundColor: darkBackground,
+          foregroundColor: Colors.white,
           elevation:       0,
           minimumSize:     const Size(double.infinity, 54),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
@@ -363,9 +361,9 @@ class AppTheme {
       colorScheme: const ColorScheme.light(
         brightness:              Brightness.light,
         primary:                 lightAccent,
-        onPrimary:               lightBackground,
+        onPrimary:               Colors.white,
         secondary:               lightAccent,
-        onSecondary:             lightBackground,
+        onSecondary:             Colors.white,
         surface:                 lightSurface,
         onSurface:               lightText,
         error:                   lightError,
@@ -417,7 +415,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: lightAccent,
-          foregroundColor: lightBackground,
+          foregroundColor: Colors.white,
           elevation:       0,
           minimumSize:     const Size(double.infinity, 54),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
@@ -541,8 +539,9 @@ class AppTheme {
   // 🎨 HELPER METHODS
   // ==========================================================
 
-  static Color getProfessionColor(String profession, bool isDark) =>
-      isDark ? darkAccent : lightAccent;
+  // getProfessionColor() removed — unified accent color is used globally
+  // for all profession chips, markers, and category tiles.
+  // Call sites replaced with: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
 
   static Color getStatusColor(ServiceStatus status, bool isDark) {
     switch (status) {
