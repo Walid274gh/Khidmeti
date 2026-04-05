@@ -32,7 +32,9 @@ class AiExampleChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 32,
+      // [T1 FIX]: height 32dp → 48dp so the chip row meets the minimum
+      // touch-target requirement. Each chip is now at least 48dp tall.
+      height: AppConstants.buttonHeightMd,
       child: ListView.separated(
         scrollDirection:  Axis.horizontal,
         padding: const EdgeInsets.symmetric(
@@ -47,28 +49,31 @@ class AiExampleChips extends StatelessWidget {
             button: true,
             child: GestureDetector(
               onTap: () => onTap(label),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingSm,
-                  vertical:   AppConstants.spacingXs,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusCircle),
-                  border: Border.all(
-                    color: isDark
-                        ? AppTheme.darkBorder
-                        : AppTheme.lightBorder,
-                    width: 0.5,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingSm,
+                    vertical:   AppConstants.spacingSm,
                   ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: AppConstants.fontSizeXs,
-                    color:    isDark
-                        ? AppTheme.darkSecondaryText
-                        : AppTheme.lightSecondaryText,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusCircle),
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.darkBorder
+                          : AppTheme.lightBorder,
+                      width: 0.5,
+                    ),
+                  ),
+                  // [C2 FIX]: was raw TextStyle(fontSize: fontSizeXs, ...).
+                  // Replaced with textTheme.labelSmall?.copyWith(...).
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
                   ),
                 ),
               ),

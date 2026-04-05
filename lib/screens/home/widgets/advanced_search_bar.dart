@@ -202,15 +202,20 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                     onSubmitted: _onSubmitted,
                   ),
                 ),
+                // [T1 FIX]: clear button now uses the same 48×48 tap-zone
+                // pattern as camera/mic — SizedBox outer + Center inner.
                 if (hasText)
                   Semantics(
                     label:  context.tr('common.close'),
                     button: true,
                     child: GestureDetector(
                       onTap: _onClear,
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppConstants.spacingXs),
-                        child: Icon(AppIcons.close, size: 16, color: subtext),
+                      child: SizedBox(
+                        width:  _kTapZoneSize,
+                        height: _kTapZoneSize,
+                        child: Center(
+                          child: Icon(AppIcons.close, size: 16, color: subtext),
+                        ),
                       ),
                     ),
                   ),

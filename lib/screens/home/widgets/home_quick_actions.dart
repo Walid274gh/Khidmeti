@@ -73,6 +73,9 @@ class HomeQuickActions extends ConsumerWidget {
                               : AppTheme.lightSecondaryText,
                         ),
                   ),
+                  // [T1 FIX]: bare Text tap zone was ~20dp.
+                  // Wrapped in SizedBox(height: buttonHeightMd = 48dp) +
+                  // Align so the touch target meets the 48dp minimum.
                   Semantics(
                     button: true,
                     label:  context.tr('home.see_all'),
@@ -90,22 +93,26 @@ class HomeQuickActions extends ConsumerWidget {
                           }
                         },
                       ),
-                      child: Text(
-                        context.tr('home.see_all'),
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(
-                              color:      isDark
-                                  ? AppTheme.darkText
-                                  : AppTheme.lightAccent,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      child: SizedBox(
+                        height: AppConstants.buttonHeightMd,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            context.tr('home.see_all'),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color:      isDark
+                                      ? AppTheme.darkText
+                                      : AppTheme.lightAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: AppConstants.spacingMd),
 
               // Scrollable service chips — "Vous" chip prepended for workers
               HomeServiceGrid(

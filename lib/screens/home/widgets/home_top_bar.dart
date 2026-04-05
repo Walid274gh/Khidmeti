@@ -100,15 +100,15 @@ class HomeTopBar extends ConsumerWidget {
           const SizedBox(height: AppConstants.spacingXs),
 
           // ── Subtitle ──────────────────────────────────────────────────────
+          // [C2 FIX]: was raw TextStyle(fontSize: fontSizeCaption, ...) —
+          // untokenised. Replaced with textTheme.bodySmall?.copyWith(...)
+          // so the subtitle participates in the design system type scale.
           Text(
             context.tr('home.hero_subtitle'),
-            style: TextStyle(
-              // [UI-FIX TYPE]: was bare fontSize: 13 — untokenised.
-              // Replaced with AppConstants.fontSizeCaption (13dp named token).
-              fontSize: AppConstants.fontSizeCaption,
-              color:    text.withOpacity(0.32),
-              height:   1.5,
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color:  text.withOpacity(0.32),
+                  height: 1.5,
+                ),
           )
               .animate()
               .fade(delay: 400.ms, duration: 800.ms)

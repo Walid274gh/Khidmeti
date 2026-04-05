@@ -191,9 +191,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                                 : hasError
                                     ? context.tr('home.voice_error')
                                     : context.tr('home.voice_starting'),
-                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
-                // Replaced with textTheme.labelSmall?.copyWith(...) so the
-                // status label participates in the design system type scale.
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight:    FontWeight.w700,
                       letterSpacing: 0.8,
@@ -279,18 +276,20 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ? Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // [C2 FIX]: was raw TextStyle(fontSize: fontSizeXxl, ...).
+                            // Replaced with textTheme.headlineSmall?.copyWith(...)
+                            // which maps to 20dp w600 — matching fontSizeXxl (20dp).
                             Text(
                               _elapsedLabel,
-                              style: TextStyle(
-                                fontSize:   AppConstants.fontSizeXxl,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppTheme.darkText
-                                    : AppTheme.lightText,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures()
-                                ],
-                              ),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppTheme.darkText
+                                        : AppTheme.lightText,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
                             ),
                             Text(
                               'max $_kMaxRecordingSeconds s',
@@ -341,14 +340,15 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
 
               // ── Error ──────────────────────────────────────────────────────
               else if (hasError) ...[
+                // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, color: ...).
+                // Replaced with textTheme.bodySmall?.copyWith(...).
                 Text(
                   searchState.error == 'mic_unavailable'
                       ? context.tr('home.voice_mic_unavailable')
                       : context.tr('home.search_error'),
-                  style: TextStyle(
-                    fontSize: AppConstants.fontSizeSm,
-                    color: isDark ? AppTheme.darkError : AppTheme.lightError,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppTheme.darkError : AppTheme.lightError,
+                      ),
                 ),
                 const SizedBox(height: AppConstants.spacingMd),
                 ElevatedButton.icon(

@@ -87,8 +87,6 @@ class HomeWorkerSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg),
-            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, fontWeight: w700, ...)
-            // — bypasses textTheme. Replaced with textTheme.labelSmall?.copyWith(...).
             child: Text(
               context.tr('worker_home.nearby_jobs'),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -167,8 +165,6 @@ class _AvailabilityToggle extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
-                    // Replaced with textTheme.labelLarge?.copyWith(...).
                     Text(
                       isOnline
                           ? context.tr('worker_home.status_online')
@@ -182,8 +178,6 @@ class _AvailabilityToggle extends StatelessWidget {
                                     : AppTheme.lightText),
                           ),
                     ),
-                    // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
-                    // Replaced with textTheme.labelSmall?.copyWith(...).
                     Text(
                       isOnline
                           ? context.tr('worker_home.status_online_sub')
@@ -321,8 +315,6 @@ class _RoiCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // [W6 FIX]: was TextStyle(fontSize: fontSizeXl, fontWeight: w700, ...)
-            // Replaced with textTheme.headlineSmall?.copyWith(...).
             Text(
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -331,8 +323,6 @@ class _RoiCard extends StatelessWidget {
                   ),
             ),
             SizedBox(height: AppConstants.spacingXxs),
-            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
-            // Replaced with textTheme.labelSmall?.copyWith(...).
             Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -395,8 +385,6 @@ class _DemandBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
-                  // Replaced with textTheme.labelLarge?.copyWith(...).
                   child: Text(
                     context.tr('worker_home.demand_title'),
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -416,8 +404,6 @@ class _DemandBar extends StatelessWidget {
                     color:        barColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(AppConstants.radiusSm),
                   ),
-                  // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, fontWeight: w700, ...)
-                  // Replaced with textTheme.labelSmall?.copyWith(...).
                   child: Text(
                     label,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -447,8 +433,6 @@ class _DemandBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppConstants.spacingXs),
-            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
-            // Replaced with textTheme.labelSmall?.copyWith(...).
             Text(
               '$pendingCount ${context.tr('worker_home.demand_sub')}',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -513,8 +497,6 @@ class _NearbyJobTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
-                  // Replaced with textTheme.labelLarge?.copyWith(...).
                   Text(
                     job.serviceType.isNotEmpty
                         ? job.serviceType
@@ -527,8 +509,6 @@ class _NearbyJobTile extends StatelessWidget {
                         ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
-                  // Replaced with textTheme.labelSmall?.copyWith(...).
                   Text(
                     job.userAddress.isNotEmpty
                         ? job.userAddress
@@ -553,14 +533,15 @@ class _NearbyJobTile extends StatelessWidget {
                 color:        AppTheme.recordingRed,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSm),
               ),
-              // [W6 FIX]: was TextStyle(fontSize: 8, ...) — raw sub-threshold value.
-              // Replaced with textTheme.labelSmall?.copyWith(...) which maps to
-              // 10dp (fontSizeXs token) — smallest legible token in the system.
+              // [C1 FIX]: was color: Colors.white — hardcoded primitive.
+              // Replaced with colorScheme.onPrimary — semantically correct:
+              // text contrasting with the recordingRed fill. onPrimary maps
+              // to Colors.white in both the dark and light theme ColorScheme.
               child: Text(
                 context.tr('worker_home.badge_new'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color:      Colors.white,
+                      color:      Theme.of(context).colorScheme.onPrimary,
                     ),
               ),
             ),

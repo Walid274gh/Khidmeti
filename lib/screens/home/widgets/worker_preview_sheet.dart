@@ -178,9 +178,13 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
       child: ElevatedButton(
         onPressed: _loading ? null : _launch,
         style: ElevatedButton.styleFrom(
+          // [C1 FIX]: was Colors.white — hardcoded primitive.
+          // Replaced with AppTheme.lightSurface — semantically equivalent
+          // named token (pure white in light theme) that participates in the
+          // design system and survives future palette changes.
           backgroundColor: widget.isDark
               ? AppTheme.darkSurfaceVariant
-              : Colors.white,
+              : AppTheme.lightSurface,
           foregroundColor: AppTheme.whatsAppGreen,
           elevation:       0,
           side: BorderSide(
@@ -211,14 +215,17 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
                 children: [
                   WhatsAppIcon(size: 20),
                   const SizedBox(width: AppConstants.spacingSm),
+                  // [C2 FIX]: was raw TextStyle(fontWeight: w600, color: ...).
+                  // Replaced with textTheme.labelLarge?.copyWith(...) so the
+                  // label participates in the design system type scale.
                   Flexible(
                     child: Text(
                       widget.label,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.whatsAppGreen,
-                      ),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.whatsAppGreen,
+                          ),
                     ),
                   ),
                 ],

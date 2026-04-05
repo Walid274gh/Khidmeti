@@ -135,17 +135,16 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                     // Replaced with AppConstants.radiusCircle (fully rounded pill).
                     borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
                   ),
+                  // [C2 FIX]: was raw TextStyle(fontSize: fontSizeXs, ...).
+                  // Replaced with textTheme.labelSmall?.copyWith(...) so the
+                  // badge text participates in the design system type scale.
                   child: Text(
                     context.tr('home.cta_new'),
-                    style: TextStyle(
-                      fontSize:      AppConstants.fontSizeXs,
-                      fontWeight:    FontWeight.w700,
-                      // [W2 FIX]: was Colors.white — hardcoded primitive.
-                      // Replaced with colorScheme.onPrimary — semantically
-                      // correct: text that contrasts with the primary/accent fill.
-                      color:         Theme.of(context).colorScheme.onPrimary,
-                      letterSpacing: -0.2,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight:    FontWeight.w700,
+                          color:         Theme.of(context).colorScheme.onPrimary,
+                          letterSpacing: -0.2,
+                        ),
                   ),
                 ),
               ],

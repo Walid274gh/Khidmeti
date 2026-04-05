@@ -160,14 +160,15 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
 
               // ── Source picker (no image yet) ──────────────────────────────
               if (_imageBytes == null && !isLoading && !hasResult) ...[
+                // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, color: ...).
+                // Replaced with textTheme.bodySmall?.copyWith(...).
                 Text(
                   context.tr('home.image_search_hint'),
-                  style: TextStyle(
-                    fontSize: AppConstants.fontSizeSm,
-                    color:    isDark
-                        ? AppTheme.darkSecondaryText
-                        : AppTheme.lightSecondaryText,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppConstants.spacingLg),
@@ -205,24 +206,26 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
               ],
 
               // ── Analysing label ───────────────────────────────────────────
+              // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, fontWeight: ..., color: ...).
+              // Replaced with textTheme.bodySmall?.copyWith(...).
               if (isLoading)
                 Text(
                   context.tr('home.image_analysing'),
-                  style: TextStyle(
-                    fontSize:   AppConstants.fontSizeSm,
-                    fontWeight: FontWeight.w500,
-                    color:      accent,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color:      accent,
+                      ),
                 ),
 
               // ── Error ──────────────────────────────────────────────────────
               if (hasError) ...[
+                // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, color: ...).
+                // Replaced with textTheme.bodySmall?.copyWith(...).
                 Text(
                   context.tr('home.search_error'),
-                  style: TextStyle(
-                    fontSize: AppConstants.fontSizeSm,
-                    color: isDark ? AppTheme.darkError : AppTheme.lightError,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppTheme.darkError : AppTheme.lightError,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppConstants.spacingMd),
@@ -420,14 +423,15 @@ class _PickButton extends StatelessWidget {
                       ? AppTheme.darkSecondaryText
                       : AppTheme.lightSecondaryText),
               const SizedBox(height: AppConstants.spacingXs),
+              // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, color: ...).
+              // Replaced with textTheme.bodySmall?.copyWith(...).
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: AppConstants.fontSizeSm,
-                  color:    isDark
-                      ? AppTheme.darkSecondaryText
-                      : AppTheme.lightSecondaryText,
-                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText,
+                    ),
               ),
             ],
           ),
