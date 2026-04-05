@@ -14,7 +14,9 @@ import 'home_worker_section.dart';
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 const double _kTopPeek         = 72.0;
 const double _kTopRadius       = AppConstants.radiusXxl;
-const double _kStatusDotSize   =  8.0;
+// [S1-DUP FIX]: removed `const double _kStatusDotSize = 8.0` — verbatim clone
+// of AppConstants.statusDotSize. Defeats the token system and will drift.
+// All usages below replaced with AppConstants.statusDotSize.
 const double _kDismissVelocity = 400.0;
 
 // ============================================================================
@@ -138,10 +140,13 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                           ),
                           child: Row(
                             children: [
+                              // [S1-DUP FIX]: was _kStatusDotSize — local
+                              // duplicate of AppConstants.statusDotSize.
+                              // Replaced with the canonical token.
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
-                                width:  _kStatusDotSize,
-                                height: _kStatusDotSize,
+                                width:  AppConstants.statusDotSize,
+                                height: AppConstants.statusDotSize,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: statusColor,

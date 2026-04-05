@@ -24,6 +24,11 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
 
   static const Color _dotColor = AppTheme.cyanBlue;
 
+  // [MANUAL FIX — border width]: was 2.5 — non-integer border causes sub-pixel
+  // bleed on 1× density screens (Pixel 3a and similar). Changed to 2.0 which
+  // renders crisply on all pixel densities. Visual impact is negligible.
+  static const double _kBorderWidth = 2.0;
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +65,8 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
     // Promoted to AppConstants.locationDotSize (16dp = nearest on-grid value).
     // The ripple ring uses the same base size via Transform.scale, so its
     // visual proportion is preserved. The MarkerLayer in home_map_background.dart
-    // allocates 28×28dp for this marker — 16dp inner dot fits comfortably
-    // inside that budget (leaves 6dp padding each side for the border + glow).
+    // now allocates locationDotMarker (38dp) for this marker — 16dp inner dot
+    // fits comfortably inside that budget.
     final double dotSize = AppConstants.locationDotSize;
 
     return Stack(
@@ -90,7 +95,7 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
             color:  _dotColor,
-            border: Border.all(color: borderColor, width: 2.5),
+            border: Border.all(color: borderColor, width: _kBorderWidth),
             boxShadow: [
               BoxShadow(
                 color:        _dotColor.withOpacity(0.45),

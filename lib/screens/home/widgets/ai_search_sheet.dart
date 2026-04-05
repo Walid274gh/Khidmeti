@@ -246,9 +246,14 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                   child: ElevatedButton(
                     onPressed: isLoading ? null : _submit,
                     child: isLoading
+                        // [MANUAL FIX — CircularProgressIndicator size]:
+                        // Was 20×20 raw literals. Replaced with
+                        // AppConstants.iconSizeSm (20dp) — the standard token
+                        // for button-embedded spinners. Value unchanged,
+                        // now participates in the design system.
                         ? SizedBox(
-                            width:  20,
-                            height: 20,
+                            width:  AppConstants.iconSizeSm,
+                            height: AppConstants.iconSizeSm,
                             child:  CircularProgressIndicator(
                               strokeWidth: 2,
                               // [W3 FIX]: was Colors.white — hardcoded primitive.

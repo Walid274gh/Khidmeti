@@ -89,13 +89,18 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
         ),
 
         // User location marker
+        // [MANUAL FIX]: was width: 28, height: 28 — raw magic numbers.
+        // AppConstants.locationDotMarker = 38.0 was defined but never referenced.
+        // Updated to use the token: gives the PulsingLocationDot's ripple ring
+        // (scales from locationDotSize=16dp up to 2.2×) the allocation it needs
+        // without clipping. Previously 28dp cropped the outer ripple.
         if (userLocation != null)
           MarkerLayer(
             markers: [
               Marker(
                 point:  userLocation,
-                width:  28,
-                height: 28,
+                width:  AppConstants.locationDotMarker,
+                height: AppConstants.locationDotMarker,
                 child:  const PulsingLocationDot(),
               ),
             ],
@@ -122,4 +127,3 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
     );
   }
 }
-

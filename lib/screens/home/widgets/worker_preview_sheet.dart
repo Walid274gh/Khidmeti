@@ -202,9 +202,13 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
               horizontal: AppConstants.spacingChipGap),
         ),
         child: _loading
+            // [MANUAL FIX — CircularProgressIndicator size]:
+            // Was 18×18 — below the standard 20dp button-embedded spinner size.
+            // Changed to AppConstants.iconSizeSm (20dp) — unified with
+            // ai_search_sheet. Visually the same at this scale; now consistent.
             ? SizedBox(
-                width:  18,
-                height: 18,
+                width:  AppConstants.iconSizeSm,
+                height: AppConstants.iconSizeSm,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: AppTheme.whatsAppGreen,

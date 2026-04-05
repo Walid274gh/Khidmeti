@@ -42,9 +42,12 @@ class OnlineBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // [C1 FIX]: was width: 6, height: 6 — ignored AppConstants.statusDotSize (8dp).
+          // Creates a 25%-smaller dot vs home_worker_section's availability toggle dot
+          // (same "online" semantic, different size). Fixed to use the token.
           Container(
-            width:  6,
-            height: 6,
+            width:  AppConstants.statusDotSize,
+            height: AppConstants.statusDotSize,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: dotColor,

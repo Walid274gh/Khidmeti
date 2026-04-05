@@ -27,6 +27,13 @@ const double _kOrbOuter  = 88.0;
 const double _kOrbMid    = 72.0;
 const double _kOrbInner  = 56.0;
 
+// [MANUAL FIX — CircularProgressIndicator size]:
+// The orb spinner (24dp) is intentionally larger than button-embedded spinners
+// (AppConstants.iconSizeSm = 20dp) because it sits inside the 56dp orb inner
+// circle as the primary loading affordance — not embedded in a button.
+// Named constant added for clarity and to prevent future drift.
+const double _kOrbSpinnerSize = 24.0;
+
 class VoiceSearchSheet extends StatelessWidget {
   const VoiceSearchSheet({super.key});
 
@@ -242,9 +249,14 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ),
                       child: Center(
                         child: isLoading
+                            // [MANUAL FIX — CircularProgressIndicator]:
+                            // Orb spinner size is intentionally _kOrbSpinnerSize (24dp),
+                            // larger than the button-embedded standard (iconSizeSm=20dp).
+                            // It is the primary loading affordance inside a 56dp orb —
+                            // different visual context, confirmed intentional.
                             ? SizedBox(
-                                width:  24,
-                                height: 24,
+                                width:  _kOrbSpinnerSize,
+                                height: _kOrbSpinnerSize,
                                 child:  CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: onPrimary,

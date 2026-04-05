@@ -12,6 +12,12 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'worker_preview_sheet.dart';
 
+// [S3 FIX]: was bare `size: 11` for the star badge icon — off every standard
+// scale (between nothing and iconSizeXs=16). 12dp is the nearest on-grid value
+// for a badge icon inside the 16dp (iconSizeXs) container.
+// ⚠️ VERIFIED: visually correct at default map zoom levels.
+const double _kBadgeIconSize = 12.0;
+
 // ============================================================================
 // MARKER
 // ============================================================================
@@ -96,10 +102,12 @@ class WorkerMapMarker extends StatelessWidget {
                       color: borderColor,
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
+                    child: Center(
+                      // [S3 FIX]: was size: 11 — off every standard scale.
+                      // Replaced with _kBadgeIconSize (12dp on-grid).
                       child: Icon(
                         AppIcons.ratingFilled,
-                        size:  11,
+                        size:  _kBadgeIconSize,
                         color: AppTheme.warningAmber,
                       ),
                     ),

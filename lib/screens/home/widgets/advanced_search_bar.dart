@@ -23,6 +23,9 @@ const double _kActionSize  = 40.0;
 const double _kTapZoneSize = 48.0;
 // [W1 FIX]: _kAiBtnHeight 34.0 → 32.0 (8dp-grid snap).
 const double _kAiBtnHeight = 32.0;
+// [S3 FIX]: was bare `size: 11` — off every standard scale (iconSizeXs=16).
+// 12dp is the nearest on-grid value for a badge icon inside a 20dp container.
+const double _kAiIconBadgeSize = 12.0;
 
 class AdvancedSearchBar extends ConsumerStatefulWidget {
   const AdvancedSearchBar({super.key});
@@ -154,7 +157,7 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
     final border  = isDark ? AppTheme.darkBorder         : AppTheme.lightBorder;
     final hasText = _ctrl.text.isNotEmpty;
 
-    // [C1 FIX]: resolved once in build so the mic icon can reference it
+    // [C1 FIX]: resolved once in build so the mic/AI icons can reference it
     // without being const — colorScheme.onPrimary is a runtime value.
     final onPrimary = Theme.of(context).colorScheme.onPrimary;
 
@@ -290,52 +293,69 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
             ),
           ),
           const SizedBox(height: AppConstants.spacingSm),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Semantics(
-              label:  context.tr('home.ai_search_label'),
-              button: true,
-              child: GestureDetector(
-                onTap: _openAiSearch,
-                child: Container(
-                  height: _kAiBtnHeight,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppConstants.paddingMd,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusCircle),
-                    border: Border.all(
-                      color: accent.withOpacity(isDark ? 0.30 : 0.25),
-                      width: 0.5,
+          // [T1-CRITICAL FIX]: AI pill GestureDetector had a 32dp tap zone —
+          // violated 48dp minimum. Now wrapped in SizedBox(height: _kTapZoneSize,
+          // width: double.infinity) + Center, matching the camera/mic pattern.
+          SizedBox(
+            height: _kTapZoneSize,
+            width:  double.infinity,
+            child: Center(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Semantics(
+                  label:  context.tr('home.ai_search_label'),
+                  button: true,
+                  child: GestureDetector(
+                    onTap: _openAiSearch,
+                    child: Container(
+                      height: _kAiBtnHeight,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingMd,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radiusCircle),
+                        border: Border.all(
+                          color: accent.withOpacity(isDark ? 0.30 : 0.25),
+                          width: 0.5,
+                        ),
+                        color: accent.withOpacity(isDark ? 0.08 : 0.06),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width:  20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent,
+                            ),
+                            // [C1 FIX]: was const Icon(..., color: Colors.white) —
+                            // hardcoded primitive. Replaced with onPrimary from
+                            // colorScheme. const removed (runtime value).
+                            // [S3 FIX]: was size: 11 — off every standard scale.
+                            // Replaced with _kAiIconBadgeSize (12dp on-grid).
+                            child: Center(
+                              child: Icon(
+                                AppIcons.ai,
+                                size:  _kAiIconBadgeSize,
+                                color: onPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppConstants.spacingSm),
+                          Text(
+                            context.tr('home.ai_search_label'),
+                            style: TextStyle(
+                              fontSize:   AppConstants.fontSizeSm,
+                              fontWeight: FontWeight.w500,
+                              color:      accent,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    color: accent.withOpacity(isDark ? 0.08 : 0.06),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width:  20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: accent,
-                        ),
-                        child: const Center(
-                          child: Icon(AppIcons.ai, size: 11,
-                              color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: AppConstants.spacingSm),
-                      Text(
-                        context.tr('home.ai_search_label'),
-                        style: TextStyle(
-                          fontSize:   AppConstants.fontSizeSm,
-                          fontWeight: FontWeight.w500,
-                          color:      accent,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),

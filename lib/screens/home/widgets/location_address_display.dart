@@ -7,6 +7,13 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 
+// [MANUAL FIX — shimmer bone dimensions]: was inline `width: 120, height: 12`
+// magic numbers with no token backing. Extracted to file-local constants.
+// Not promoted to AppConstants because this shimmer bone is specific to this
+// widget; if reused elsewhere, promote them at that point.
+const double _kShimmerW = 120.0;
+const double _kShimmerH =  12.0;
+
 // ============================================================================
 // LOCATION ADDRESS DISPLAY
 // ============================================================================
@@ -63,8 +70,8 @@ class _AddressShimmerState extends State<_AddressShimmer>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
-        width:  120,
-        height: 12,
+        width:  _kShimmerW,
+        height: _kShimmerH,
         decoration: BoxDecoration(
           color: (isDark ? AppTheme.darkText : AppTheme.lightText)
               .withOpacity(_anim.value * 0.12),

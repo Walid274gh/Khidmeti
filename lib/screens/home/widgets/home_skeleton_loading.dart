@@ -14,6 +14,12 @@ const double _kAiBtnHeight = 32.0;
 const double _kCardW       = 72.0;
 const double _kCardH       = 80.0;
 const double _kCtaH        = 54.0;
+// [MANUAL FIX — skeleton bone radius]: was `AppConstants.spacingXs + 2`
+// arithmetic (evaluates to 6.0dp) repeated 4× throughout the top bar skeleton.
+// Extracted to a named file-local constant for clarity.
+// Using 6.0dp rather than 8.0dp (radiusSm) because these are small pill/line
+// bones that look visually incorrect at 8dp — design intent preserved.
+const double _kBoneRadius  = 6.0;
 
 // ============================================================================
 // HOME SKELETON LOADING
@@ -84,12 +90,13 @@ class _SkeletonTopBar extends StatelessWidget {
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // Hero question lines
-          _Bone(w: 260, h: 32, r: AppConstants.spacingXs + 2),
+          // Hero question lines — [MANUAL FIX]: was `AppConstants.spacingXs + 2`
+          // arithmetic. Replaced with named constant _kBoneRadius (6.0dp).
+          _Bone(w: 260, h: 32, r: _kBoneRadius),
           const SizedBox(height: AppConstants.spacingXs),
-          _Bone(w: 180, h: 32, r: AppConstants.spacingXs + 2),
+          _Bone(w: 180, h: 32, r: _kBoneRadius),
           const SizedBox(height: AppConstants.spacingXs),
-          _Bone(w: 220, h: 32, r: AppConstants.spacingXs + 2),
+          _Bone(w: 220, h: 32, r: _kBoneRadius),
 
           const SizedBox(height: AppConstants.spacingSm),
 
@@ -101,7 +108,8 @@ class _SkeletonTopBar extends StatelessWidget {
           // Location row
           Row(
             children: [
-              _Bone(w: 13, h: 13, r: AppConstants.spacingXs + 2, circle: true),
+              // [MANUAL FIX]: was `AppConstants.spacingXs + 2` → _kBoneRadius
+              _Bone(w: 13, h: 13, r: _kBoneRadius, circle: true),
               const SizedBox(width: AppConstants.spacingXs),
               _Bone(w: 160, h: 12, r: 4),
             ],
