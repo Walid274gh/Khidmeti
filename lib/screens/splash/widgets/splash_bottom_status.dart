@@ -13,8 +13,10 @@ import 'splash_loading_pulse.dart';
 // directly in SplashScreen, which is the only place that sets the SizedBox.
 // SplashBottomStatus itself is sized by its parent, not self-declared.
 
-const double _kRetryButtonMinWidth  = 120.0;
-const double _kRetryButtonMinHeight = 48.0;
+const double _kRetryButtonMinWidth = 120.0;
+// FIX [AUTO / W3]: _kRetryButtonMinHeight = 48.0 was a magic duplicate of
+// AppConstants.buttonHeightMd (48.0). Removed. All usages now reference the
+// canonical token directly so there is one source of truth.
 
 class SplashBottomStatus extends StatelessWidget {
   final SplashState  controller;
@@ -33,19 +35,46 @@ class SplashBottomStatus extends StatelessWidget {
     final accent     = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final errorColor = isDark ? AppTheme.darkError  : AppTheme.lightError;
 
+    // FIX [C1 / MANUAL]: AnimatedSwitcher moved inside SplashBottomStatus
+    // (Option B). Previously the AnimatedSwitcher in SplashScreen wrapped
+    // SplashBottomStatus as a whole, but since the widget type never changed
+    // the switcher had no way to detect transitions — it only fires when the
+    // direct child has a different runtime type OR a different key.
+    //
+    // Moving it inside gives full control: each logical child is given a
+    // stable ValueKey so Flutter can detect the state change and play the
+    // fade animation on every phase transition. The outer SizedBox in
+    // SplashScreen is left plain (no AnimatedSwitcher), which is correct —
+    // the height stays constant and only the inner content cross-fades.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child: _buildContent(context, accent, errorColor),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    Color accent,
+    Color errorColor,
+  ) {
     // ── Error + retry ─────────────────────────────────────────────────────
     if (controller.canRetry) {
       return Column(
         key:          const ValueKey('retry'),
         mainAxisSize: MainAxisSize.min,
         children: [
+          // FIX [AUTO / W2]: was `TextStyle(color: errorColor, fontSize:
+          // AppConstants.fontSizeSm, fontWeight: FontWeight.w400)` — inline
+          // style that bypassed the theme. Now uses textTheme.bodySmall with
+          // a color override only, which is the minimum necessary deviation
+          // from the theme. bodySmall = 12sp / w400 / Inter — same values,
+          // but now theme-driven and inherits future theme changes for free.
           Text(
             _errorMessage(context, controller.errorType),
-            style: TextStyle(
-              color:      errorColor,
-              fontSize:   AppConstants.fontSizeSm,
-              fontWeight: FontWeight.w400,  // was w500 — forbidden
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall!
+                .copyWith(color: errorColor),
           ),
           const SizedBox(height: AppConstants.spacingMd),
           Semantics(
@@ -56,7 +85,9 @@ class SplashBottomStatus extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: accent,
                 side:            BorderSide(color: accent),
-                minimumSize: const Size(_kRetryButtonMinWidth, _kRetryButtonMinHeight),
+                // FIX [AUTO / W3]: was _kRetryButtonMinHeight — removed.
+                // AppConstants.buttonHeightMd = 48.0 is the canonical token.
+                minimumSize: const Size(_kRetryButtonMinWidth, AppConstants.buttonHeightMd),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                 ),

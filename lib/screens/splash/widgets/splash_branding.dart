@@ -10,9 +10,20 @@ import '../../../utils/localization.dart';
 class SplashBranding extends StatelessWidget {
   final bool isDark;
 
-  /// Called once when the name animation finishes (~950 ms after first frame).
-  /// SplashScreen uses this to satisfy one half of its navigation gate:
-  ///   navigation = brandingDone ∧ minDurationElapsed (3 s)
+  /// Called once when ALL branding animations have completed — specifically
+  /// when the tagline fade-in finishes at delay(750ms) + duration(500ms) = 1250ms.
+  ///
+  /// FIX [MANUAL / W5]: was wired to the app-name animation onComplete, which
+  /// fires at 950ms — 300ms before the tagline finishes rendering. This meant
+  /// SplashController could start its navigation check while the user was still
+  /// watching live animation, creating a race where the splash could dismiss
+  /// with the tagline mid-fade on slow devices.
+  ///
+  /// Moved to the tagline's onComplete so the callback fires only after every
+  /// visible element has settled. The controller's min-duration gate (≥ 3s)
+  /// already provides a hard floor well above this 1250ms, so there is zero
+  /// regression risk — the only change is that _isAnimationComplete becomes
+  /// true 300ms later, which is the correct behaviour.
   final VoidCallback onAnimationComplete;
 
   const SplashBranding({
@@ -58,15 +69,13 @@ class SplashBranding extends StatelessWidget {
         // This is the spatial cue used by Apple, Google Maps, and Airbnb —
         // the element "rises into place" rather than appearing out of nowhere.
         //
-        // onComplete fires at delay(300ms) + duration(650ms) = 950 ms.
-        // Both effects share the same timing so they complete simultaneously.
+        // FIX [W5]: onComplete removed from here (was 950ms — too early).
+        // See tagline animation below for the corrected placement (1250ms).
         Text(
           context.tr('common.app_name'),
           style: nameStyle,
         )
-        .animate(
-          onComplete: (_) => onAnimationComplete(),
-        )
+        .animate()
         .fadeIn(
           delay:    300.ms,
           duration: 650.ms,
@@ -86,11 +95,19 @@ class SplashBranding extends StatelessWidget {
         // Whisper-soft fade only — no motion.
         // It appears after the name has begun settling, so the user's eye
         // has already found the brand before reading the descriptor.
+        //
+        // FIX [W5]: onComplete moved here from the name animation.
+        // Tagline completes at delay(750ms) + duration(500ms) = 1250ms — the
+        // last visible motion on screen. Firing onAnimationComplete here
+        // ensures the gate opens only after all animation has fully settled,
+        // preventing any race where the splash dismisses mid-animation.
         Text(
           context.tr('splash.tagline'),
           style: taglineStyle,
         )
-        .animate()
+        .animate(
+          onComplete: (_) => onAnimationComplete(),
+        )
         .fadeIn(
           delay:    750.ms,
           duration: 500.ms,

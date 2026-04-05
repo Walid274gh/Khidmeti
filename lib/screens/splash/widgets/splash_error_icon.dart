@@ -23,7 +23,7 @@ class SplashErrorIcon extends StatelessWidget {
     // FIX [UI1-W]: was `errorColor.withOpacity(0.10)` — inline opacity call.
     // Replaced with pre-baked const tokens AppTheme.darkErrorSubtle /
     // AppTheme.lightErrorSubtle (both encode 10% alpha in the hex value).
-    final errorColor      = isDark ? AppTheme.darkError       : AppTheme.lightError;
+    final errorColor       = isDark ? AppTheme.darkError       : AppTheme.lightError;
     final errorColorSubtle = isDark ? AppTheme.darkErrorSubtle : AppTheme.lightErrorSubtle;
 
     // FIX (QA / a11y P1): was missing a Semantics wrapper entirely.
@@ -40,8 +40,13 @@ class SplashErrorIcon extends StatelessWidget {
     return Semantics(
       label:      _semanticsLabel(context),
       liveRegion: true,
+      // FIX [AUTO / W7]: key: const ValueKey('error') removed from the
+      // internal Container. A key here is redundant — it is invisible to the
+      // parent AnimatedSwitcher because it sits below an intermediate Semantics
+      // node. The meaningful key now lives on SplashErrorIcon itself at the
+      // call site in SplashScreen (ValueKey(controller.errorType)), where the
+      // AnimatedSwitcher can actually observe it.
       child: Container(
-        key:    const ValueKey('error'),
         // FIX [UI4-W]: was raw literals width: 200 / height: 200.
         // AppConstants.splashErrorCircleSize = 200.0 is the canonical token.
         width:  AppConstants.splashErrorCircleSize,

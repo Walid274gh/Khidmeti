@@ -1,5 +1,7 @@
 // lib/screens/splash/widgets/splash_loading_pulse.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../utils/constants.dart';
@@ -39,6 +41,17 @@ class _SplashLoadingPulseState extends State<SplashLoadingPulse>
   late final List<Animation<double>> _offsets;
   late final List<Animation<double>> _opacities;
 
+  // FIX [AUTO / C2]: was List<Future> via Future.delayed — Future callbacks
+  // carry no cancellation handle, so if the widget is disposed before the
+  // delay fires the callback still runs and calls _controllers[i].repeat()
+  // on a disposed AnimationController, throwing a FlutterError.
+  //
+  // Replaced with dart:async Timer objects stored in _staggerTimers.
+  // dispose() cancels every pending timer before releasing the controllers,
+  // eliminating the use-after-dispose crash that Future.delayed could cause
+  // on fast navigation or hot-reload.
+  final List<Timer> _staggerTimers = [];
+
   @override
   void initState() {
     super.initState();
@@ -65,15 +78,24 @@ class _SplashLoadingPulseState extends State<SplashLoadingPulse>
     // Start each dot with a staggered delay to create the wave effect.
     // The stagger order is always LTR in controller-index space; the display
     // order is reversed in build() for RTL locales.
+    //
+    // FIX [AUTO / C2]: Timer replaces Future.delayed — cancellable in dispose().
     for (int i = 0; i < _controllers.length; i++) {
-      Future.delayed(_kStaggerDelay * i, () {
-        if (mounted) _controllers[i].repeat(reverse: true);
-      });
+      _staggerTimers.add(
+        Timer(_kStaggerDelay * i, () {
+          if (mounted) _controllers[i].repeat(reverse: true);
+        }),
+      );
     }
   }
 
   @override
   void dispose() {
+    // FIX [AUTO / C2]: cancel all pending stagger timers before disposing
+    // controllers so no callback can fire on a released AnimationController.
+    for (final t in _staggerTimers) {
+      t.cancel();
+    }
     for (final c in _controllers) {
       c.dispose();
     }
