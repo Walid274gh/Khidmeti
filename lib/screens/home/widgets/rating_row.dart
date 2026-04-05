@@ -17,15 +17,14 @@ class RatingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark     = Theme.of(context).brightness == Brightness.dark;
-    // FIX: was hardcoded AppTheme.darkAccent — always amber-dark regardless of
-    // theme. Use the correct accent for the current mode.
     final starColor  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Row(
       children: [
-        // FIX: was Icons.star (raw icon). Use AppIcons.ratingFilled.
         Icon(AppIcons.ratingFilled, color: starColor, size: 14),
-        const SizedBox(width: 3),
+        // [UI-FIX SPACING]: was SizedBox(width: 3) — off 4dp grid.
+        // Replaced with AppConstants.spacingXxs (2dp — nearest on-grid value).
+        const SizedBox(width: AppConstants.spacingXxs),
         Text(
           worker.averageRating.toStringAsFixed(1),
           style: Theme.of(context).textTheme.labelMedium,
@@ -38,4 +37,3 @@ class RatingRow extends StatelessWidget {
     );
   }
 }
-

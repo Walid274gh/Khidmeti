@@ -128,26 +128,34 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
+                    // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
+                    // inner Container stays at iconContainerMd (32dp) visually.
                     Semantics(
                       label:  context.tr('common.close'),
                       button: true,
                       child: GestureDetector(
                         onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width:  AppConstants.iconContainerMd,
-                          height: AppConstants.iconContainerMd,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? AppTheme.darkSurface
-                                : AppTheme.lightSurfaceVariant,
-                          ),
+                        child: SizedBox(
+                          width:  AppConstants.buttonHeightMd,
+                          height: AppConstants.buttonHeightMd,
                           child: Center(
-                            child: Icon(AppIcons.close,
-                                size: 16,
+                            child: Container(
+                              width:  AppConstants.iconContainerMd,
+                              height: AppConstants.iconContainerMd,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
                                 color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText),
+                                    ? AppTheme.darkSurface
+                                    : AppTheme.lightSurfaceVariant,
+                              ),
+                              child: Center(
+                                child: Icon(AppIcons.close,
+                                    size: 16,
+                                    color: isDark
+                                        ? AppTheme.darkSecondaryText
+                                        : AppTheme.lightSecondaryText),
+                              ),
+                            ),
                           ),
                         ),
                       ),

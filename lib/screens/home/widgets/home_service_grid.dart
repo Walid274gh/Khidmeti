@@ -10,22 +10,14 @@ import 'home_categories_sheet.dart';
 import 'worker_story_modal.dart';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
-// Card width kept at 72 to preserve scroll rhythm.
-// Circle diameter reduced from 52 → 48 for tighter vertical footprint.
-// Total card height reduced from 84 → 80 (circle + gap + label).
 const double _kCardW    = 72.0;
 const double _kCardH    = 80.0;
-const double _kCircleD  = 48.0; // circle diameter
+const double _kCircleD  = 48.0;
 
 class HomeServiceGrid extends StatelessWidget {
   final String?               activeFilter;
   final ValueChanged<String?> onFilterChanged;
 
-  // ── Worker-specific ────────────────────────────────────────────────────────
-  // When [isWorker] is true a "Vous" chip is prepended to the list.
-  // Its ring colour reflects the current availability:
-  //   online  → AppTheme.onlineGreen  (soft green)
-  //   offline → AppTheme.recordingRed (soft red)
   final bool isWorker;
   final bool workerIsOnline;
 
@@ -65,20 +57,19 @@ class HomeServiceGrid extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         physics:         const BouncingScrollPhysics(),
         children: [
-          // ── "Vous" chip — prepended for workers only ─────────────────────
-          // Acts as a story avatar: online = green ring, offline = red ring.
-          // Tap → WorkerStoryModal (full-screen page, not a plain sheet).
           if (isWorker) ...[
             _VousChip(
               isDark:   isDark,
               isOnline: workerIsOnline,
             ),
-            const SizedBox(width: 12),
+            // [UI-FIX SPACING]: was SizedBox(width: 12) — untokenised 12dp.
+            // Replaced with AppConstants.spacingChipGap (12dp named token).
+            const SizedBox(width: AppConstants.spacingChipGap),
           ],
 
-          // ── Service chips ─────────────────────────────────────────────────
           ...items.map((item) => Padding(
-            padding: const EdgeInsets.only(right: 12),
+            // [UI-FIX SPACING]: was EdgeInsets.only(right: 12) — same fix.
+            padding: const EdgeInsets.only(right: AppConstants.spacingChipGap),
             child: _ServiceChip(
               item:     item,
               isActive: activeFilter == item.type,
@@ -90,7 +81,6 @@ class HomeServiceGrid extends StatelessWidget {
             ),
           )),
 
-          // ── "Tout voir" tile — same circular shape ────────────────────────
           _AllServicesChip(
             isDark:          isDark,
             onFilterChanged: onFilterChanged,
@@ -101,7 +91,7 @@ class HomeServiceGrid extends StatelessWidget {
   }
 }
 
-// ── "Vous" chip — story avatar ─────────────────────────────────────────────────
+// ── "Vous" chip ────────────────────────────────────────────────────────────────
 
 class _VousChip extends StatelessWidget {
   final bool isDark;
@@ -128,7 +118,6 @@ class _VousChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ── Status-ringed circle ───────────────────────────────────────
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve:    Curves.easeOutCubic,
@@ -150,12 +139,7 @@ class _VousChip extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
-              // Replaced with AppConstants.cardIconLabelGap (8dp).
               SizedBox(height: AppConstants.cardIconLabelGap),
-
-              // ── Label ─────────────────────────────────────────────────────
               Text(
                 context.tr('worker_home.chip_vous'),
                 style: TextStyle(
@@ -176,7 +160,7 @@ class _VousChip extends StatelessWidget {
   }
 }
 
-// ── Service chip — borderless circular design ──────────────────────────────────
+// ── Service chip ───────────────────────────────────────────────────────────────
 
 class _ServiceChip extends StatelessWidget {
   final _ServiceItem item;
@@ -206,7 +190,6 @@ class _ServiceChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ── Circular icon container ───────────────────────────────────
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve:    Curves.easeOutCubic,
@@ -234,12 +217,7 @@ class _ServiceChip extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
-              // Replaced with AppConstants.cardIconLabelGap (8dp).
               SizedBox(height: AppConstants.cardIconLabelGap),
-
-              // ── Label — centered, muted, small ───────────────────────────
               Text(
                 item.label,
                 style: TextStyle(
@@ -264,7 +242,7 @@ class _ServiceChip extends StatelessWidget {
   }
 }
 
-// ── "Tout voir" chip — mirrors circular design ────────────────────────────────
+// ── "Tout voir" chip ──────────────────────────────────────────────────────────
 
 class _AllServicesChip extends StatelessWidget {
   final bool                  isDark;
@@ -292,7 +270,6 @@ class _AllServicesChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ── Circular icon container — dashed accent ring ──────────────
               Container(
                 width:  _kCircleD,
                 height: _kCircleD,
@@ -312,12 +289,7 @@ class _AllServicesChip extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // FIX [WARN]: was `const SizedBox(height: 7)` — off 4dp grid.
-              // Replaced with AppConstants.cardIconLabelGap (8dp).
               SizedBox(height: AppConstants.cardIconLabelGap),
-
-              // ── Label ─────────────────────────────────────────────────────
               Text(
                 context.tr('home.see_all'),
                 style: TextStyle(

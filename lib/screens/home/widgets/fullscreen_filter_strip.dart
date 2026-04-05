@@ -26,9 +26,6 @@ class FullscreenFilterStrip extends StatefulWidget {
   State<FullscreenFilterStrip> createState() => _FullscreenFilterStripState();
 }
 
-// FIX (Performance): converted to StatefulWidget so the chips list is built
-// only in didChangeDependencies() — called on locale change — NOT on every
-// parent rebuild triggered by GPS updates or the worker stream.
 class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
   late List<(String?, String, IconData)> _chips;
 
@@ -51,8 +48,11 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
   Widget build(BuildContext context) {
     final chips = _chips;
 
+    // [UI-FIX TOUCH]: outer SizedBox was 36dp — below 48dp minimum touch
+    // target. Increased to 48dp. Chip vertical padding increased from 6→10
+    // so total chip height fills the 48dp zone cleanly.
     return SizedBox(
-      height: 36,
+      height: AppConstants.buttonHeightMd, // 48dp
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics:         const BouncingScrollPhysics(),
@@ -76,7 +76,8 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingSm,
-                  vertical:   6,
+                  // Increased from 6 → 10dp so chip fills the 48dp tap zone.
+                  vertical:   10,
                 ),
                 decoration: BoxDecoration(
                   color: isActive
@@ -109,7 +110,7 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                                 : (widget.isDark ? Colors.white70 : Colors.black54),
                             fontWeight: isActive
                                 ? FontWeight.w700
-                                : FontWeight.w400,   // was w500 — forbidden
+                                : FontWeight.w400,
                           ),
                     ),
                   ],

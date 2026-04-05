@@ -67,29 +67,21 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
   ];
 
   // FIX (Search P1 — multilingual filter):
-  // The original filter was: i.label.toLowerCase().contains(q)
-  // This breaks when the app language differs from what the user types.
-  // Fix: two-pass filter:
-  //   Pass 1 — label match in the current UI language (existing behaviour)
-  //   Pass 2 — ProfessionResolver.resolve(query) returns a type key;
-  //             if it matches an item's type, that item is included.
+  // Two-pass filter handles Arabic, Darija, and phonetic Latin queries.
   List<_CategoryItem> get _filtered {
     if (_query.isEmpty) return _allItems;
 
     final q = _query.toLowerCase();
 
-    // Pass 1: label-based match in UI language
     final labelMatches = _allItems
         .where((i) => i.label.toLowerCase().contains(q))
         .toSet();
 
-    // Pass 2: ProfessionResolver — handles Arabic, Darija, phonetic Latin
     final resolvedType = ProfessionResolver.resolve(_query);
     final resolverMatches = resolvedType != null
         ? _allItems.where((i) => i.type == resolvedType).toSet()
         : <_CategoryItem>{};
 
-    // Merge: preserve original order
     final matchedTypes = {...labelMatches, ...resolverMatches}.map((i) => i.type).toSet();
     return _allItems.where((i) => matchedTypes.contains(i.type)).toList();
   }
@@ -147,26 +139,34 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
                           ),
                     ),
                   ),
+                  // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
+                  // inner Container stays at iconSizeLg (32dp) visually.
                   Semantics(
                     label:  context.tr('common.close'),
                     button: true,
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width:  AppConstants.iconSizeLg,
-                        height: AppConstants.iconSizeLg,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? AppTheme.darkSurface.withOpacity(0.60)
-                              : AppTheme.lightSurfaceVariant,
-                        ),
-                        child: Icon(
-                          AppIcons.close,
-                          size:  AppConstants.iconSizeSm,
-                          color: isDark
-                              ? AppTheme.darkSecondaryText
-                              : AppTheme.lightSecondaryText,
+                      child: SizedBox(
+                        width:  AppConstants.buttonHeightMd,
+                        height: AppConstants.buttonHeightMd,
+                        child: Center(
+                          child: Container(
+                            width:  AppConstants.iconSizeLg,
+                            height: AppConstants.iconSizeLg,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isDark
+                                  ? AppTheme.darkSurface.withOpacity(0.60)
+                                  : AppTheme.lightSurfaceVariant,
+                            ),
+                            child: Icon(
+                              AppIcons.close,
+                              size:  AppConstants.iconSizeSm,
+                              color: isDark
+                                  ? AppTheme.darkSecondaryText
+                                  : AppTheme.lightSecondaryText,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -310,7 +310,6 @@ class _CategoryTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Circular icon container ───────────────────────────────────
             Container(
               width:  AppConstants.categoryTileIconSize,
               height: AppConstants.categoryTileIconSize,
@@ -324,12 +323,7 @@ class _CategoryTile extends StatelessWidget {
                 size:  AppConstants.iconSizeMd,
               ),
             ),
-            // FIX [WARN]: was `SizedBox(height: AppConstants.spacingXs + 3)`
-            // — token arithmetic is a code smell; 4+3=7 is off the 4dp grid.
-            // Replaced with AppConstants.cardIconLabelGap (8dp) which matches
-            // the gap used in home_service_grid.dart.
             SizedBox(height: AppConstants.cardIconLabelGap),
-            // ── Label ─────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingXs,

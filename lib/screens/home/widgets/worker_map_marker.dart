@@ -30,7 +30,6 @@ class WorkerMapMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Best worker: warningAmber token. Others: profession colour.
     final color = isBest
         ? AppTheme.warningAmber
         : AppTheme.getProfessionColor(worker.profession, isDark);
@@ -80,8 +79,11 @@ class WorkerMapMarker extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
+                      // [UI-FIX ICON]: was Icons.star_rounded (raw icon).
+                      // Replaced with AppIcons.ratingFilled (same glyph,
+                      // now routed through the design system token).
                       child: Icon(
-                        Icons.star_rounded,
+                        AppIcons.ratingFilled,
                         size:  13,
                         color: AppTheme.warningAmber,
                       ),

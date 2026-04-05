@@ -15,14 +15,6 @@ import '../../../utils/localization.dart';
 
 // ============================================================================
 // IMAGE SEARCH SHEET
-//
-// Camera icon in search bar → this sheet.
-//
-// Flow:
-//   1. Sheet opens → choose gallery or camera
-//   2. Image preview shown
-//   3. Analysis starts IMMEDIATELY — no send button
-//   4. _ImageResultCard shown → user confirms → map fullscreen
 // ============================================================================
 
 class ImageSearchSheet extends StatelessWidget {
@@ -89,7 +81,6 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
         _imageBytes = bytes;
         _mime       = mime;
       });
-      // Auto-analyse immediately — no button needed
       _analyse();
     } catch (_) {
       // Picker dismissed or failed — user can retry
@@ -158,6 +149,10 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
+                  // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
+                  // inner Container stays at 32dp visually.
+                  // [UI-FIX COLOR]: replaced Colors.black.withOpacity(0.45)
+                  // with AppTheme.overlayDark token (synced with worker_story_modal).
                   Semantics(
                     label:  context.tr('common.close'),
                     button: true,
@@ -166,21 +161,27 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
                         _reset();
                         Navigator.pop(context);
                       },
-                      child: Container(
-                        width:  32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? AppTheme.darkSurface
-                              : AppTheme.lightSurfaceVariant,
-                        ),
+                      child: SizedBox(
+                        width:  AppConstants.buttonHeightMd,
+                        height: AppConstants.buttonHeightMd,
                         child: Center(
-                          child: Icon(AppIcons.close,
-                              size: 16,
+                          child: Container(
+                            width:  32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
                               color: isDark
-                                  ? AppTheme.darkSecondaryText
-                                  : AppTheme.lightSecondaryText),
+                                  ? AppTheme.darkSurface
+                                  : AppTheme.lightSurfaceVariant,
+                            ),
+                            child: Center(
+                              child: Icon(AppIcons.close,
+                                  size: 16,
+                                  color: isDark
+                                      ? AppTheme.darkSecondaryText
+                                      : AppTheme.lightSecondaryText),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -372,7 +373,9 @@ class _ImagePreviewState extends State<_ImagePreview>
           children: [
             Image.memory(widget.imageBytes, fit: BoxFit.cover),
             if (widget.isLoading) ...[
-              ColoredBox(color: Colors.black.withOpacity(0.45)),
+              // [UI-FIX COLOR]: was Colors.black.withOpacity(0.45)
+              // → AppTheme.overlayDark (synced with worker_story_modal)
+              const ColoredBox(color: AppTheme.overlayDark),
               AnimatedBuilder(
                 animation: _scan,
                 builder:   (_, __) => Positioned(

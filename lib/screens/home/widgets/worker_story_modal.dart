@@ -11,25 +11,18 @@ import '../../../utils/localization.dart';
 import 'home_worker_section.dart';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
-const double _kTopPeek        = 72.0;  // Home screen peeking above — story feel
-const double _kTopRadius      = 24.0;
-const double _kDragHandleW    = 40.0;
-const double _kDragHandleH    =  4.0;
-const double _kCloseSize      = 32.0;
+const double _kTopPeek        = 72.0;
+// [UI-FIX]: replaced raw 24.0 with AppConstants.radiusXxl token (same value,
+// now linked to the design system).
+const double _kTopRadius      = AppConstants.radiusXxl;
+// [UI-FIX]: replaced raw 40.0 / 4.0 with sheet handle tokens.
+const double _kDragHandleW    = AppConstants.sheetHandleWidth;
+const double _kDragHandleH    = AppConstants.sheetHandleHeight;
 const double _kStatusDotSize  =  8.0;
-const double _kDismissVelocity = 400.0; // px/s threshold for swipe-to-dismiss
+const double _kDismissVelocity = 400.0;
 
 // ============================================================================
 // WORKER STORY MODAL
-//
-// Design: Instagram/WhatsApp story pattern.
-//   • Navigator.push (not showModalBottomSheet) → true page-navigation feel,
-//     back button works, proper Hero transition slot.
-//   • Translucent barrier reveals the home screen above (_kTopPeek = 72 px)
-//     reinforcing the "story opened from home" metaphor.
-//   • Slide-up with easeOutCubic, slide-down on pop.
-//   • Swipe-down fast → dismiss (velocity threshold: _kDismissVelocity).
-//   • Contains HomeWorkerSection unmodified — single source of truth.
 // ============================================================================
 
 class WorkerStoryModal {
@@ -38,7 +31,9 @@ class WorkerStoryModal {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque:              false,
-        barrierColor:        Colors.black.withOpacity(0.45),
+        // [UI-FIX COLOR]: was Colors.black.withOpacity(0.45) — inline hardcode.
+        // Replaced with AppTheme.overlayDark token (synced with image_search_sheet).
+        barrierColor:        AppTheme.overlayDark,
         barrierDismissible:  true,
         transitionDuration:  const Duration(milliseconds: 380),
         reverseTransitionDuration: const Duration(milliseconds: 300),
@@ -51,7 +46,6 @@ class WorkerStoryModal {
             parent: animation,
             curve:  Curves.easeOutCubic,
           ));
-          // Fade the barrier in simultaneously
           return FadeTransition(
             opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
             child: SlideTransition(position: slide, child: child),
@@ -72,7 +66,6 @@ class _WorkerStoryPage extends ConsumerStatefulWidget {
 }
 
 class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
-  // Tracks drag offset for visual feedback while swiping down
   double _dragOffset = 0.0;
 
   void _onDragUpdate(DragUpdateDetails details) {
@@ -86,7 +79,6 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
     if (velocity > _kDismissVelocity || _dragOffset > 160) {
       Navigator.of(context).pop();
     } else {
-      // Snap back
       setState(() => _dragOffset = 0.0);
     }
   }
@@ -108,18 +100,14 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: GestureDetector(
-        // Tap the peek area (top _kTopPeek px) → dismiss
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).pop(),
         child: Column(
           children: [
-            // ── Peek zone — home screen shows through ─────────────────────
             const SizedBox(height: _kTopPeek),
 
-            // ── Story card ────────────────────────────────────────────────
             Expanded(
               child: GestureDetector(
-                // Prevent tap-dismiss from propagating through the card
                 onTap: () {},
                 onVerticalDragUpdate: _onDragUpdate,
                 onVerticalDragEnd:    _onDragEnd,
@@ -145,13 +133,18 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                       children: [
                         // ── Drag handle ──────────────────────────────────
                         Padding(
-                          padding: const EdgeInsets.only(top: 12, bottom: 4),
+                          padding: const EdgeInsets.only(
+                            top:    AppConstants.spacingMd,
+                            bottom: AppConstants.spacingXs,
+                          ),
                           child: Container(
                             width:  _kDragHandleW,
                             height: _kDragHandleH,
                             decoration: BoxDecoration(
                               color:        border,
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.radiusXs,
+                              ),
                             ),
                           ),
                         ),
@@ -164,7 +157,6 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                           ),
                           child: Row(
                             children: [
-                              // Status dot
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
                                 width:  _kStatusDotSize,
@@ -174,8 +166,8 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                                   color: statusColor,
                                   boxShadow: [
                                     BoxShadow(
-                                      color:      statusColor.withOpacity(0.4),
-                                      blurRadius: 6,
+                                      color:        statusColor.withOpacity(0.4),
+                                      blurRadius:   6,
                                       spreadRadius: 1,
                                     ),
                                   ],
@@ -183,20 +175,18 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                               ),
                               const SizedBox(width: AppConstants.spacingSm),
 
-                              // Title
                               Text(
                                 context.tr('worker_home.story_title'),
                                 style: TextStyle(
-                                  fontSize:   AppConstants.fontSizeLg,
-                                  fontWeight: FontWeight.w700,
-                                  color:      text,
+                                  fontSize:      AppConstants.fontSizeLg,
+                                  fontWeight:    FontWeight.w700,
+                                  color:         text,
                                   letterSpacing: -0.4,
                                 ),
                               ),
 
                               const Spacer(),
 
-                              // Status pill
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
                                 padding: const EdgeInsets.symmetric(
@@ -229,30 +219,37 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
 
                               const SizedBox(width: AppConstants.spacingSm),
 
-                              // Close button
+                              // [UI-FIX TOUCH]: outer 48×48 SizedBox is the
+                              // tap zone; inner Container stays at 32dp visually.
                               Semantics(
                                 label:  context.tr('common.close'),
                                 button: true,
                                 child: GestureDetector(
                                   onTap: () => Navigator.of(context).pop(),
-                                  child: Container(
-                                    width:  _kCloseSize,
-                                    height: _kCloseSize,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDark
-                                          ? AppTheme.darkSurface
-                                          : AppTheme.lightSurfaceVariant,
-                                      border: Border.all(
-                                        color: border,
-                                        width: 0.5,
-                                      ),
-                                    ),
+                                  child: SizedBox(
+                                    width:  AppConstants.buttonHeightMd,
+                                    height: AppConstants.buttonHeightMd,
                                     child: Center(
-                                      child: Icon(
-                                        AppIcons.close,
-                                        size:  15,
-                                        color: text.withOpacity(0.70),
+                                      child: Container(
+                                        width:  32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isDark
+                                              ? AppTheme.darkSurface
+                                              : AppTheme.lightSurfaceVariant,
+                                          border: Border.all(
+                                            color: border,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Icon(
+                                            AppIcons.close,
+                                            size:  15,
+                                            color: text.withOpacity(0.70),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),

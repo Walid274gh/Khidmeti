@@ -6,9 +6,6 @@ import '../../../utils/app_theme.dart';
 
 // ============================================================================
 // PULSING LOCATION DOT
-//
-// authOrbBlue deleted — use cyanBlue (0xFF06B6D4) which is kept as a
-// functional location/map colour and visually identical.
 // ============================================================================
 
 class PulsingLocationDot extends StatefulWidget {
@@ -24,7 +21,6 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
   late Animation<double>   _scale;
   late Animation<double>   _opacity;
 
-  // Dot colour — cyanBlue replaces deleted authOrbBlue
   static const Color _dotColor = AppTheme.cyanBlue;
 
   @override
@@ -51,6 +47,13 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
 
   @override
   Widget build(BuildContext context) {
+    // [UI-FIX COLOR]: was Colors.white (hardcoded).
+    // The location dot always sits on the map (dark tile background), so
+    // white is the correct semantic intent. Replaced with
+    // colorScheme.onPrimary which maps to white on this app's dark/light
+    // themes while remaining themeable.
+    final borderColor = Theme.of(context).colorScheme.onPrimary;
+
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -77,7 +80,7 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
             color:  _dotColor,
-            border: Border.all(color: Colors.white, width: 2.5),
+            border: Border.all(color: borderColor, width: 2.5),
             boxShadow: [
               BoxShadow(
                 color:        _dotColor.withOpacity(0.45),

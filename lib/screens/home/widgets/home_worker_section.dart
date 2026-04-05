@@ -29,7 +29,6 @@ class HomeWorkerSection extends ConsumerWidget {
     final workerState  = ref.watch(workerHomeControllerProvider);
     final jobsState    = ref.watch(workerJobsControllerProvider);
 
-    // Still loading — show nothing to avoid flash
     if (workerState.isWorkerLoading) return const SizedBox.shrink();
     if (workerState.isWorkerError)   return const SizedBox.shrink();
 
@@ -46,7 +45,6 @@ class HomeWorkerSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Divider
         Padding(
           padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.paddingLg),
@@ -58,7 +56,6 @@ class HomeWorkerSection extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingMd),
 
-        // ① Availability toggle
         _AvailabilityToggle(
           isDark:   isDark,
           isOnline: isOnline,
@@ -72,7 +69,6 @@ class HomeWorkerSection extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingSm),
 
-        // ② ROI metrics strip
         _RoiStrip(
           isDark:       isDark,
           rating:       rating,
@@ -81,13 +77,11 @@ class HomeWorkerSection extends ConsumerWidget {
 
         const SizedBox(height: AppConstants.spacingSm),
 
-        // ③ Demand bar
         _DemandBar(
           isDark:       isDark,
           pendingCount: pending.length,
         ),
 
-        // ④ Nearby jobs — only when online and there are open jobs
         if (isOnline && pending.isNotEmpty) ...[
           const SizedBox(height: AppConstants.spacingSm),
           Padding(
@@ -160,7 +154,6 @@ class _AvailabilityToggle extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Status dot
               Container(
                 width:  8,
                 height: 8,
@@ -170,7 +163,6 @@ class _AvailabilityToggle extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppConstants.spacingSm),
-              // Labels
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +193,6 @@ class _AvailabilityToggle extends StatelessWidget {
                   ],
                 ),
               ),
-              // Toggle switch
               _ToggleSwitch(isOn: isOnline, isDark: isDark),
             ],
           ),
@@ -219,10 +210,6 @@ class _ToggleSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onColor = AppTheme.onlineGreen;
-    // FIX [CRITICAL]: was `const Color(0xFF3A3550)` — hardcoded value not in
-    // AppTheme. Replaced with AppTheme.darkSurfaceVariant for dark mode and
-    // AppTheme.lightSurfaceVariant for light mode so the off-track colour
-    // stays within the design system.
     final offTrackColor = isDark
         ? AppTheme.darkSurfaceVariant
         : AppTheme.lightSurfaceVariant;
@@ -291,7 +278,7 @@ class _RoiStrip extends StatelessWidget {
           const SizedBox(width: AppConstants.spacingXs),
           _RoiCard(
             isDark:  isDark,
-            value:   '#1',     // Static placeholder — rank from Firestore in v2
+            value:   '#1',
             label:   context.tr('worker_home.roi_rank'),
             accent:  accent,
           ),
@@ -371,7 +358,6 @@ class _DemandBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Demand level: 0 = low, 1-3 = medium, 4+ = high
     final isHigh   = pendingCount >= 4;
     final isMedium = pendingCount >= 1 && pendingCount < 4;
     final barColor = isHigh
@@ -437,7 +423,6 @@ class _DemandBar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppConstants.spacingXs + 2),
-            // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: Stack(
@@ -475,7 +460,6 @@ class _DemandBar extends StatelessWidget {
 // ── ④ Nearby job tile ─────────────────────────────────────────────────────────
 
 class _NearbyJobTile extends StatelessWidget {
-  // FIX (P0 — Engineer): was `final dynamic job` — lost all type safety.
   final ServiceRequestEnhancedModel job;
   final bool                         isDark;
 
@@ -508,7 +492,6 @@ class _NearbyJobTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icon square
             Container(
               width:  32,
               height: 32,
@@ -519,7 +502,6 @@ class _NearbyJobTile extends StatelessWidget {
               child: Icon(AppIcons.requests, color: accent, size: 16),
             ),
             const SizedBox(width: AppConstants.spacingSm),
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,8 +546,11 @@ class _NearbyJobTile extends StatelessWidget {
               ),
               child: Text(
                 context.tr('worker_home.badge_new'),
-                style: const TextStyle(
-                  fontSize:   8,
+                style: TextStyle(
+                  // [UI-FIX TYPE]: was bare fontSize: 8 — below legibility
+                  // threshold. Replaced with fontSizeXxs (11dp — smallest
+                  // legible token in the system).
+                  fontSize:   AppConstants.fontSizeXxs,
                   fontWeight: FontWeight.w700,
                   color:      Colors.white,
                 ),

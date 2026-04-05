@@ -27,7 +27,6 @@ class HomeTopBar extends ConsumerWidget {
     final text   = isDark ? AppTheme.darkText   : AppTheme.lightText;
 
     return Padding(
-      // FIX (L10n — RTL P1): RTL-safe directional padding.
       padding: const EdgeInsetsDirectional.only(
         top:    AppConstants.heroPaddingTop,
         start:  AppConstants.heroPaddingH,
@@ -57,17 +56,12 @@ class HomeTopBar extends ConsumerWidget {
             ],
           ),
 
-          // FIX [spacing]: was SizedBox(height: 18) — off 4dp grid.
           const SizedBox(height: AppConstants.spacingMd),
 
-          // ── Hero question — entrance: fade + slide up + shimmer ────────────
+          // ── Hero question ──────────────────────────────────────────────────
           RichText(
             text: TextSpan(
               style: TextStyle(
-                // FIX [WARN]: was bare `fontSize: 32` bypassing textTheme.
-                // headlineLarge in this project is 38px; using it would change
-                // the design. A custom 32px hero size is intentional here, so
-                // we keep the value but document it explicitly.
                 fontSize:      AppConstants.heroFontSize,
                 fontWeight:    FontWeight.w700,
                 letterSpacing: -1.2,
@@ -103,14 +97,15 @@ class HomeTopBar extends ConsumerWidget {
                 color:    accent.withOpacity(0.4),
               ),
 
-          // FIX [WARN]: was SizedBox(height: 6) — off 4dp grid.
           const SizedBox(height: AppConstants.spacingXs),
 
-          // ── Subtitle — staggered: delay 400 ms ────────────────────────────
+          // ── Subtitle ──────────────────────────────────────────────────────
           Text(
             context.tr('home.hero_subtitle'),
             style: TextStyle(
-              fontSize: 13,
+              // [UI-FIX TYPE]: was bare fontSize: 13 — untokenised.
+              // Replaced with AppConstants.fontSizeCaption (13dp named token).
+              fontSize: AppConstants.fontSizeCaption,
               color:    text.withOpacity(0.32),
               height:   1.5,
             ),
@@ -119,14 +114,9 @@ class HomeTopBar extends ConsumerWidget {
               .fade(delay: 400.ms, duration: 800.ms)
               .slideY(begin: 0.2, end: 0, delay: 400.ms, duration: 800.ms),
 
-          // FIX [WARN]: was SizedBox(height: 10) — off 4dp grid.
           const SizedBox(height: AppConstants.spacingSm),
 
-          // ── Location row — staggered: delay 700 ms ────────────────────────
-          // FIX (UI — duplicate pin): LocationAddressDisplay._AddressText
-          // already renders Icon(AppIcons.location) internally. The outer Row
-          // previously added a second pin, causing visual duplication.
-          // Fix: pass LocationAddressDisplay directly — no wrapper Row needed.
+          // ── Location row ──────────────────────────────────────────────────
           LocationAddressDisplay(address: userAddress)
               .animate()
               .fade(delay: 700.ms, duration: 800.ms)

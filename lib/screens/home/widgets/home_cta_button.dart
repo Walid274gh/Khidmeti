@@ -10,11 +10,6 @@ import '../../../utils/localization.dart';
 
 // ============================================================================
 // HOME CTA BUTTON — Design C: square icon + title + subtitle + pill badge
-//
-// Same height as before (AppConstants.buttonHeight = 54.0).
-// FIX (UI Polish): "Nouveau →" badge changed from borderRadius(radiusSm = 8)
-// to a fully pill-shaped borderRadius(50) to match the circular/glassmorphism
-// design language of the search bar and icon containers.
 // ============================================================================
 
 class HomeCtaButton extends StatefulWidget {
@@ -55,19 +50,22 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
           scale:    _pressed ? 0.974 : 1.0,
           duration: const Duration(milliseconds: 80),
           child: Container(
-            height: AppConstants.buttonHeight, // 54.0 — unchanged
+            height: AppConstants.buttonHeight,
             decoration: BoxDecoration(
               color: isDark
                   ? AppTheme.darkSurface.withOpacity(0.60)
                   : AppTheme.lightSurfaceVariant,
-              borderRadius: BorderRadius.circular(16),
+              // [UI-FIX RADIUS]: was BorderRadius.circular(16) — raw value.
+              // Replaced with AppConstants.radiusLg (16dp — same value,
+              // now linked to the design system token).
+              borderRadius: BorderRadius.circular(AppConstants.radiusLg),
               border:       Border.all(color: border, width: 0.5),
             ),
             child: Row(
               children: [
                 const SizedBox(width: AppConstants.paddingSm + 2),
 
-                // Square icon — calendar + checkmark
+                // Square icon
                 Container(
                   width:  38,
                   height: 38,
@@ -116,10 +114,7 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                   ),
                 ),
 
-                // FIX (UI Polish — pill badge): was BorderRadius.circular(radiusSm = 8)
-                // which looked square against the circular icon containers and pill
-                // search bar. Changed to BorderRadius.circular(50) for a fully rounded
-                // pill shape that matches the app's circular design language.
+                // Pill badge
                 Container(
                   margin: const EdgeInsets.only(
                       right: AppConstants.paddingSm + 2),
@@ -128,8 +123,10 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                     vertical:   AppConstants.spacingXs + 2,
                   ),
                   decoration: BoxDecoration(
-                    color:        accent,
-                    borderRadius: BorderRadius.circular(50),
+                    color: accent,
+                    // [UI-FIX RADIUS]: was BorderRadius.circular(50) — magic number.
+                    // Replaced with AppConstants.radiusCircle (fully rounded pill).
+                    borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
                   ),
                   child: Text(
                     context.tr('home.cta_new'),

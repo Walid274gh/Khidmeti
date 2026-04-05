@@ -7,7 +7,15 @@ import '../../../utils/constants.dart';
 
 // ============================================================================
 // WORKER AVATAR
+//
+// [UI-FIX SIZE]: was 62×62dp — off 8dp grid.
+// Updated to 64×64dp (8dp grid canonical size).
+// Icon size updated from 30 → 28dp to maintain visual proportion.
 // ============================================================================
+
+// Canonical avatar size — on 8dp grid.
+const double _kAvatarSize = 64.0;
+const double _kIconSize   = 28.0;
 
 class WorkerAvatar extends StatelessWidget {
   final WorkerModel worker;
@@ -18,8 +26,8 @@ class WorkerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width:  62,
-      height: 62,
+      width:  _kAvatarSize,
+      height: _kAvatarSize,
       decoration: BoxDecoration(
         shape:  BoxShape.circle,
         color:  color.withOpacity(0.12),
@@ -31,11 +39,10 @@ class WorkerAvatar extends StatelessWidget {
                 worker.profileImageUrl!,
                 fit:          BoxFit.cover,
                 errorBuilder: (_, __, ___) =>
-                    Icon(AppIcons.person, color: color, size: 30),
+                    Icon(AppIcons.person, color: color, size: _kIconSize),
               ),
             )
-          : Icon(AppIcons.person, color: color, size: 30),
+          : Icon(AppIcons.person, color: color, size: _kIconSize),
     );
   }
 }
-

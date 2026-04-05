@@ -15,7 +15,11 @@ import 'image_search_sheet.dart';
 import 'voice_search_sheet.dart';
 
 const double _kBarHeight   = 48.0;
+// [UI-FIX TOUCH]: Visual size of camera/mic icons kept at 38dp.
+// The GestureDetector tap zone is enlarged to 48×48 via an outer SizedBox
+// so both the visual and the tap area are now correct.
 const double _kActionSize  = 38.0;
+const double _kTapZoneSize = 48.0;
 const double _kAiBtnHeight = 34.0;
 
 class AdvancedSearchBar extends ConsumerStatefulWidget {
@@ -138,9 +142,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
   @override
   Widget build(BuildContext context) {
     // FIX (Rebuild scope): select() limits rebuilds to isMapFullscreen only.
-    // Original ref.watch(homeControllerProvider) rebuilt this widget on every
-    // HomeState change (nearbyWorkers, workersError, isRefreshing…) even
-    // though none of those fields affect this widget's output.
     final isMapFullscreen = ref.watch(
       homeControllerProvider.select((s) => s.isMapFullscreen),
     );
@@ -218,35 +219,49 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   margin: const EdgeInsets.symmetric(
                       horizontal: AppConstants.spacingXs),
                 ),
+                // [UI-FIX TOUCH]: outer SizedBox sets 48×48 tap zone;
+                // inner SizedBox keeps the visual at _kActionSize (38dp).
                 Semantics(
                   label:  context.tr('home.search_by_image'),
                   button: true,
                   child: GestureDetector(
                     onTap: _openCamera,
                     child: SizedBox(
-                      width:  _kActionSize,
-                      height: _kActionSize,
-                      child:  Center(
-                        child: Icon(AppIcons.camera, size: 20, color: subtext),
+                      width:  _kTapZoneSize,
+                      height: _kTapZoneSize,
+                      child: Center(
+                        child: SizedBox(
+                          width:  _kActionSize,
+                          height: _kActionSize,
+                          child: Center(
+                            child: Icon(AppIcons.camera, size: 20, color: subtext),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
+                // [UI-FIX TOUCH]: same pattern for mic/voice button.
                 Semantics(
                   label:  context.tr('home.search_by_voice'),
                   button: true,
                   child: GestureDetector(
                     onTap: _openVoice,
-                    child: Container(
-                      width:       _kActionSize,
-                      height:      _kActionSize,
-                      margin:      const EdgeInsets.all(AppConstants.spacingXs),
-                      decoration:  BoxDecoration(
-                        color: accent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(AppIcons.mic, size: 18, color: Colors.white),
+                    child: SizedBox(
+                      width:  _kTapZoneSize,
+                      height: _kTapZoneSize,
+                      child: Center(
+                        child: Container(
+                          width:      _kActionSize,
+                          height:     _kActionSize,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(AppIcons.mic, size: 18, color: Colors.white),
+                          ),
+                        ),
                       ),
                     ),
                   ),

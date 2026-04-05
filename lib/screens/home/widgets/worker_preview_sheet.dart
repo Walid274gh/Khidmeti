@@ -101,7 +101,6 @@ class WorkerPreviewSheet extends StatelessWidget {
               // ── Action buttons ──────────────────────────────────────
               Row(
                 children: [
-                  // WhatsApp CTA
                   Expanded(
                     child: _WhatsAppCTA(
                       phone:   worker.phoneNumber,
@@ -112,7 +111,6 @@ class WorkerPreviewSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppConstants.spacingSm),
-                  // View profile
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
@@ -186,8 +184,11 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
       child: ElevatedButton(
         onPressed: _loading ? null : _launch,
         style: ElevatedButton.styleFrom(
+          // [UI-FIX COLOR]: was const Color(0xFF1B2B1B) — hardcoded hex.
+          // Replaced with AppTheme.darkSurfaceVariant for dark mode
+          // and Colors.white for light mode (unchanged).
           backgroundColor: widget.isDark
-              ? const Color(0xFF1B2B1B)
+              ? AppTheme.darkSurfaceVariant
               : Colors.white,
           foregroundColor: kWhatsAppGreen,
           elevation:       0,

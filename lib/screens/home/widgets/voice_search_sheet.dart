@@ -20,6 +20,14 @@ import '../../../utils/localization.dart';
 
 const int _kMaxRecordingSeconds = 30;
 
+// [UI-FIX SIZE]: Orb sizes tokenised — all on 8dp grid.
+//   88dp ✓ (already on grid)
+//   72dp ✓ (already on grid)
+//   58dp ✗ → 56dp (nearest 8dp-grid step down)
+const double _kOrbOuter  = 88.0;
+const double _kOrbMid    = 72.0;
+const double _kOrbInner  = 56.0; // was 58 — snapped to 8dp grid
+
 class VoiceSearchSheet extends StatelessWidget {
   const VoiceSearchSheet({super.key});
 
@@ -51,9 +59,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   late Animation<double>   _pulse;
 
   // FIX (R5): capture the notifier reference synchronously in initState()
-  // before any autoDispose rebuild could dispose the provider under us.
-  // dispose() then calls reset() directly on this cached reference — no
-  // ref.read() on a potentially-already-disposed autoDispose provider.
   late final HomeSearchController _searchNotifier;
 
   Timer?   _elapsedTimer;
@@ -64,8 +69,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   void initState() {
     super.initState();
 
-    // FIX (R5): capture notifier immediately — before addPostFrameCallback
-    // so it's guaranteed to be set before dispose() could ever fire.
     _searchNotifier = ref.read(homeSearchControllerProvider.notifier);
 
     _pulseCtrl = AnimationController(
@@ -89,14 +92,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
     _autoStopTimer?.cancel();
     _pulseCtrl.dispose();
 
-    // FIX (R5 + P0 — simplified):
-    // Uses the cached _searchNotifier reference instead of ref.read() so
-    // there is no risk of reading an already-disposed autoDispose provider.
-    // Reset unconditionally when the notifier is still mounted — the
-    // applyToMap() success path writes intent to the map controller before
-    // Navigator.pop() fires dispose(), so resetting here is safe: the map
-    // controller already holds the intent and homeSearchController returns
-    // to idle cleanly for the next voice session.
     if (_searchNotifier.mounted) {
       _searchNotifier.reset();
     }
@@ -219,6 +214,8 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               const SizedBox(height: AppConstants.spacingLg),
 
               // ── Orb ───────────────────────────────────────────────────────
+              // [UI-FIX SIZE]: Raw 88/72/58 → named _kOrb* consts (88/72/56).
+              // All three are now on the 8dp grid and easy to update globally.
               AnimatedBuilder(
                 animation: _pulse,
                 builder:   (_, child) => Transform.scale(
@@ -229,8 +226,8 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                   alignment: Alignment.center,
                   children: [
                     Container(
-                      width:  88,
-                      height: 88,
+                      width:  _kOrbOuter,
+                      height: _kOrbOuter,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: (isLoading || hasResult
@@ -240,8 +237,8 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ),
                     ),
                     Container(
-                      width:  72,
-                      height: 72,
+                      width:  _kOrbMid,
+                      height: _kOrbMid,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: (isLoading || hasResult
@@ -251,8 +248,8 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ),
                     ),
                     Container(
-                      width:  58,
-                      height: 58,
+                      width:  _kOrbInner,
+                      height: _kOrbInner,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isLoading || hasResult
@@ -281,7 +278,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               ),
               const SizedBox(height: AppConstants.spacingLg),
 
-              // ── Waveform (listening only) ──────────────────────────────────
+              // ── Waveform (listening only) ─────────────────────────────────
               if (isListening)
                 _Waveform(color: accent, isAnimating: true),
 
@@ -289,7 +286,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
 
               // ── Recording feedback ────────────────────────────────────────
               SizedBox(
-                height: 48,
+                height: AppConstants.buttonHeightMd,
                 child: Center(
                   child: isListening
                       ? Column(
@@ -446,7 +443,7 @@ class _WaveformState extends State<_Waveform>
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 48,
+      height: AppConstants.buttonHeightMd,
       child: AnimatedBuilder(
         animation: _ctrl,
         builder:   (_, __) => Row(
