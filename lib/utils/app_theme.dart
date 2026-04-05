@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/message_enums.dart';
+import 'constants.dart';
 
 /// ============================================================
 /// 🎨 KHIDMETI APP THEME — Midnight Indigo v2.0
@@ -43,7 +44,7 @@ class AppTheme {
   static const Color lightWarning       = Color(0xFFD97706);
 
   // ==========================================================
-  // 🎨 NEW TOKENS — added per upgrade plan
+  // 🎨 TOKENS — misc
   // ==========================================================
 
   /// Dark surface for the WhatsApp contact button.
@@ -55,40 +56,50 @@ class AppTheme {
   /// Semantic overlay border for cards in dark mode.
   static const Color darkCardBorderOverlay = Color(0x12FFFFFF);
 
-  // FIX (README3): named token for text shadow on ProfileCard.
+  // Named token for text shadow on ProfileCard.
   static const List<Shadow> profileCardTextShadow = [
-    Shadow(
-      color: Color(0xAA000000),
-      blurRadius: 8,
-      offset: Offset(0, 2),
-    ),
+    Shadow(color: Color(0xAA000000), blurRadius: 8, offset: Offset(0, 2)),
   ];
 
-  // FIX (README5 Designer): dedicated tokens for HomePromoSection.
+  // Dedicated tokens for HomePromoSection.
   static const Color promoBlueDark  = Color(0xFF60A5FA);
   static const Color promoBlueLight = Color(0xFF2563EB);
 
-  // FIX (README5 WCAG AA): improved contrast token for body text on darkBackground.
+  // Improved contrast token for body text on darkBackground (WCAG AA).
   static const Color darkSecondaryTextWcag = Color(0xFF9B91C0);
 
-  // [UI-FIX] Shared semi-opaque overlay used for modal barriers and image
-  // scan overlays. Replaces every inline Colors.black.withOpacity(0.45).
-  // 0.45 × 255 = 115 ≈ 0x73.
+  // Shared semi-opaque overlay for modal barriers and image scan overlays.
+  // 0.45 × 255 ≈ 0x73.
   static const Color overlayDark = Color(0x73000000);
 
   // ==========================================================
-  // 🎨 WHATSAPP TOKENS — [MANUAL FIX]
+  // 🎨 MODAL SHADOW TOKENS
   // ==========================================================
 
-  /// WhatsApp brand green — used for outlined button border/foreground
-  /// and the fallback icon background.
-  /// Replaces hardcoded `Color(0xFF25D366)` in whatsapp_button.dart.
-  static const Color whatsAppGreen = Color(0xFF25D366);
+  /// Box shadow for slide-up modals — dark theme variant.
+  /// Replaces inline `Colors.black.withOpacity(0.40)`.
+  /// 0.40 × 255 = 102 = 0x66.
+  static const BoxShadow modalShadowDark = BoxShadow(
+    color:      Color(0x66000000),
+    blurRadius: 24,
+    offset:     Offset(0, -4),
+  );
 
-  /// WhatsApp dark teal — used for the filled button background.
-  /// Provides sufficient contrast for white icon/text on top.
-  /// Replaces hardcoded `Color(0xFF128C7E)` in whatsapp_button.dart.
-  static const Color whatsAppDark = Color(0xFF128C7E);
+  /// Box shadow for slide-up modals — light theme variant.
+  /// Replaces inline `Colors.black.withOpacity(0.18)`.
+  /// 0.18 × 255 = 46 = 0x2E.
+  static const BoxShadow modalShadowLight = BoxShadow(
+    color:      Color(0x2E000000),
+    blurRadius: 24,
+    offset:     Offset(0, -4),
+  );
+
+  // ==========================================================
+  // 🎨 WHATSAPP TOKENS
+  // ==========================================================
+
+  static const Color whatsAppGreen = Color(0xFF25D366);
+  static const Color whatsAppDark  = Color(0xFF128C7E);
 
   // ==========================================================
   // 🎨 FEATURE / KEPT COLOURS
@@ -118,19 +129,6 @@ class AppTheme {
   static const Color statusInProgressDark  = Color(0xFFA78BFA);
   static const Color statusInProgressLight = Color(0xFF7C3AED);
   static const Color statusCancelledDark   = Color(0xFFF87171);
-
-  // ==========================================================
-  // 🎨 PROFESSION COLOURS
-  // ==========================================================
-
-  static const Color professionPlumberDark          = Color(0xFF60A5FA);
-  static const Color professionPlumberLight         = Color(0xFF2563EB);
-  static const Color professionPainterDark          = Color(0xFFA78BFA);
-  static const Color professionPainterLight         = Color(0xFF7C3AED);
-  static const Color professionCarpenterDark        = Color(0xFFF87171);
-  static const Color professionGardenerDark         = Color(0xFF4ADE80);
-  static const Color professionAcRepairLight        = Color(0xFF0891B2);
-  static const Color professionApplianceRepairLight = Color(0xFFEA580C);
 
   // ==========================================================
   // 🎨 DISABLED STATE
@@ -167,7 +165,7 @@ class AppTheme {
         color:       darkSurface,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppConstants.radiusCard),
           side: const BorderSide(color: darkBorder, width: 0.5),
         ),
         margin: const EdgeInsets.all(8),
@@ -176,23 +174,23 @@ class AppTheme {
         filled:    true,
         fillColor: darkSurfaceVariant,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkBorder, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkBorder, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkAccent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: BorderSide(color: darkError.withOpacity(0.8), width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
         labelStyle: const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
@@ -208,7 +206,7 @@ class AppTheme {
           foregroundColor: darkBackground,
           elevation:       0,
           minimumSize:     const Size(double.infinity, 54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
         ),
       ),
@@ -216,7 +214,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: darkAccent,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMd)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
@@ -225,7 +223,7 @@ class AppTheme {
           foregroundColor: darkText,
           side: BorderSide(color: darkBorder.withOpacity(0.2), width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
@@ -256,7 +254,7 @@ class AppTheme {
         backgroundColor: darkSurface,
         contentTextStyle: const TextStyle(color: darkText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
           side: BorderSide(color: darkBorder.withOpacity(0.2)),
         ),
         behavior:     SnackBarBehavior.floating,
@@ -290,9 +288,9 @@ class AppTheme {
         labelSmall:    TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: 0.10),
       ),
       dividerTheme: DividerThemeData(color: darkBorder.withOpacity(0.2), thickness: 1, space: 24),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: darkSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppConstants.radiusXxl))),
         elevation: 0,
       ),
       chipTheme: ChipThemeData(
@@ -357,7 +355,7 @@ class AppTheme {
         color:       lightSurface,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppConstants.radiusCard),
           side: const BorderSide(color: lightBorder, width: 0.5),
         ),
         margin: const EdgeInsets.all(8),
@@ -366,23 +364,23 @@ class AppTheme {
         filled:    true,
         fillColor: lightSurfaceVariant,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: lightBorder, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: lightBorder, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: lightAccent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: BorderSide(color: lightError.withOpacity(0.8), width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: lightError, width: 1.5),
         ),
         labelStyle:          const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
@@ -398,7 +396,7 @@ class AppTheme {
           foregroundColor: lightBackground,
           elevation:       0,
           minimumSize:     const Size(double.infinity, 54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
         ),
       ),
@@ -406,7 +404,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: lightAccent,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMd)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
@@ -415,7 +413,7 @@ class AppTheme {
           foregroundColor: lightText,
           side: const BorderSide(color: lightBorder, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
@@ -445,7 +443,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: lightText,
         contentTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
         behavior:     SnackBarBehavior.floating,
         elevation:    4,
         insetPadding: const EdgeInsets.all(16),
@@ -477,9 +475,9 @@ class AppTheme {
         labelSmall:    TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: 0.10),
       ),
       dividerTheme:     const DividerThemeData(color: lightBorder, thickness: 1, space: 24),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: lightSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppConstants.radiusXxl))),
         elevation: 0,
       ),
       chipTheme: ChipThemeData(
