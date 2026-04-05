@@ -70,11 +70,13 @@ class SplashBottomStatus extends StatelessWidget {
           // a color override only, which is the minimum necessary deviation
           // from the theme. bodySmall = 12sp / w400 / Inter — same values,
           // but now theme-driven and inherits future theme changes for free.
+          //
+          // FIX [W8]: was bodySmall! (force-unwrap). Replaced with null-safe
+          // fallback: (textTheme.bodySmall ?? const TextStyle()).copyWith(...)
+          // consistent with the safe pattern used in splash_branding.dart.
           Text(
             _errorMessage(context, controller.errorType),
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall!
+            style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
                 .copyWith(color: errorColor),
           ),
           const SizedBox(height: AppConstants.spacingMd),
@@ -85,7 +87,10 @@ class SplashBottomStatus extends StatelessWidget {
               onPressed: onRetry,
               style: OutlinedButton.styleFrom(
                 foregroundColor: accent,
-                side:            BorderSide(color: accent),
+                // FIX [W9]: was BorderSide(color: accent) — omitted width,
+                // defaulting to 1.0dp vs the global outlinedButtonTheme 1.5dp.
+                // Now explicitly 1.5dp for visual consistency with the theme.
+                side:            BorderSide(color: accent, width: 1.5),
                 // FIX [AUTO / W3]: was _kRetryButtonMinHeight — removed.
                 // AppConstants.buttonHeightMd = 48.0 is the canonical token.
                 // FIX [MANUAL]: AppConstants.splashRetryButtonMinWidth replaces
@@ -105,9 +110,14 @@ class SplashBottomStatus extends StatelessWidget {
               // (dark) or near-black (light) instead of accent indigo.
               // Fix: .copyWith(color: null) clears the text color so the button's
               // foregroundColor: accent is allowed to propagate correctly.
+              //
+              // FIX [W8]: was labelLarge! (force-unwrap). Replaced with null-safe
+              // fallback: (textTheme.labelLarge ?? const TextStyle()).copyWith(...)
+              // consistent with the safe pattern used in splash_branding.dart.
               child: Text(
                 context.tr('common.retry'),
-                style: Theme.of(context).textTheme.labelLarge!.copyWith(color: null),
+                style: (Theme.of(context).textTheme.labelLarge ?? const TextStyle())
+                    .copyWith(color: null),
               ),
             ),
           ),
