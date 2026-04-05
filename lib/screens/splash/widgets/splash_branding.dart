@@ -49,15 +49,24 @@ class SplashBranding extends StatelessWidget {
     // silently fall back to the default TextStyle, losing all font settings.
     // The fallback is explicit now: an empty const TextStyle() is used, which
     // is a safe no-op that copyWith() can build upon.
+    //
+    // FIX [MANUAL / W2]: letterSpacing: -0.5 was silently overriding the theme
+    // token headlineLarge.letterSpacing = -1.2. The canonical value for the
+    // splash app-name headline is -0.5 (tighter than body, looser than display).
+    // The theme token has been updated to -0.5 in app_theme.dart accordingly,
+    // and the local override is removed here to prevent future divergence.
     final nameStyle = (Theme.of(context).textTheme.headlineLarge ?? const TextStyle()).copyWith(
-      fontWeight:    FontWeight.w700,
-      letterSpacing: -0.5,
-      color:         nameColor,
+      fontWeight: FontWeight.w700,
+      color:      nameColor,
+      // letterSpacing intentionally omitted — inherits from updated theme token
+      // (headlineLarge.letterSpacing = -0.5). See app_theme.dart [W2] comment.
     );
 
+    // FIX [MANUAL]: removed redundant .copyWith(fontWeight: FontWeight.w400)
+    // from taglineStyle — bodyMedium is already w400 per the textTheme definition.
+    // Keeping it was misleading (implied an intentional override) and wasteful.
     final taglineStyle = (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
-      fontWeight: FontWeight.w400,
-      color:      taglineColor,
+      color: taglineColor,
     );
 
     return Column(

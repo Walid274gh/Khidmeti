@@ -13,7 +13,8 @@ import 'splash_loading_pulse.dart';
 // directly in SplashScreen, which is the only place that sets the SizedBox.
 // SplashBottomStatus itself is sized by its parent, not self-declared.
 
-const double _kRetryButtonMinWidth = 120.0;
+// FIX [MANUAL]: _kRetryButtonMinWidth promoted to AppConstants.splashRetryButtonMinWidth
+// for single-source-of-truth alignment with other splash constants.
 // FIX [AUTO / W3]: _kRetryButtonMinHeight = 48.0 was a magic duplicate of
 // AppConstants.buttonHeightMd (48.0). Removed. All usages now reference the
 // canonical token directly so there is one source of truth.
@@ -87,17 +88,26 @@ class SplashBottomStatus extends StatelessWidget {
                 side:            BorderSide(color: accent),
                 // FIX [AUTO / W3]: was _kRetryButtonMinHeight — removed.
                 // AppConstants.buttonHeightMd = 48.0 is the canonical token.
-                minimumSize: const Size(_kRetryButtonMinWidth, AppConstants.buttonHeightMd),
+                // FIX [MANUAL]: AppConstants.splashRetryButtonMinWidth replaces
+                // the local _kRetryButtonMinWidth = 120.0 magic literal.
+                minimumSize: const Size(AppConstants.splashRetryButtonMinWidth, AppConstants.buttonHeightMd),
+                // FIX [AUTO / W1]: was radiusMd (12dp) — inconsistent with
+                // outlinedButtonTheme global which uses radiusLg (16dp).
+                // Swapped to radiusLg for consistency.
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusLg),
                 ),
               ),
-              // FIX [UI6-W]: was `const TextStyle(fontWeight: FontWeight.w600)` —
-              // inline style bypasses theme. labelLarge is already w600/13sp/Inter
-              // per TextTheme — no visual change, but now theme-driven.
+              // FIX [AUTO / C1]: was `Theme.of(context).textTheme.labelLarge`
+              // without color: null. labelLarge carries color: darkText/lightText
+              // which wins over OutlinedButton's foregroundColor: accent via
+              // DefaultTextStyle.merge(), making retry text render near-white
+              // (dark) or near-black (light) instead of accent indigo.
+              // Fix: .copyWith(color: null) clears the text color so the button's
+              // foregroundColor: accent is allowed to propagate correctly.
               child: Text(
                 context.tr('common.retry'),
-                style: Theme.of(context).textTheme.labelLarge,
+                style: Theme.of(context).textTheme.labelLarge!.copyWith(color: null),
               ),
             ),
           ),
