@@ -16,6 +16,9 @@ import '../../../utils/localization.dart';
 const double _kSectionDividerH = 0.5;
 const int    _kMaxNearbyJobs   = 3;
 
+// Toggle and status-dot dimensions are promoted to AppConstants.
+// See constants.dart: toggleTrackW / toggleTrackH / toggleThumbSize / statusDotSize.
+
 // ============================================================================
 // HOME WORKER SECTION
 // ============================================================================
@@ -152,13 +155,12 @@ class _AvailabilityToggle extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // [S1 FIX]: was width: 8, height: 8 — raw literals.
-              // These are the status dot dimensions. No matching token exists
-              // yet; kept as-is per [MANUAL] note in manifest (toggleTrackW/H,
-              // statusDotSize tokens pending). Filed for manual addition.
+              // [S1 MANUAL FIX]: was width: 8, height: 8 — raw literals.
+              // Now resolved via AppConstants.statusDotSize (8dp token added
+              // to constants.dart in this pass).
               Container(
-                width:  8,
-                height: 8,
+                width:  AppConstants.statusDotSize,
+                height: AppConstants.statusDotSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: dotColor,
@@ -214,14 +216,16 @@ class _ToggleSwitch extends StatelessWidget {
         ? AppTheme.darkSurfaceVariant
         : AppTheme.lightSurfaceVariant;
 
-    // [S1 NOTE]: width:40/height:20 (track) and width:16/height:16 (thumb)
-    // have no matching AppConstants tokens. Kept as file-local values per
-    // [MANUAL] item in manifest — add AppConstants.toggleTrackW/H and
-    // AppConstants.toggleThumbSize when design tokens are confirmed.
+    // [S1 MANUAL FIX]: was width:40/height:20 (track) and width:16/height:16
+    // (thumb) — raw literals with no token backing. Tokens added to
+    // constants.dart: AppConstants.toggleTrackW (40), toggleTrackH (20),
+    // toggleThumbSize (16). thumb margin:2 left as file-local bare value —
+    // it is a construction detail (gap between thumb edge and track edge),
+    // not a spacing token; adding a named constant would not aid readability.
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      width:  40,
-      height: 20,
+      width:  AppConstants.toggleTrackW,
+      height: AppConstants.toggleTrackH,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         color: isOn ? onColor : offTrackColor,
@@ -231,8 +235,8 @@ class _ToggleSwitch extends StatelessWidget {
         curve:    Curves.easeInOut,
         alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          width:  16,
-          height: 16,
+          width:  AppConstants.toggleThumbSize,
+          height: AppConstants.toggleThumbSize,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,

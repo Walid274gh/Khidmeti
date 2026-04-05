@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../utils/app_theme.dart';
+import '../../../utils/constants.dart';
 
 // ============================================================================
 // PULSING LOCATION DOT
@@ -54,6 +55,15 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
     // themes while remaining themeable.
     final borderColor = Theme.of(context).colorScheme.onPrimary;
 
+    // [MANUAL FIX — S3]: dot diameter was 14dp — off the 8dp grid
+    // (falls between iconSizeXs=16 and nothing below it).
+    // Promoted to AppConstants.locationDotSize (16dp = nearest on-grid value).
+    // The ripple ring uses the same base size via Transform.scale, so its
+    // visual proportion is preserved. The MarkerLayer in home_map_background.dart
+    // allocates 28×28dp for this marker — 16dp inner dot fits comfortably
+    // inside that budget (leaves 6dp padding each side for the border + glow).
+    final double dotSize = AppConstants.locationDotSize;
+
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -63,8 +73,8 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
           builder: (_, __) => Transform.scale(
             scale: _scale.value,
             child: Container(
-              width:  14,
-              height: 14,
+              width:  dotSize,
+              height: dotSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _dotColor.withOpacity(_opacity.value),
@@ -75,8 +85,8 @@ class _PulsingLocationDotState extends State<PulsingLocationDot>
 
         // Solid dot
         Container(
-          width:  14,
-          height: 14,
+          width:  dotSize,
+          height: dotSize,
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
             color:  _dotColor,
