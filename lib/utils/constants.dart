@@ -15,6 +15,16 @@
 //     _AvailabilityToggle.
 //   • locationDotSize added — backs the PulsingLocationDot core diameter,
 //     promoted from off-grid 14dp to the nearest on-grid value 16dp.
+//
+// CHANGES (UI-APPLY pass — manual items):
+//   • splashLogoSize (248.0) added — on-grid replacement for _kLogoSize 250.0.
+//   • splashStatusAreaHeight (64.0) added — replaces hardcoded SizedBox(height:64)
+//     in SplashScreen and the dead _kStatusAreaHeight in SplashBottomStatus.
+//   • iconSizeHero (80.0) added — backs SplashErrorIcon Icon size, previously
+//     undeclared (max defined was iconSizeXl=48).
+//   • splashErrorCircleSize (200.0) added — backs SplashErrorIcon Container
+//     width/height; BorderRadius.circular(splashErrorCircleSize / 2) replaces
+//     the bare BorderRadius.circular(100).
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -143,6 +153,10 @@ class AppConstants {
   static const double iconSizeMd = 24.0;
   static const double iconSizeLg = 32.0;
   static const double iconSizeXl = 48.0;
+  /// Hero-scale icon used in full-screen state illustrations (e.g. SplashErrorIcon).
+  /// Intentionally outside the standard icon scale — it is a decorative display
+  /// element, not a UI control icon. Next defined size above iconSizeXl (48).
+  static const double iconSizeHero = 80.0;
 
   // Container sizes
   static const double iconContainerSm  = 28.0;
@@ -183,6 +197,22 @@ class AppConstants {
   /// Promoted from off-grid 14dp to the nearest on-grid value (16dp = 2×spacingSm).
   /// Outer ripple ring scales from this value via the animation controller.
   static const double locationDotSize = 16.0;
+
+  // ── Splash screen ────────────────────────────────────────────────────────
+  /// Logo image size on the splash screen.
+  /// 248dp is the nearest on-grid value (8dp grid) to the original 250dp.
+  /// Exported here so SplashScreen and tests share a single source of truth.
+  static const double splashLogoSize = 248.0;
+
+  /// Height reserved for the bottom status area (loading pulse / retry button).
+  /// Matches the SizedBox wrapper in SplashScreen and eliminates the dead
+  /// _kStatusAreaHeight constant that was declared but never read in
+  /// SplashBottomStatus.
+  static const double splashStatusAreaHeight = 64.0;
+
+  /// Diameter of the circular background container in SplashErrorIcon.
+  /// BorderRadius = splashErrorCircleSize / 2 keeps it a perfect circle.
+  static const double splashErrorCircleSize = 200.0;
 
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;

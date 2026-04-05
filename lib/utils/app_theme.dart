@@ -44,6 +44,68 @@ class AppTheme {
   static const Color lightWarning       = Color(0xFFD97706);
 
   // ==========================================================
+  // 🎨 OPACITY-BAKED TOKENS
+  //
+  // Design contract:
+  //   • No inline .withOpacity() calls anywhere in this file.
+  //   • All semi-transparent values are pre-baked const Colors.
+  //   • Alpha channel is encoded directly in the hex value so the
+  //     token remains a compile-time constant.
+  //   • Naming convention: <base>_<usage> or <base><Opacity%>.
+  //     e.g. darkBgAppBar = darkBackground @ 80 % opacity.
+  //
+  // Alpha reference (opacity → hex):
+  //   10% → 0x1A  |  15% → 0x26  |  20% → 0x33  |  50% → 0x80
+  //   60% → 0x99  |  70% → 0xB3  |  80% → 0xCC  |  90% → 0xE6
+  // ==========================================================
+
+  // ── Dark — app bar background (darkBackground @ 80%) ─────────────────────
+  static const Color darkBgAppBar = Color(0xCC080510);
+
+  // ── Dark — input error border (darkError @ 80%) ──────────────────────────
+  static const Color darkErrorBorder = Color(0xCCF87171);
+
+  // ── Dark — input hint text (darkSecondaryText @ 60%) ─────────────────────
+  static const Color darkHintText = Color(0x997A6E96);
+
+  // ── Dark — subtle border used in outlined buttons / snackbars / dialogs /
+  //    dividers / chip borders (darkBorder @ 20%) ──────────────────────────
+  static const Color darkBorderSubtle = Color(0x33221640);
+
+  // ── Dark — chip selected fill + slider overlay (darkAccent @ 20%) ────────
+  static const Color darkAccentOverlay = Color(0x334F46E5);
+
+  // ── Dark — switch track (selected) (darkAccent @ 50%) ────────────────────
+  static const Color darkAccentMid = Color(0x804F46E5);
+
+  // ── Dark — switch track (unselected) (darkSurfaceVariant @ 50%) ──────────
+  static const Color darkSurfaceVariantMid = Color(0x801C1235);
+
+  // ── Dark — error icon background in SplashErrorIcon (darkError @ 10%) ────
+  static const Color darkErrorSubtle = Color(0x1AF87171);
+
+  // ── Light — app bar background (lightBackground @ 90%) ───────────────────
+  static const Color lightBgAppBar = Color(0xE6F8F7FF);
+
+  // ── Light — input error border (lightError @ 80%) ────────────────────────
+  static const Color lightErrorBorder = Color(0xCCDC2626);
+
+  // ── Light — input hint text (lightSecondaryText @ 70%) ───────────────────
+  static const Color lightHintText = Color(0xB36B64A0);
+
+  // ── Light — chip selected fill (lightAccent @ 15%) ───────────────────────
+  static const Color lightAccentChipOverlay = Color(0x264F46E5);
+
+  // ── Light — slider overlay (lightAccent @ 20%) ───────────────────────────
+  static const Color lightAccentOverlay = Color(0x334F46E5);
+
+  // ── Light — switch track (selected) (lightAccent @ 50%) ──────────────────
+  static const Color lightAccentMid = Color(0x804F46E5);
+
+  // ── Light — error icon background in SplashErrorIcon (lightError @ 10%) ──
+  static const Color lightErrorSubtle = Color(0x1ADC2626);
+
+  // ==========================================================
   // 🎨 TOKENS — misc
   // ==========================================================
 
@@ -211,18 +273,18 @@ class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
-          borderSide: BorderSide(color: darkError.withOpacity(0.8), width: 1),
+          borderSide: const BorderSide(color: darkErrorBorder, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
-        labelStyle:      const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
+        labelStyle:         const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600),
-        hintStyle:       TextStyle(color: darkSecondaryText.withOpacity(0.6), fontFamily: 'Inter'),
-        contentPadding:  const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-        prefixIconColor: darkSecondaryText,
-        suffixIconColor: darkSecondaryText,
+        hintStyle:          const TextStyle(color: darkHintText, fontFamily: 'Inter'),
+        contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        prefixIconColor:    darkSecondaryText,
+        suffixIconColor:    darkSecondaryText,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -245,25 +307,25 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: darkText,
-          side: BorderSide(color: darkBorder.withOpacity(0.2), width: 1.5),
+          side: const BorderSide(color: darkBorderSubtle, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         elevation:              0,
         scrolledUnderElevation: 0,
-        backgroundColor:        darkBackground.withOpacity(0.8),
+        backgroundColor:        darkBgAppBar,
         foregroundColor:        darkText,
         centerTitle:            true,
-        systemOverlayStyle: const SystemUiOverlayStyle(
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor:          Colors.transparent,
           statusBarIconBrightness: Brightness.light,
         ),
-        titleTextStyle: const TextStyle(color: darkText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
-        iconTheme:        const IconThemeData(color: darkAccent, size: 24),
-        actionsIconTheme: const IconThemeData(color: darkText),
+        titleTextStyle: TextStyle(color: darkText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
+        iconTheme:        IconThemeData(color: darkAccent, size: 24),
+        actionsIconTheme: IconThemeData(color: darkText),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor:      darkSurface,
@@ -279,7 +341,7 @@ class AppTheme {
         contentTextStyle: const TextStyle(color: darkText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-          side: BorderSide(color: darkBorder.withOpacity(0.2)),
+          side: const BorderSide(color: darkBorderSubtle),
         ),
         behavior:     SnackBarBehavior.floating,
         elevation:    0,
@@ -289,7 +351,7 @@ class AppTheme {
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
-          side: BorderSide(color: darkBorder.withOpacity(0.2), width: 0.5),
+          side: const BorderSide(color: darkBorderSubtle, width: 0.5),
         ),
         titleTextStyle:   const TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
         contentTextStyle: const TextStyle(color: darkSecondaryText, fontSize: 15, fontFamily: 'Inter'),
@@ -311,7 +373,7 @@ class AppTheme {
         labelMedium:   TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkSecondaryText, fontFamily: 'Inter'),
         labelSmall:    TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: 0.10),
       ),
-      dividerTheme: DividerThemeData(color: darkBorder.withOpacity(0.2), thickness: 1, space: 24),
+      dividerTheme: const DividerThemeData(color: darkBorderSubtle, thickness: 1, space: 24),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppConstants.radiusXxl))),
@@ -319,13 +381,13 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor:     darkSurfaceVariant,
-        selectedColor:       darkAccent.withOpacity(0.2),
+        selectedColor:       darkAccentOverlay,
         labelStyle:          const TextStyle(color: darkText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: darkAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: darkBorder.withOpacity(0.2)),
+          side: const BorderSide(color: darkBorderSubtle),
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -334,15 +396,15 @@ class AppTheme {
         ),
         trackColor: WidgetStateProperty.resolveWith<Color>(
           (s) => s.contains(WidgetState.selected)
-              ? darkAccent.withOpacity(0.5)
-              : darkSurfaceVariant.withOpacity(0.5),
+              ? darkAccentMid
+              : darkSurfaceVariantMid,
         ),
       ),
-      sliderTheme: SliderThemeData(
+      sliderTheme: const SliderThemeData(
         activeTrackColor:   darkAccent,
         inactiveTrackColor: darkSurfaceVariant,
         thumbColor:         darkAccent,
-        overlayColor:       darkAccent.withOpacity(0.2),
+        overlayColor:       darkAccentOverlay,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color:              darkAccent,
@@ -401,7 +463,7 @@ class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
-          borderSide: BorderSide(color: lightError.withOpacity(0.8), width: 1),
+          borderSide: const BorderSide(color: lightErrorBorder, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
@@ -409,7 +471,7 @@ class AppTheme {
         ),
         labelStyle:         const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600),
-        hintStyle:          TextStyle(color: lightSecondaryText.withOpacity(0.7), fontFamily: 'Inter'),
+        hintStyle:          const TextStyle(color: lightHintText, fontFamily: 'Inter'),
         contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         prefixIconColor:    lightSecondaryText,
         suffixIconColor:    lightSecondaryText,
@@ -441,19 +503,19 @@ class AppTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         elevation:              0,
         scrolledUnderElevation: 0,
-        backgroundColor:        lightBackground.withOpacity(0.9),
+        backgroundColor:        lightBgAppBar,
         foregroundColor:        lightText,
         centerTitle:            true,
-        systemOverlayStyle: const SystemUiOverlayStyle(
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor:          Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
         ),
-        titleTextStyle:   const TextStyle(color: lightText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
-        iconTheme:        const IconThemeData(color: lightAccent, size: 24),
-        actionsIconTheme: const IconThemeData(color: lightText),
+        titleTextStyle:   TextStyle(color: lightText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
+        iconTheme:        IconThemeData(color: lightAccent, size: 24),
+        actionsIconTheme: IconThemeData(color: lightText),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor:      lightSurface,
@@ -506,7 +568,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor:     lightSurfaceVariant,
-        selectedColor:       lightAccent.withOpacity(0.15),
+        selectedColor:       lightAccentChipOverlay,
         labelStyle:          const TextStyle(color: lightText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: lightAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -520,14 +582,14 @@ class AppTheme {
           (s) => s.contains(WidgetState.selected) ? lightAccent : lightSurfaceVariant,
         ),
         trackColor: WidgetStateProperty.resolveWith<Color>(
-          (s) => s.contains(WidgetState.selected) ? lightAccent.withOpacity(0.5) : lightBorder,
+          (s) => s.contains(WidgetState.selected) ? lightAccentMid : lightBorder,
         ),
       ),
-      sliderTheme: SliderThemeData(
+      sliderTheme: const SliderThemeData(
         activeTrackColor:   lightAccent,
         inactiveTrackColor: lightBorder,
         thumbColor:         lightAccent,
-        overlayColor:       lightAccent.withOpacity(0.2),
+        overlayColor:       lightAccentOverlay,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color:              lightAccent,
