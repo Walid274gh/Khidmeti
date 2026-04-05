@@ -1,7 +1,4 @@
 // lib/screens/home/widgets/ai_search_sheet.dart
-// FIX (Structure): _ResultCard extracted → ai_result_card.dart
-//                  _ExampleChips extracted → ai_example_chips.dart
-//                  _AiSearchSheetState._examples dead code removed.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +9,7 @@ import '../../../providers/home_search_controller.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/sheet_chrome.dart';
 import 'ai_result_card.dart';
 import 'ai_example_chips.dart';
 
@@ -34,10 +32,6 @@ class AiSearchSheet extends ConsumerStatefulWidget {
 class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
   final _ctrl  = TextEditingController();
   final _focus = FocusNode();
-
-  // FIX (Dead code removed): _examples static const was declared here but
-  // never referenced — AiExampleChips owns its own list in its own file.
-  // Removed to eliminate confusion and dead code warning.
 
   @override
   void dispose() {
@@ -86,19 +80,7 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: AppConstants.spacingSm),
-              Center(
-                child: Container(
-                  width:  AppConstants.sheetHandleWidth,
-                  height: AppConstants.sheetHandleHeight,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkBorder
-                        : AppTheme.lightBorder,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusXs),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               const SizedBox(height: AppConstants.spacingMd),
 
               Padding(
@@ -128,37 +110,9 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
-                    // inner Container stays at iconContainerMd (32dp) visually.
-                    Semantics(
-                      label:  context.tr('common.close'),
-                      button: true,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: SizedBox(
-                          width:  AppConstants.buttonHeightMd,
-                          height: AppConstants.buttonHeightMd,
-                          child: Center(
-                            child: Container(
-                              width:  AppConstants.iconContainerMd,
-                              height: AppConstants.iconContainerMd,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark
-                                    ? AppTheme.darkSurface
-                                    : AppTheme.lightSurfaceVariant,
-                              ),
-                              child: Center(
-                                child: Icon(AppIcons.close,
-                                    size: 16,
-                                    color: isDark
-                                        ? AppTheme.darkSecondaryText
-                                        : AppTheme.lightSecondaryText),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    SheetCloseButton(
+                      semanticsLabel: context.tr('common.close'),
+                      onTap: () => Navigator.pop(context),
                     ),
                   ],
                 ),
@@ -167,8 +121,11 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
               const SizedBox(height: AppConstants.spacingMd),
 
               if (hasResult && intent != null && !isLoading) ...[
-                // FIX (Structure): AiResultCard — extracted widget
-                AiResultCard(intent: intent, isDark: isDark),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.paddingLg),
+                  child: AiResultCard(intent: intent, isDark: isDark),
+                ),
                 const SizedBox(height: AppConstants.spacingMd),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -267,7 +224,6 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
 
                 const SizedBox(height: AppConstants.spacingXs),
 
-                // FIX (Structure): AiExampleChips — extracted widget
                 AiExampleChips(
                   isDark: isDark,
                   onTap: (text) {

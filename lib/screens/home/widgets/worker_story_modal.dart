@@ -8,17 +8,13 @@ import '../../../providers/worker_home_controller.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/sheet_chrome.dart';
 import 'home_worker_section.dart';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
-const double _kTopPeek        = 72.0;
-// [UI-FIX]: replaced raw 24.0 with AppConstants.radiusXxl token (same value,
-// now linked to the design system).
-const double _kTopRadius      = AppConstants.radiusXxl;
-// [UI-FIX]: replaced raw 40.0 / 4.0 with sheet handle tokens.
-const double _kDragHandleW    = AppConstants.sheetHandleWidth;
-const double _kDragHandleH    = AppConstants.sheetHandleHeight;
-const double _kStatusDotSize  =  8.0;
+const double _kTopPeek         = 72.0;
+const double _kTopRadius       = AppConstants.radiusXxl;
+const double _kStatusDotSize   =  8.0;
 const double _kDismissVelocity = 400.0;
 
 // ============================================================================
@@ -31,8 +27,6 @@ class WorkerStoryModal {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque:              false,
-        // [UI-FIX COLOR]: was Colors.black.withOpacity(0.45) — inline hardcode.
-        // Replaced with AppTheme.overlayDark token (synced with image_search_sheet).
         barrierColor:        AppTheme.overlayDark,
         barrierDismissible:  true,
         transitionDuration:  const Duration(milliseconds: 380),
@@ -119,14 +113,12 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(_kTopRadius),
                       ),
+                      // [UI-FIX]: replaced inline Colors.black.withOpacity(isDark ? 0.40 : 0.18)
+                      // with named AppTheme.modalShadowDark / modalShadowLight tokens.
                       boxShadow: [
-                        BoxShadow(
-                          color:      Colors.black.withOpacity(
-                            isDark ? 0.40 : 0.18,
-                          ),
-                          blurRadius: 24,
-                          offset:     const Offset(0, -4),
-                        ),
+                        isDark
+                            ? AppTheme.modalShadowDark
+                            : AppTheme.modalShadowLight,
                       ],
                     ),
                     child: Column(
@@ -137,16 +129,7 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                             top:    AppConstants.spacingMd,
                             bottom: AppConstants.spacingXs,
                           ),
-                          child: Container(
-                            width:  _kDragHandleW,
-                            height: _kDragHandleH,
-                            decoration: BoxDecoration(
-                              color:        border,
-                              borderRadius: BorderRadius.circular(
-                                AppConstants.radiusXs,
-                              ),
-                            ),
-                          ),
+                          child: const SheetHandle(),
                         ),
 
                         // ── Header ──────────────────────────────────────
@@ -219,41 +202,11 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
 
                               const SizedBox(width: AppConstants.spacingSm),
 
-                              // [UI-FIX TOUCH]: outer 48×48 SizedBox is the
-                              // tap zone; inner Container stays at 32dp visually.
-                              Semantics(
-                                label:  context.tr('common.close'),
-                                button: true,
-                                child: GestureDetector(
-                                  onTap: () => Navigator.of(context).pop(),
-                                  child: SizedBox(
-                                    width:  AppConstants.buttonHeightMd,
-                                    height: AppConstants.buttonHeightMd,
-                                    child: Center(
-                                      child: Container(
-                                        width:  32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isDark
-                                              ? AppTheme.darkSurface
-                                              : AppTheme.lightSurfaceVariant,
-                                          border: Border.all(
-                                            color: border,
-                                            width: 0.5,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            AppIcons.close,
-                                            size:  15,
-                                            color: text.withOpacity(0.70),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              // SheetCloseButton replaces the inline
+                              // 48×48 + Container(32dp) duplicate pattern.
+                              SheetCloseButton(
+                                semanticsLabel: context.tr('common.close'),
+                                onTap: () => Navigator.of(context).pop(),
                               ),
                             ],
                           ),

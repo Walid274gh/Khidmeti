@@ -7,6 +7,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/profession_resolver.dart';
+import '../../../widgets/sheet_chrome.dart';
 
 class HomeCategoriesSheet extends StatefulWidget {
   final ValueChanged<String?> onFilterChanged;
@@ -66,8 +67,6 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
         context.tr('services.appliance_repair'), AppIcons.appliances),
   ];
 
-  // FIX (Search P1 — multilingual filter):
-  // Two-pass filter handles Arabic, Darija, and phonetic Latin queries.
   List<_CategoryItem> get _filtered {
     if (_query.isEmpty) return _allItems;
 
@@ -107,16 +106,7 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
           children: [
             // ── Handle ────────────────────────────────────────────────
             const SizedBox(height: AppConstants.spacingSm),
-            Container(
-              width:  AppConstants.sheetHandleWidth,
-              height: AppConstants.sheetHandleHeight,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.darkBorder.withOpacity(0.40)
-                    : AppTheme.lightBorder,
-                borderRadius: BorderRadius.circular(AppConstants.radiusXs),
-              ),
-            ),
+            const SheetHandle(),
             const SizedBox(height: AppConstants.spacingLg),
 
             // ── Title row (RTL-aware) ──────────────────────────────────
@@ -139,37 +129,9 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
                           ),
                     ),
                   ),
-                  // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
-                  // inner Container stays at iconSizeLg (32dp) visually.
-                  Semantics(
-                    label:  context.tr('common.close'),
-                    button: true,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: SizedBox(
-                        width:  AppConstants.buttonHeightMd,
-                        height: AppConstants.buttonHeightMd,
-                        child: Center(
-                          child: Container(
-                            width:  AppConstants.iconSizeLg,
-                            height: AppConstants.iconSizeLg,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDark
-                                  ? AppTheme.darkSurface.withOpacity(0.60)
-                                  : AppTheme.lightSurfaceVariant,
-                            ),
-                            child: Icon(
-                              AppIcons.close,
-                              size:  AppConstants.iconSizeSm,
-                              color: isDark
-                                  ? AppTheme.darkSecondaryText
-                                  : AppTheme.lightSecondaryText,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  SheetCloseButton(
+                    semanticsLabel: context.tr('common.close'),
+                    onTap: () => Navigator.pop(context),
                   ),
                 ],
               ),
@@ -285,7 +247,7 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
   }
 }
 
-// ── Category tile — circular borderless design ────────────────────────────────
+// ── Category tile ─────────────────────────────────────────────────────────────
 
 class _CategoryTile extends StatelessWidget {
   final _CategoryItem item;

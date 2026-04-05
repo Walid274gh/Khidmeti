@@ -13,6 +13,8 @@ import '../../../providers/home_search_controller.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/sheet_chrome.dart';
+import 'search_result_card.dart';
 
 // ============================================================================
 // VOICE SEARCH SHEET
@@ -20,10 +22,7 @@ import '../../../utils/localization.dart';
 
 const int _kMaxRecordingSeconds = 30;
 
-// [UI-FIX SIZE]: Orb sizes tokenised — all on 8dp grid.
-//   88dp ✓ (already on grid)
-//   72dp ✓ (already on grid)
-//   58dp ✗ → 56dp (nearest 8dp-grid step down)
+// Orb sizes — all on 8dp grid.
 const double _kOrbOuter  = 88.0;
 const double _kOrbMid    = 72.0;
 const double _kOrbInner  = 56.0; // was 58 — snapped to 8dp grid
@@ -58,7 +57,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   late AnimationController _pulseCtrl;
   late Animation<double>   _pulse;
 
-  // FIX (R5): capture the notifier reference synchronously in initState()
   late final HomeSearchController _searchNotifier;
 
   Timer?   _elapsedTimer;
@@ -98,8 +96,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
 
     super.dispose();
   }
-
-  // ── Local timer helpers ───────────────────────────────────────────────────
 
   void _startElapsedTimer() {
     _elapsedSeconds = 0;
@@ -178,17 +174,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Handle ────────────────────────────────────────────────────
-              Center(
-                child: Container(
-                  width:  AppConstants.sheetHandleWidth,
-                  height: AppConstants.sheetHandleHeight,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusXs),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               const SizedBox(height: AppConstants.spacingLg),
 
               // ── Status label ──────────────────────────────────────────────
@@ -214,8 +200,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               const SizedBox(height: AppConstants.spacingLg),
 
               // ── Orb ───────────────────────────────────────────────────────
-              // [UI-FIX SIZE]: Raw 88/72/58 → named _kOrb* consts (88/72/56).
-              // All three are now on the 8dp grid and easy to update globally.
               AnimatedBuilder(
                 animation: _pulse,
                 builder:   (_, child) => Transform.scale(
@@ -259,8 +243,8 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       child: Center(
                         child: isLoading
                             ? const SizedBox(
-                                width:  22,
-                                height: 22,
+                                width:  24,   // was 22 — on 8dp grid
+                                height: 24,
                                 child:  CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color:       Colors.white,
@@ -268,7 +252,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                               )
                             : Icon(
                                 hasResult ? AppIcons.ai : AppIcons.mic,
-                                size:  26,
+                                size:  AppConstants.iconSizeMd, // 24 — was 26
                                 color: Colors.white,
                               ),
                       ),
@@ -321,9 +305,13 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               ),
               const SizedBox(height: AppConstants.spacingMd),
 
-              // ── Result confirm ────────────────────────────────────────────
+              // ── Result confirm (merged SearchResultCard, inline style) ─────
               if (hasResult && intent != null) ...[
-                _VoiceResultPill(intent: intent, isDark: isDark),
+                SearchResultCard(
+                  intent:       intent,
+                  isDark:       isDark,
+                  showTopLabel: false,
+                ),
                 const SizedBox(height: AppConstants.spacingMd),
                 Row(
                   children: [
@@ -471,92 +459,6 @@ class _WaveformState extends State<_Waveform>
             );
           }),
         ),
-      ),
-    );
-  }
-}
-
-// ── Voice result pill ─────────────────────────────────────────────────────────
-
-class _VoiceResultPill extends StatelessWidget {
-  final SearchIntent intent;
-  final bool         isDark;
-
-  const _VoiceResultPill({required this.intent, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final color  = AppTheme.getProfessionColor(
-        intent.profession ?? '', isDark);
-    final icon   = intent.profession != null
-        ? AppTheme.getProfessionIcon(intent.profession!)
-        : AppIcons.search;
-    final pct    = (intent.confidence * 100).round();
-
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingMd),
-      decoration: BoxDecoration(
-        color:        accent.withOpacity(isDark ? 0.08 : 0.05),
-        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-        border:       Border.all(
-            color: accent.withOpacity(isDark ? 0.20 : 0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width:  36,
-            height: 36,
-            decoration: BoxDecoration(
-              color:  color.withOpacity(0.14),
-              shape:  BoxShape.circle,
-            ),
-            child: Center(child: Icon(icon, size: 18, color: color)),
-          ),
-          const SizedBox(width: AppConstants.spacingSm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  intent.profession != null
-                      ? context.tr('services.${intent.profession}')
-                      : context.tr('home.filter_all'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                      ),
-                ),
-                if (intent.isUrgent)
-                  Text(
-                    context.tr('home.search_urgent_badge'),
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeXs,
-                      fontWeight: FontWeight.w700,
-                      color:      AppTheme.recordingRed,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.spacingSm,
-              vertical:   AppConstants.spacingXs,
-            ),
-            decoration: BoxDecoration(
-              color:        accent.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(AppConstants.radiusXs),
-            ),
-            child: Text(
-              '$pct%',
-              style: TextStyle(
-                fontSize:   AppConstants.fontSizeXs,
-                fontWeight: FontWeight.w700,
-                color:      accent,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -12,6 +12,8 @@ import '../../../providers/home_search_controller.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/sheet_chrome.dart';
+import 'search_result_card.dart';
 
 // ============================================================================
 // IMAGE SEARCH SHEET
@@ -113,25 +115,15 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Handle ────────────────────────────────────────────────────
-              Center(
-                child: Container(
-                  width:  AppConstants.sheetHandleWidth,
-                  height: AppConstants.sheetHandleHeight,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusXs),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               const SizedBox(height: AppConstants.spacingMd),
 
               // ── Header ────────────────────────────────────────────────────
               Row(
                 children: [
                   Container(
-                    width:  28,
-                    height: 28,
+                    width:  AppConstants.iconContainerSm,   // 28dp — token
+                    height: AppConstants.iconContainerSm,
                     decoration: BoxDecoration(
                         shape: BoxShape.circle, color: accent),
                     child: const Center(
@@ -149,42 +141,12 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  // [UI-FIX TOUCH]: outer 48×48 SizedBox is the tap zone;
-                  // inner Container stays at 32dp visually.
-                  // [UI-FIX COLOR]: replaced Colors.black.withOpacity(0.45)
-                  // with AppTheme.overlayDark token (synced with worker_story_modal).
-                  Semantics(
-                    label:  context.tr('common.close'),
-                    button: true,
-                    child: GestureDetector(
-                      onTap: () {
-                        _reset();
-                        Navigator.pop(context);
-                      },
-                      child: SizedBox(
-                        width:  AppConstants.buttonHeightMd,
-                        height: AppConstants.buttonHeightMd,
-                        child: Center(
-                          child: Container(
-                            width:  32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDark
-                                  ? AppTheme.darkSurface
-                                  : AppTheme.lightSurfaceVariant,
-                            ),
-                            child: Center(
-                              child: Icon(AppIcons.close,
-                                  size: 16,
-                                  color: isDark
-                                      ? AppTheme.darkSecondaryText
-                                      : AppTheme.lightSecondaryText),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  SheetCloseButton(
+                    semanticsLabel: context.tr('common.close'),
+                    onTap: () {
+                      _reset();
+                      Navigator.pop(context);
+                    },
                   ),
                 ],
               ),
@@ -281,9 +243,13 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
                 ),
               ],
 
-              // ── Result card ───────────────────────────────────────────────
+              // ── Result card (merged SearchResultCard, inline style) ────────
               if (hasResult && intent != null && !isLoading) ...[
-                _ImageResultCard(intent: intent, isDark: isDark),
+                SearchResultCard(
+                  intent:       intent,
+                  isDark:       isDark,
+                  showTopLabel: false,
+                ),
                 const SizedBox(height: AppConstants.spacingMd),
                 Row(
                   children: [
@@ -373,8 +339,6 @@ class _ImagePreviewState extends State<_ImagePreview>
           children: [
             Image.memory(widget.imageBytes, fit: BoxFit.cover),
             if (widget.isLoading) ...[
-              // [UI-FIX COLOR]: was Colors.black.withOpacity(0.45)
-              // → AppTheme.overlayDark (synced with worker_story_modal)
               const ColoredBox(color: AppTheme.overlayDark),
               AnimatedBuilder(
                 animation: _scan,
@@ -403,119 +367,6 @@ class _ImagePreviewState extends State<_ImagePreview>
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Image result card ─────────────────────────────────────────────────────────
-
-class _ImageResultCard extends StatelessWidget {
-  final SearchIntent intent;
-  final bool         isDark;
-
-  const _ImageResultCard({required this.intent, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final color  = AppTheme.getProfessionColor(
-        intent.profession ?? '', isDark);
-    final icon   = intent.profession != null
-        ? AppTheme.getProfessionIcon(intent.profession!)
-        : AppIcons.search;
-    final pct    = (intent.confidence * 100).round();
-
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingMd),
-      decoration: BoxDecoration(
-        color:        accent.withOpacity(isDark ? 0.08 : 0.05),
-        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
-        border:       Border.all(
-            color: accent.withOpacity(isDark ? 0.20 : 0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width:  40,
-            height: 40,
-            decoration: BoxDecoration(
-              color:  color.withOpacity(0.14),
-              shape:  BoxShape.circle,
-            ),
-            child: Center(child: Icon(icon, size: 20, color: color)),
-          ),
-          const SizedBox(width: AppConstants.spacingSm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr('home.ai_result_label'),
-                  style: TextStyle(
-                    fontSize:      AppConstants.fontSizeXs,
-                    fontWeight:    FontWeight.w700,
-                    color:         accent,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  intent.profession != null
-                      ? context.tr('services.${intent.profession}')
-                      : context.tr('home.filter_all'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                      ),
-                ),
-                if (intent.problemDescription != null &&
-                    intent.problemDescription!.isNotEmpty)
-                  Text(
-                    intent.problemDescription!,
-                    style: TextStyle(
-                      fontSize: AppConstants.fontSizeXs,
-                      color:    isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (intent.isUrgent)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppConstants.spacingXs),
-                    child: Text(
-                      context.tr('home.search_urgent_badge'),
-                      style: TextStyle(
-                        fontSize:   AppConstants.fontSizeXs,
-                        fontWeight: FontWeight.w700,
-                        color:      AppTheme.recordingRed,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppConstants.spacingXs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.spacingSm,
-              vertical:   AppConstants.spacingXs,
-            ),
-            decoration: BoxDecoration(
-              color:        accent.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(AppConstants.radiusXs),
-            ),
-            child: Text(
-              '$pct%',
-              style: TextStyle(
-                fontSize:   AppConstants.fontSizeXs,
-                fontWeight: FontWeight.w700,
-                color:      accent,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/whatsapp_launcher.dart';
+import '../../../widgets/sheet_chrome.dart';
 import 'online_badge.dart';
 import 'rating_row.dart';
 import 'worker_avatar.dart';
@@ -57,17 +58,8 @@ class WorkerPreviewSheet extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Handle bar ──────────────────────────────────────────
-              Center(
-                child: Container(
-                  width:  40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color:        theme.dividerColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              // ── Handle bar (SheetHandle replaces raw Container) ──────
+              const SheetHandle(),
               const SizedBox(height: AppConstants.spacingMd),
 
               // ── Worker info row ─────────────────────────────────────
@@ -184,9 +176,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
       child: ElevatedButton(
         onPressed: _loading ? null : _launch,
         style: ElevatedButton.styleFrom(
-          // [UI-FIX COLOR]: was const Color(0xFF1B2B1B) — hardcoded hex.
-          // Replaced with AppTheme.darkSurfaceVariant for dark mode
-          // and Colors.white for light mode (unchanged).
           backgroundColor: widget.isDark
               ? AppTheme.darkSurfaceVariant
               : Colors.white,
