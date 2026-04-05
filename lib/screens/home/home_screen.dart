@@ -48,7 +48,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.initState();
     _transitionCtrl = AnimationController(
       vsync:    this,
-      duration: const Duration(milliseconds: 420),
+      // [W6 FIX]: was 420ms — exceeds the 300ms page-transition standard.
+      // Reduced to 300ms for snappier, industry-standard feel on device.
+      duration: const Duration(milliseconds: 300),
     );
     _uiFade = CurvedAnimation(
       parent:       _transitionCtrl,
