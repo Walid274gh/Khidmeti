@@ -1,12 +1,12 @@
 // lib/screens/settings/widgets/sheet_option.dart
+//
+// FIX [W7]: replaced `AppConstants.spacingMdLg - 6` with `AppConstants.spacingTileInner`
+//           spacingMdLg (20) - 6 = 14dp = spacingTileInner (14.0) exactly.
+//           The arithmetic was a code smell; the named token already exists.
 
 import 'package:flutter/material.dart';
 
 import '../../../utils/constants.dart';
-
-// FIX (UI Quality): replaced GestureDetector with Material + InkWell so every
-// option produces a tactile ripple on tap — consistent with Tier-1 app
-// standard (Revolut, N26, Linear all have ink feedback on sheet options).
 
 class SheetOption extends StatelessWidget {
   final String     label;
@@ -52,7 +52,6 @@ class SheetOption extends StatelessWidget {
           ),
         ),
         child: Material(
-          // Transparent — background handled by AnimatedContainer above.
           color:        Colors.transparent,
           borderRadius: borderRadius,
           child: InkWell(
@@ -61,7 +60,9 @@ class SheetOption extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingMd,
-                vertical:   AppConstants.spacingMdLg - 6, // = 14dp
+                // FIX [W7]: was `spacingMdLg - 6` (20 - 6 = 14dp) — arithmetic
+                // in layout code. spacingTileInner (14.0) is the exact named token.
+                vertical: AppConstants.spacingTileInner,
               ),
               child: Row(
                 children: [
@@ -75,7 +76,6 @@ class SheetOption extends StatelessWidget {
                           ? accent
                           : theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
-                  // FIX: replaced SizedBox(width: 14) with AppConstants token.
                   const SizedBox(width: AppConstants.spacingTileInner),
                   Expanded(
                     child: Text(

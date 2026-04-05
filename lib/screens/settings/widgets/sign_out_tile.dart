@@ -1,15 +1,15 @@
 // lib/screens/settings/widgets/sign_out_tile.dart
+//
+// FIX [W6]: width: 40, height: 40 → AppConstants.iconContainerXl (40.0)
+//           size: 20 (icon) → AppConstants.buttonIconSize (20.0)
+//           Matches the token fix applied to settings_tile.dart and
+//           _DeleteAccountTile — all three now share the same token source.
 
 import 'package:flutter/material.dart';
 
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
-
-// FIX (QA): added isEnabled parameter. When the sign-out sequence is in
-// progress, the parent passes isEnabled: false — the tile becomes visually
-// muted and the onTap callback is ignored, preventing the double-tap race
-// condition identified in the audit.
 
 class SignOutTile extends StatelessWidget {
   final VoidCallback onSignOut;
@@ -37,8 +37,6 @@ class SignOutTile extends StatelessWidget {
         color:        Colors.transparent,
         borderRadius: BorderRadius.circular(AppConstants.radiusTile),
         child: InkWell(
-          // When disabled, pass null to prevent any tap — same pattern as
-          // Flutter's ElevatedButton disabled state.
           onTap:        isEnabled ? onSignOut : null,
           borderRadius: BorderRadius.circular(AppConstants.radiusTile),
           child: Container(
@@ -58,8 +56,10 @@ class SignOutTile extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width:  40,
-                  height: 40,
+                  // FIX [W6]: was width: 40, height: 40 — magic literals.
+                  // iconContainerXl = 40.0 is the canonical token.
+                  width:  AppConstants.iconContainerXl,
+                  height: AppConstants.iconContainerXl,
                   decoration: BoxDecoration(
                     color:        redColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -67,10 +67,10 @@ class SignOutTile extends StatelessWidget {
                   child: Icon(
                     AppIcons.logout,
                     color: redColor,
-                    size:  20,
+                    // FIX [W6]: was size: 20 — replaced with buttonIconSize token.
+                    size:  AppConstants.buttonIconSize,
                   ),
                 ),
-                // FIX: replaced SizedBox(width: 14) with AppConstants token.
                 const SizedBox(width: AppConstants.spacingTileInner),
                 Expanded(
                   child: Text(
@@ -85,7 +85,7 @@ class SignOutTile extends StatelessWidget {
                 Icon(
                   Icons.chevron_right_rounded,
                   color: redColor.withOpacity(0.5),
-                  size:  20,
+                  size:  AppConstants.buttonIconSize,
                 ),
               ],
             ),

@@ -11,6 +11,9 @@
 //     (a reactive Provider<String> that watches localeStateNotifierProvider).
 //     This ensures the subtitle updates when the locale changes without requiring
 //     languageService to be a ChangeNotifierProvider.
+//
+// FIX [W1]: replaced `kToolbarHeight + 12` with `kToolbarHeight + AppConstants.spacingChipGap`
+//           — bare 12 promoted to the named 12dp token.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,21 +41,14 @@ class SettingsContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // FIX (Task 1): ref.read for method calls (changeToFrench, etc.).
-    // languageServiceProvider is now a plain Provider — watching it would not
-    // cause rebuilds anyway, but ref.read makes the intent explicit.
-    final languageService = ref.read(languageServiceProvider);
-
-    // FIX (Task 1): watch currentLanguageNameProvider (reactive, derives from
-    // localeStateNotifierProvider) instead of languageService.currentLanguageName
-    // (which would not update now that languageServiceProvider is a plain Provider).
+    final languageService    = ref.read(languageServiceProvider);
     final currentLanguageName = ref.watch(currentLanguageNameProvider);
-
     final isActionInProgress = state.isSigningOut || state.isDeletingAccount;
 
     return ListView(
       padding: EdgeInsetsDirectional.only(
-        top:    MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+        // FIX [W1]: replaced bare `+ 12` with named token spacingChipGap (12.0).
+        top:    MediaQuery.of(context).padding.top + kToolbarHeight + AppConstants.spacingChipGap,
         bottom: MediaQuery.of(context).padding.bottom +
             kBottomNavigationBarHeight +
             AppConstants.spacingLg,
@@ -74,7 +70,6 @@ class SettingsContent extends ConsumerWidget {
           icon:           AppIcons.language,
           iconColor:      AppTheme.cyanBlue,
           title:          context.tr('settings.language'),
-          // FIX (Task 1): use the reactive provider value, not the service field.
           subtitle:       currentLanguageName,
           semanticsLabel: context.tr('settings.language'),
           onTap:          () => _showLanguageSheet(context, ref, languageService),
@@ -155,9 +150,7 @@ class SettingsContent extends ConsumerWidget {
     );
   }
 
-  // FIX (Task 1): languageService passed explicitly (read in build, not re-read here).
   void _showLanguageSheet(BuildContext context, WidgetRef ref, LanguageService languageService) {
-    // Read the current locale from the reactive provider for correct selection state.
     final current = ref.read(currentLocaleProvider).languageCode;
 
     showModalBottomSheet<void>(
@@ -303,7 +296,9 @@ class SettingsContent extends ConsumerWidget {
 }
 
 // ============================================================================
-// PRIVATE — DELETE ACCOUNT TILE (unchanged)
+// PRIVATE — DELETE ACCOUNT TILE
+// FIX [W6]: width/height: 40 → AppConstants.iconContainerXl
+//           size: 20 (icon) → AppConstants.buttonIconSize
 // ============================================================================
 
 class _DeleteAccountTile extends StatelessWidget {
@@ -349,14 +344,16 @@ class _DeleteAccountTile extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // FIX [W6]: 40×40 → AppConstants.iconContainerXl (40.0) — token.
                 Container(
-                  width:  40,
-                  height: 40,
+                  width:  AppConstants.iconContainerXl,
+                  height: AppConstants.iconContainerXl,
                   decoration: BoxDecoration(
                     color:        errorColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                   ),
-                  child: Icon(AppIcons.deleteAccount, color: errorColor, size: 20),
+                  // FIX [W6]: size: 20 → AppConstants.buttonIconSize (20.0) — token.
+                  child: Icon(AppIcons.deleteAccount, color: errorColor, size: AppConstants.buttonIconSize),
                 ),
                 const SizedBox(width: AppConstants.spacingTileInner),
                 Expanded(
@@ -372,7 +369,7 @@ class _DeleteAccountTile extends StatelessWidget {
                 Icon(
                   Icons.chevron_right_rounded,
                   color: errorColor.withOpacity(0.5),
-                  size:  20,
+                  size:  AppConstants.buttonIconSize,
                 ),
               ],
             ),
