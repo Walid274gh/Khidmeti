@@ -32,7 +32,7 @@ class JobIconBtn extends StatelessWidget {
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 17, color: color),
+          child: Icon(icon, size: 20, color: color),
         ),
       ),
     );

@@ -35,7 +35,7 @@ class JobAcceptDeclineRow extends StatelessWidget {
                 onDecline();
               },
               child: Container(
-                height: 46,
+                height: 48,
                 decoration: BoxDecoration(
                   color:        AppTheme.signOutRed.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(AppConstants.radiusLg),
@@ -70,7 +70,7 @@ class JobAcceptDeclineRow extends StatelessWidget {
                 onAccept();
               },
               child: Container(
-                height: 46,
+                height: 48,
                 decoration: BoxDecoration(
                   color:        AppTheme.onlineGreen,
                   borderRadius: BorderRadius.circular(AppConstants.radiusLg),

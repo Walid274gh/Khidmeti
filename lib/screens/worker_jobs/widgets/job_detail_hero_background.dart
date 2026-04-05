@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/service_request_enhanced_model.dart';
 import '../../../utils/app_theme.dart';
+import '../../../utils/constants.dart';
 
 class JobDetailHeroBackground extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
@@ -81,10 +82,10 @@ class JobDetailHeroBackground extends StatelessWidget {
                   // FIX (P2 — QA): was substring(0, 8) — throws RangeError if
                   // id is shorter than 8 chars. clamp(0, 8) is safe for any length.
                   '#${job.id.substring(0, job.id.length.clamp(0, 8)).toUpperCase()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color:      Colors.white,
                     fontWeight: FontWeight.w600,
-                    fontSize:   11,
+                    fontSize:   AppConstants.fontSizeXxs,
                     fontFamily: 'monospace',
                   ),
                 ),
