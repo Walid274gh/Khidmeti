@@ -2,8 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-const Color kWhatsAppGreen = Color(0xFF25D366);
-const Color _kWhatsAppDark = Color(0xFF128C7E);
+import '../utils/app_theme.dart';
 
 /// Renders the WhatsApp icon from the project asset.
 ///
@@ -46,7 +45,9 @@ class _WhatsAppFallback extends StatelessWidget {
       width:  size,
       height: size,
       decoration: BoxDecoration(
-        color:        kWhatsAppGreen,
+        // FIX [WARN]: was hardcoded `Color(0xFF25D366)`.
+        // Now uses AppTheme.whatsAppGreen token.
+        color:        AppTheme.whatsAppGreen,
         borderRadius: BorderRadius.circular(size * 0.22),
       ),
       child: Center(
@@ -65,8 +66,9 @@ class _WhatsAppFallback extends StatelessWidget {
 ButtonStyle whatsAppOutlinedStyle({required bool isDark}) {
   return OutlinedButton.styleFrom(
     backgroundColor: isDark ? const Color(0xFF1E2A1E) : Colors.white,
-    foregroundColor: kWhatsAppGreen,
-    side: BorderSide(color: kWhatsAppGreen.withOpacity(0.6), width: 1.2),
+    // FIX [WARN]: was hardcoded `Color(0xFF25D366)`.
+    foregroundColor: AppTheme.whatsAppGreen,
+    side: BorderSide(color: AppTheme.whatsAppGreen.withOpacity(0.6), width: 1.2),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
     ),
@@ -79,7 +81,9 @@ ButtonStyle whatsAppOutlinedStyle({required bool isDark}) {
 /// Uses the darker WhatsApp teal so icon contrast is maintained.
 ButtonStyle whatsAppFilledStyle() {
   return ElevatedButton.styleFrom(
-    backgroundColor: _kWhatsAppDark,
+    // FIX [WARN]: was hardcoded `Color(0xFF128C7E)`.
+    // Now uses AppTheme.whatsAppDark token.
+    backgroundColor: AppTheme.whatsAppDark,
     foregroundColor: Colors.white,
     elevation:       0,
     shape: RoundedRectangleBorder(
