@@ -25,7 +25,7 @@ const int _kMaxRecordingSeconds = 30;
 // Orb sizes — all on 8dp grid.
 const double _kOrbOuter  = 88.0;
 const double _kOrbMid    = 72.0;
-const double _kOrbInner  = 56.0; // was 58 — snapped to 8dp grid
+const double _kOrbInner  = 56.0;
 
 class VoiceSearchSheet extends StatelessWidget {
   const VoiceSearchSheet({super.key});
@@ -148,8 +148,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   Widget build(BuildContext context) {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
     final accent      = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    // [W4 FIX]: resolve onPrimary once from theme — replaces two Colors.white
-    // hardcoded occurrences (CircularProgressIndicator + orb Icon).
     final onPrimary   = Theme.of(context).colorScheme.onPrimary;
     final searchState = ref.watch(homeSearchControllerProvider);
     final isListening = searchState.status == HomeSearchStatus.listening;
@@ -193,12 +191,14 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                                 : hasError
                                     ? context.tr('home.voice_error')
                                     : context.tr('home.voice_starting'),
-                style: TextStyle(
-                  fontSize:      AppConstants.fontSizeXs,
-                  fontWeight:    FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: isLoading || hasResult ? AppTheme.aiPrimary : accent,
-                ),
+                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+                // Replaced with textTheme.labelSmall?.copyWith(...) so the
+                // status label participates in the design system type scale.
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight:    FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isLoading || hasResult ? AppTheme.aiPrimary : accent,
+                    ),
               ),
               const SizedBox(height: AppConstants.spacingLg),
 
@@ -246,20 +246,16 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       child: Center(
                         child: isLoading
                             ? SizedBox(
-                                width:  24,   // was 22 — on 8dp grid
+                                width:  24,
                                 height: 24,
                                 child:  CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  // [W4 FIX]: was Colors.white — hardcoded.
-                                  // Replaced with colorScheme.onPrimary.
                                   color: onPrimary,
                                 ),
                               )
                             : Icon(
                                 hasResult ? AppIcons.ai : AppIcons.mic,
-                                size:  AppConstants.iconSizeMd, // 24 — was 26
-                                // [W4 FIX]: was Colors.white — hardcoded.
-                                // Replaced with colorScheme.onPrimary.
+                                size:  AppConstants.iconSizeMd,
                                 color: onPrimary,
                               ),
                       ),
@@ -298,12 +294,11 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                             ),
                             Text(
                               'max $_kMaxRecordingSeconds s',
-                              style: TextStyle(
-                                fontSize: AppConstants.fontSizeXs,
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: isDark
+                                        ? AppTheme.darkSecondaryText
+                                        : AppTheme.lightSecondaryText,
+                                  ),
                             ),
                           ],
                         )

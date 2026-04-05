@@ -35,8 +35,6 @@ class SearchResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Unified accent — consistent with global brand identity.
-    // getProfessionColor() has been removed; all chips/cards use accent.
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final color  = accent;
     final icon   = intent.profession != null
@@ -98,14 +96,15 @@ class _FullLayout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // "AI RESULT" label
+        // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+        // Replaced with textTheme.labelSmall?.copyWith(...).
         Text(
           context.tr('home.ai_result_label'),
-          style: TextStyle(
-            fontSize:      AppConstants.fontSizeXs,
-            fontWeight:    FontWeight.w700,
-            color:         accent,
-            letterSpacing: 0.5,
-          ),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight:    FontWeight.w700,
+                color:         accent,
+                letterSpacing: 0.5,
+              ),
         ),
         const SizedBox(height: AppConstants.spacingSm),
 
@@ -132,12 +131,11 @@ class _FullLayout extends StatelessWidget {
                       intent.problemDescription!.isNotEmpty)
                     Text(
                       intent.problemDescription!,
-                      style: TextStyle(
-                        fontSize: AppConstants.fontSizeXs,
-                        color:    isDark
-                            ? AppTheme.darkSecondaryText
-                            : AppTheme.lightSecondaryText,
-                      ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -190,17 +188,16 @@ class _InlineLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // "AI RESULT" inline label
+              // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+              // Replaced with textTheme.labelSmall?.copyWith(...).
               Text(
                 context.tr('home.ai_result_label'),
-                style: TextStyle(
-                  fontSize:      AppConstants.fontSizeXs,
-                  fontWeight:    FontWeight.w700,
-                  color:         accent,
-                  letterSpacing: 0.5,
-                ),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight:    FontWeight.w700,
+                      color:         accent,
+                      letterSpacing: 0.5,
+                    ),
               ),
-              // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
-              // Replaced with AppConstants.spacingXxs (2dp token).
               SizedBox(height: AppConstants.spacingXxs),
 
               Text(
@@ -218,12 +215,11 @@ class _InlineLayout extends StatelessWidget {
                   intent.problemDescription!.isNotEmpty)
                 Text(
                   intent.problemDescription!,
-                  style: TextStyle(
-                    fontSize: AppConstants.fontSizeXs,
-                    color:    isDark
-                        ? AppTheme.darkSecondaryText
-                        : AppTheme.lightSecondaryText,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -233,11 +229,10 @@ class _InlineLayout extends StatelessWidget {
                   padding: const EdgeInsets.only(top: AppConstants.spacingXs),
                   child: Text(
                     context.tr('home.search_urgent_badge'),
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeXs,
-                      fontWeight: FontWeight.w700,
-                      color:      AppTheme.recordingRed,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:      AppTheme.recordingRed,
+                        ),
                   ),
                 ),
             ],
@@ -261,7 +256,7 @@ class _IconCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width:  AppConstants.iconContainerLg,  // 36dp — on-grid, synced across all sheets
+      width:  AppConstants.iconContainerLg,
       height: AppConstants.iconContainerLg,
       decoration: BoxDecoration(
         color:  color.withOpacity(0.14),
@@ -292,21 +287,17 @@ class _ConfidenceBadge extends StatelessWidget {
       ),
       child: Text(
         '$pct%',
-        style: TextStyle(
-          fontSize:   AppConstants.fontSizeXs,
-          fontWeight: FontWeight.w700,
-          color:      accent,
-        ),
+        // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+        // Replaced with textTheme.labelSmall?.copyWith(...).
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color:      accent,
+            ),
       ),
     );
   }
 }
 
-// [C3 FIX]: Removed `final BuildContext context` constructor parameter.
-// The original _UrgentBadge accepted a BuildContext in its constructor and
-// called `context.tr()` on the stale captured reference — this could crash
-// after the parent widget is disposed. Now uses the framework-provided
-// BuildContext from `build(BuildContext context)` instead.
 class _UrgentBadge extends StatelessWidget {
   const _UrgentBadge();
 
@@ -328,11 +319,12 @@ class _UrgentBadge extends StatelessWidget {
           const SizedBox(width: AppConstants.spacingXs),
           Text(
             context.tr('home.search_urgent_badge'),
-            style: TextStyle(
-              fontSize:   AppConstants.fontSizeXs,
-              fontWeight: FontWeight.w700,
-              color:      AppTheme.recordingRed,
-            ),
+            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+            // Replaced with textTheme.labelSmall?.copyWith(...).
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color:      AppTheme.recordingRed,
+                ),
           ),
         ],
       ),

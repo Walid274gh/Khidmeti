@@ -29,8 +29,6 @@ class WorkerStoryModal {
         opaque:              false,
         barrierColor:        AppTheme.overlayDark,
         barrierDismissible:  true,
-        // [W6b FIX]: was 380ms — exceeds the 300ms page-transition standard.
-        // Reduced to 280ms for a snappier entry that stays within budget.
         transitionDuration:         const Duration(milliseconds: 280),
         reverseTransitionDuration:  const Duration(milliseconds: 280),
         pageBuilder: (_, __, ___) => const _WorkerStoryPage(),
@@ -115,8 +113,6 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(_kTopRadius),
                       ),
-                      // [UI-FIX]: replaced inline Colors.black.withOpacity(isDark ? 0.40 : 0.18)
-                      // with named AppTheme.modalShadowDark / modalShadowLight tokens.
                       boxShadow: [
                         isDark
                             ? AppTheme.modalShadowDark
@@ -160,14 +156,15 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                               ),
                               const SizedBox(width: AppConstants.spacingSm),
 
+                              // [W6 FIX]: was TextStyle(fontSize: fontSizeLg, ...) — bypasses textTheme.
+                              // Replaced with textTheme.titleLarge?.copyWith(...) so the
+                              // modal title participates in the design system type scale.
                               Text(
                                 context.tr('worker_home.story_title'),
-                                style: TextStyle(
-                                  fontSize:      AppConstants.fontSizeLg,
-                                  fontWeight:    FontWeight.w700,
-                                  color:         text,
-                                  letterSpacing: -0.4,
-                                ),
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      letterSpacing: -0.4,
+                                      color:         text,
+                                    ),
                               ),
 
                               const Spacer(),
@@ -194,18 +191,15 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                                   isOnline
                                       ? context.tr('worker_home.status_online')
                                       : context.tr('worker_home.status_offline'),
-                                  style: TextStyle(
-                                    fontSize:   AppConstants.fontSizeXs,
-                                    fontWeight: FontWeight.w700,
-                                    color:      statusColor,
-                                  ),
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color:      statusColor,
+                                      ),
                                 ),
                               ),
 
                               const SizedBox(width: AppConstants.spacingSm),
 
-                              // SheetCloseButton replaces the inline
-                              // 48×48 + Container(32dp) duplicate pattern.
                               SheetCloseButton(
                                 semanticsLabel: context.tr('common.close'),
                                 onTap: () => Navigator.of(context).pop(),

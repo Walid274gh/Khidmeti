@@ -49,7 +49,6 @@ class HomePromoSection extends StatelessWidget {
             children: [
               _PromoCard(
                 isDark:    isDark,
-                // FIX: dedicated promo colour — not a status colour
                 accent:    isDark
                     ? AppTheme.promoBlueDark
                     : AppTheme.promoBlueLight,
@@ -116,12 +115,14 @@ class _PromoCard extends StatelessWidget {
               ),
               child: Text(
                 badgeText,
-                style: TextStyle(
-                  fontSize:      AppConstants.fontSizeXs,
-                  fontWeight:    FontWeight.w700,
-                  color:         accent,
-                  letterSpacing: 0.3,
-                ),
+                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+                // Replaced with textTheme.labelSmall?.copyWith(...) so the
+                // badge participates in the design system type scale.
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight:    FontWeight.w700,
+                      color:         accent,
+                      letterSpacing: 0.3,
+                    ),
               ),
             ),
             const SizedBox(height: AppConstants.spacingSm),
@@ -135,13 +136,12 @@ class _PromoCard extends StatelessWidget {
             const SizedBox(height: AppConstants.spacingXs),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: AppConstants.fontSizeSm,
-                color: isDark
-                    ? AppTheme.darkSecondaryText
-                    : AppTheme.lightSecondaryText,
-                height: 1.4,
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
+                    height: 1.4,
+                  ),
             ),
           ],
         ),

@@ -8,7 +8,9 @@ import '../../../utils/constants.dart';
 
 // ─── Mirror real layout dimensions ───────────────────────────────────────────
 const double _kBarHeight   = 48.0;
-const double _kAiBtnHeight = 34.0;
+// [W1 FIX]: _kAiBtnHeight 34.0 → 32.0 (8dp-grid snap — mirrors corrected
+// real value in advanced_search_bar.dart).
+const double _kAiBtnHeight = 32.0;
 const double _kCardW       = 72.0;
 const double _kCardH       = 80.0;
 const double _kCtaH        = 54.0;
@@ -28,9 +30,6 @@ class HomeSkeletonLoading extends StatelessWidget {
       backgroundColor:
           isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: Shimmer.fromColors(
-        // [UI-FIX COLOR]: was Colors.white.withOpacity(0.07) / Colors.black.withOpacity(0.05).
-        // Replaced with AppTheme shimmer tokens — themed to darkText / lightText
-        // so shimmer adapts correctly without hardcoded primitive colours.
         baseColor: isDark
             ? AppTheme.shimmerBaseDark
             : AppTheme.shimmerBaseLight,
@@ -77,30 +76,24 @@ class _SkeletonTopBar extends StatelessWidget {
             children: [
               _Bone(w: 8,  h: 8,  r: 4, circle: true),
               const SizedBox(width: AppConstants.spacingXs + 2),
-              // [UI-FIX]: h:13 → 12 (nearest 4dp-grid snap; fontSizeSm token)
               _Bone(w: 72, h: 12, r: 4),
               const Spacer(),
               _Bone(w: 38, h: 38, r: 19, circle: true),
             ],
           ),
 
-          // [UI-FIX]: was SizedBox(height: 24) raw → spacingLg token (24dp)
           const SizedBox(height: AppConstants.spacingLg),
 
           // Hero question lines
-          // [UI-FIX]: h:34 → 32 (8dp grid; nearest token = spacingXl)
           _Bone(w: 260, h: 32, r: AppConstants.spacingXs + 2),
-          // [UI-FIX]: was SizedBox(height: 6) → spacingXs (4dp on-grid)
           const SizedBox(height: AppConstants.spacingXs),
           _Bone(w: 180, h: 32, r: AppConstants.spacingXs + 2),
           const SizedBox(height: AppConstants.spacingXs),
           _Bone(w: 220, h: 32, r: AppConstants.spacingXs + 2),
 
-          // [UI-FIX]: was SizedBox(height: 10) → spacingSm (8dp on-grid)
           const SizedBox(height: AppConstants.spacingSm),
 
           // Subtitle line
-          // [UI-FIX]: h:11 → 12 (4dp grid snap; matches fontSizeSm)
           _Bone(w: 200, h: 12, r: 4),
 
           const SizedBox(height: AppConstants.spacingMd),
@@ -157,15 +150,11 @@ class _SkeletonServicesSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // [W5 FIX]: was h: AppConstants.spacingXs + 6 (=10dp) — off-grid.
-              // Replaced with AppConstants.spacingSm (8dp on-grid token).
               _Bone(w: 90, h: AppConstants.spacingSm, r: 4),
               _Bone(w: 52, h: AppConstants.spacingSm, r: 4),
             ],
           ),
 
-          // [W5 FIX]: was SizedBox(height: AppConstants.spacingSm + 2) (=10dp)
-          // — off-grid. Replaced with AppConstants.spacingMd (16dp on-grid).
           const SizedBox(height: AppConstants.spacingMd),
 
           SizedBox(
@@ -174,9 +163,6 @@ class _SkeletonServicesSection extends StatelessWidget {
               scrollDirection:  Axis.horizontal,
               physics:          const NeverScrollableScrollPhysics(),
               itemCount:        5,
-              // [W5 FIX]: was SizedBox(width: AppConstants.spacingSm + 2) (=10dp)
-              // — off-grid. Replaced with AppConstants.spacingChipGap (12dp),
-              // matching the real HomeServiceGrid chip separator.
               separatorBuilder: (_, __) => const SizedBox(width: AppConstants.spacingChipGap),
               itemBuilder: (_, __) =>
                   _Bone(w: _kCardW, h: _kCardH, r: AppConstants.radiusLg),
@@ -189,7 +175,6 @@ class _SkeletonServicesSection extends StatelessWidget {
             child: _Bone(w: double.infinity, h: 1, r: 1),
           ),
 
-          // [UI-FIX RADIUS]: was raw 16 — now AppConstants.radiusLg token
           _Bone(w: double.infinity, h: _kCtaH, r: AppConstants.radiusLg),
         ],
       ),
@@ -220,9 +205,6 @@ class _Bone extends StatelessWidget {
       height: h,
       decoration: BoxDecoration(
         shape:        circle ? BoxShape.circle : BoxShape.rectangle,
-        // [UI-FIX COLOR]: was Colors.white.withOpacity(0.10) / Colors.black.withOpacity(0.07).
-        // Replaced with AppTheme.darkText / lightText at matching opacities —
-        // same visual weight, no primitive colour references.
         color:        isDark
             ? AppTheme.darkText.withOpacity(0.10)
             : AppTheme.lightText.withOpacity(0.07),

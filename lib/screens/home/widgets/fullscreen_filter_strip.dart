@@ -46,16 +46,9 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
 
   @override
   Widget build(BuildContext context) {
-    // [W7 FIX]: previously "All" chip used colorScheme.primary while profession
-    // chips used AppTheme.getProfessionColor() — two divergent access patterns
-    // for the same semantic intent. Now all chips use the unified accent token,
-    // and getProfessionColor() has been removed in favour of the brand Indigo.
     final accent = widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final chips  = _chips;
 
-    // [UI-FIX TOUCH]: outer SizedBox was 36dp — below 48dp minimum touch
-    // target. Increased to 48dp. Chip vertical padding increased from 6→10
-    // so total chip height fills the 48dp zone cleanly.
     return SizedBox(
       height: AppConstants.buttonHeightMd, // 48dp
       child: ListView.separated(
@@ -78,14 +71,11 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingSm,
-                  // Increased from 6 → 10dp so chip fills the 48dp tap zone.
-                  vertical:   10,
+                  // [W2 FIX]: was vertical: 10 — off 4dp grid.
+                  // Replaced with AppConstants.spacingSm (8dp on-grid token).
+                  vertical:   AppConstants.spacingSm,
                 ),
                 decoration: BoxDecoration(
-                  // [UI-FIX COLOR]: was Colors.black.withOpacity(0.52) /
-                  // Colors.white.withOpacity(0.82) — hardcoded primitives.
-                  // Replaced with AppTheme surface tokens so the chip
-                  // adapts correctly in both dark and light themes.
                   color: isActive
                       ? accent.withOpacity(0.28)
                       : (widget.isDark

@@ -75,8 +75,6 @@ class WorkerPreviewSheet extends StatelessWidget {
                       children: [
                         Text(worker.name,
                             style: theme.textTheme.titleMedium),
-                        // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
-                        // Replaced with AppConstants.spacingXxs (2dp token).
                         SizedBox(height: AppConstants.spacingXxs),
                         Text(
                           context.tr('services.${worker.profession}'),
@@ -183,8 +181,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
           backgroundColor: widget.isDark
               ? AppTheme.darkSurfaceVariant
               : Colors.white,
-          // [UI-FIX TOKEN]: was kWhatsAppGreen (local constant).
-          // Replaced with AppTheme.whatsAppGreen (0xFF25D366) — verified match.
           foregroundColor: AppTheme.whatsAppGreen,
           elevation:       0,
           side: BorderSide(
@@ -195,7 +191,11 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
             borderRadius:
                 BorderRadius.circular(AppConstants.radiusMd),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          // [W5 FIX]: was EdgeInsets.symmetric(horizontal: 12) — raw literal.
+          // Replaced with AppConstants.spacingChipGap (12dp named token —
+          // same value, now linked to the design system).
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.spacingChipGap),
         ),
         child: _loading
             ? SizedBox(
@@ -210,8 +210,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   WhatsAppIcon(size: 20),
-                  // [UI-FIX SPACING]: was SizedBox(width: 8) — raw px.
-                  // Replaced with AppConstants.spacingSm (8dp token — same value).
                   const SizedBox(width: AppConstants.spacingSm),
                   Flexible(
                     child: Text(
@@ -219,7 +217,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        // [UI-FIX TOKEN]: was kWhatsAppGreen — now AppTheme token.
                         color: AppTheme.whatsAppGreen,
                       ),
                     ),

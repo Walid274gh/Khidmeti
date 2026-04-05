@@ -62,13 +62,10 @@ class HomeServiceGrid extends StatelessWidget {
               isDark:   isDark,
               isOnline: workerIsOnline,
             ),
-            // [UI-FIX SPACING]: was SizedBox(width: 12) — untokenised 12dp.
-            // Replaced with AppConstants.spacingChipGap (12dp named token).
             const SizedBox(width: AppConstants.spacingChipGap),
           ],
 
           ...items.map((item) => Padding(
-            // [UI-FIX SPACING]: was EdgeInsets.only(right: 12) — same fix.
             padding: const EdgeInsets.only(right: AppConstants.spacingChipGap),
             child: _ServiceChip(
               item:     item,
@@ -142,12 +139,13 @@ class _VousChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 context.tr('worker_home.chip_vous'),
-                style: TextStyle(
-                  fontSize:   AppConstants.fontSizeXs,
-                  fontWeight: FontWeight.w600,
-                  color:      statusColor,
-                  height:     1.2,
-                ),
+                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+                // Replaced with textTheme.labelSmall?.copyWith(...).
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color:      statusColor,
+                      height:     1.2,
+                    ),
                 textAlign: TextAlign.center,
                 maxLines:  1,
                 overflow:  TextOverflow.ellipsis,
@@ -221,16 +219,17 @@ class _ServiceChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 item.label,
-                style: TextStyle(
-                  fontSize:   AppConstants.fontSizeXs,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: isActive
-                      ? color
-                      : (isDark
-                          ? AppTheme.darkText
-                          : AppTheme.lightSecondaryText),
-                  height: 1.2,
-                ),
+                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+                // Replaced with textTheme.labelSmall?.copyWith(...).
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                      color: isActive
+                          ? color
+                          : (isDark
+                              ? AppTheme.darkText
+                              : AppTheme.lightSecondaryText),
+                      height: 1.2,
+                    ),
                 textAlign: TextAlign.center,
                 maxLines:  2,
                 overflow:  TextOverflow.ellipsis,
@@ -293,12 +292,13 @@ class _AllServicesChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 context.tr('home.see_all'),
-                style: TextStyle(
-                  fontSize:   AppConstants.fontSizeXs,
-                  fontWeight: FontWeight.w600,
-                  color:      accent,
-                  height:     1.2,
-                ),
+                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
+                // Replaced with textTheme.labelSmall?.copyWith(...).
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color:      accent,
+                      height:     1.2,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],

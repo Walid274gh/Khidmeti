@@ -93,6 +93,8 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
   Widget build(BuildContext context) {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
     final accent      = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    // [C1 FIX]: resolve onPrimary from theme — used for camera icon in header circle.
+    final onPrimary   = Theme.of(context).colorScheme.onPrimary;
     final searchState = ref.watch(homeSearchControllerProvider);
     final isLoading   = searchState.isLoading;
     final hasResult   = searchState.hasResults;
@@ -126,9 +128,12 @@ class _ImageSheetBodyState extends ConsumerState<_ImageSheetBody> {
                     height: AppConstants.iconContainerSm,
                     decoration: BoxDecoration(
                         shape: BoxShape.circle, color: accent),
-                    child: const Center(
-                      child: Icon(AppIcons.camera,
-                          size: 14, color: Colors.white),
+                    child: Center(
+                      // [C1 FIX]: was Colors.white — hardcoded primitive.
+                      // Replaced with colorScheme.onPrimary — semantically
+                      // correct: icon contrasting with the accent fill.
+                      // Reference: same fix already applied in ai_search_sheet.dart.
+                      child: Icon(AppIcons.camera, size: 14, color: onPrimary),
                     ),
                   ),
                   const SizedBox(width: AppConstants.spacingSm),

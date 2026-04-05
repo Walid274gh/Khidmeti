@@ -15,12 +15,14 @@ import 'image_search_sheet.dart';
 import 'voice_search_sheet.dart';
 
 const double _kBarHeight   = 48.0;
-// [UI-FIX TOUCH]: Visual size of camera/mic icons kept at 38dp.
+// [W1 FIX]: _kActionSize 38.0 → 40.0 (8dp-grid snap).
+// [UI-FIX TOUCH]: Visual size of camera/mic icons kept at 40dp.
 // The GestureDetector tap zone is enlarged to 48×48 via an outer SizedBox
 // so both the visual and the tap area are now correct.
-const double _kActionSize  = 38.0;
+const double _kActionSize  = 40.0;
 const double _kTapZoneSize = 48.0;
-const double _kAiBtnHeight = 34.0;
+// [W1 FIX]: _kAiBtnHeight 34.0 → 32.0 (8dp-grid snap).
+const double _kAiBtnHeight = 32.0;
 
 class AdvancedSearchBar extends ConsumerStatefulWidget {
   const AdvancedSearchBar({super.key});
@@ -214,15 +216,13 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   ),
                 Container(
                   width:  0.5,
-                  // [UI-FIX SIZING]: was height: 22 — off 4dp grid (expect 24).
-                  // Replaced with AppConstants.iconSizeMd (24dp on-grid token).
                   height: AppConstants.iconSizeMd,
                   color:  border,
                   margin: const EdgeInsets.symmetric(
                       horizontal: AppConstants.spacingXs),
                 ),
                 // [UI-FIX TOUCH]: outer SizedBox sets 48×48 tap zone;
-                // inner SizedBox keeps the visual at _kActionSize (38dp).
+                // inner SizedBox keeps the visual at _kActionSize (40dp).
                 Semantics(
                   label:  context.tr('home.search_by_image'),
                   button: true,

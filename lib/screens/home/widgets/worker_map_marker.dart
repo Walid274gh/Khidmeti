@@ -38,14 +38,11 @@ class WorkerMapMarker extends StatelessWidget {
         ? AppTheme.warningAmber
         : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent);
 
-    final icon  = AppTheme.getProfessionIcon(worker.profession);
-    final size  = isBest ? 52.0 : 44.0;
+    final icon = AppTheme.getProfessionIcon(worker.profession);
+    // [W3 FIX]: 52.0 → 56.0 / 44.0 → 48.0 (8dp-grid snaps).
+    // ⚠️ MANUAL: verify corrected sizes on device at target map zoom levels.
+    final size = isBest ? 56.0 : 48.0;
 
-    // [UI-FIX COLOR / C2]: was Colors.white (hardcoded primitive).
-    // The bubble border sits on the map tile background — semantically it
-    // needs "the colour that contrasts with the primary/accent fill".
-    // colorScheme.onPrimary maps to white on this theme while remaining
-    // themeable, matching the same fix already applied in pulsing_location_dot.
     final borderColor = Theme.of(context).colorScheme.onPrimary;
 
     return GestureDetector(
@@ -84,8 +81,6 @@ class WorkerMapMarker extends StatelessWidget {
                   top:   -4,
                   right: -4,
                   child: Container(
-                    // [UI-FIX SIZING]: was 18×18 — off 8dp grid.
-                    // Snapped to iconSizeXs (16dp) — nearest on-grid value.
                     width:  AppConstants.iconSizeXs,
                     height: AppConstants.iconSizeXs,
                     decoration: BoxDecoration(
@@ -93,9 +88,6 @@ class WorkerMapMarker extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
-                      // [UI-FIX ICON]: was Icons.star_rounded (raw icon).
-                      // Replaced with AppIcons.ratingFilled (same glyph,
-                      // now routed through the design system token).
                       child: Icon(
                         AppIcons.ratingFilled,
                         size:  11,

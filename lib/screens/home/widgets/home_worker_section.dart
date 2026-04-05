@@ -87,16 +87,17 @@ class HomeWorkerSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg),
+            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, fontWeight: w700, ...)
+            // — bypasses textTheme. Replaced with textTheme.labelSmall?.copyWith(...).
             child: Text(
               context.tr('worker_home.nearby_jobs'),
-              style: TextStyle(
-                fontSize:      AppConstants.fontSizeXs,
-                fontWeight:    FontWeight.w700,
-                color:         isDark
-                    ? AppTheme.darkSecondaryText
-                    : AppTheme.lightSecondaryText,
-                letterSpacing: 0.5,
-              ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight:    FontWeight.w700,
+                    color:         isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
+                    letterSpacing: 0.5,
+                  ),
             ),
           ),
           const SizedBox(height: AppConstants.spacingXs),
@@ -139,8 +140,6 @@ class _AvailabilityToggle extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.paddingMd,
-            // [UI-FIX SPACING]: was spacingSm + 2 = 10dp — off 4dp grid.
-            // Replaced with spacingMd (16dp on-grid).
             vertical:   AppConstants.spacingMd,
           ),
           decoration: BoxDecoration(
@@ -168,28 +167,30 @@ class _AvailabilityToggle extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
+                    // Replaced with textTheme.labelLarge?.copyWith(...).
                     Text(
                       isOnline
                           ? context.tr('worker_home.status_online')
                           : context.tr('worker_home.status_offline'),
-                      style: TextStyle(
-                        fontSize:   AppConstants.fontSizeSm,
-                        fontWeight: FontWeight.w700,
-                        color:      isOnline
-                            ? onColor
-                            : (isDark
-                                ? AppTheme.darkText
-                                : AppTheme.lightText),
-                      ),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color:      isOnline
+                                ? onColor
+                                : (isDark
+                                    ? AppTheme.darkText
+                                    : AppTheme.lightText),
+                          ),
                     ),
+                    // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
+                    // Replaced with textTheme.labelSmall?.copyWith(...).
                     Text(
                       isOnline
                           ? context.tr('worker_home.status_online_sub')
                           : context.tr('worker_home.status_offline_sub'),
-                      style: TextStyle(
-                        fontSize: AppConstants.fontSizeXs,
-                        color:    subtext,
-                      ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: subtext,
+                          ),
                     ),
                   ],
                 ),
@@ -217,14 +218,9 @@ class _ToggleSwitch extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      // [UI-FIX SIZING]: was width: 38 — off 8dp grid.
-      // Snapped to 40dp (on 8dp grid). Thumb (16dp) + margins (2dp × 2) = 20dp
-      // still centres correctly within the 40dp track.
       width:  40,
       height: 20,
       decoration: BoxDecoration(
-        // [UI-FIX RADIUS]: was BorderRadius.circular(10) — raw magic number.
-        // Replaced with AppConstants.radiusSm (8dp design token).
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         color: isOn ? onColor : offTrackColor,
       ),
@@ -238,9 +234,6 @@ class _ToggleSwitch extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            // [W1 FIX]: was Colors.white — hardcoded primitive.
-            // Replaced with colorScheme.surface so the thumb adapts
-            // correctly in both dark and light themes.
             color: Theme.of(context).colorScheme.surface,
           ),
         ),
@@ -328,26 +321,26 @@ class _RoiCard extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // [W6 FIX]: was TextStyle(fontSize: fontSizeXl, fontWeight: w700, ...)
+            // Replaced with textTheme.headlineSmall?.copyWith(...).
             Text(
               value,
-              style: TextStyle(
-                fontSize:   AppConstants.fontSizeXl,
-                fontWeight: FontWeight.w700,
-                color:      accent,
-              ),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color:      accent,
+                  ),
             ),
-            // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
-            // Replaced with AppConstants.spacingXxs (2dp token).
             SizedBox(height: AppConstants.spacingXxs),
+            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
+            // Replaced with textTheme.labelSmall?.copyWith(...).
             Text(
               label,
-              style: TextStyle(
-                fontSize: AppConstants.fontSizeXs,
-                color:    isDark
-                    ? AppTheme.darkSecondaryText
-                    : AppTheme.lightSecondaryText,
-                height:   1.2,
-              ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
+                    height: 1.2,
+                  ),
               textAlign: TextAlign.center,
               maxLines:  2,
               overflow:  TextOverflow.ellipsis,
@@ -402,15 +395,16 @@ class _DemandBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(
+                  // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
+                  // Replaced with textTheme.labelLarge?.copyWith(...).
                   child: Text(
                     context.tr('worker_home.demand_title'),
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeSm,
-                      fontWeight: FontWeight.w700,
-                      color:      isDark
-                          ? AppTheme.darkText
-                          : AppTheme.lightText,
-                    ),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:      isDark
+                              ? AppTheme.darkText
+                              : AppTheme.lightText,
+                        ),
                   ),
                 ),
                 Container(
@@ -422,19 +416,18 @@ class _DemandBar extends StatelessWidget {
                     color:        barColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(AppConstants.radiusSm),
                   ),
+                  // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, fontWeight: w700, ...)
+                  // Replaced with textTheme.labelSmall?.copyWith(...).
                   child: Text(
                     label,
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeXs,
-                      fontWeight: FontWeight.w700,
-                      color:      barColor,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:      barColor,
+                        ),
                   ),
                 ),
               ],
             ),
-            // [UI-FIX SPACING]: was spacingXs + 2 = 6dp — off 4dp grid.
-            // Replaced with spacingSm (8dp on-grid).
             const SizedBox(height: AppConstants.spacingSm),
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
@@ -454,14 +447,15 @@ class _DemandBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppConstants.spacingXs),
+            // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
+            // Replaced with textTheme.labelSmall?.copyWith(...).
             Text(
               '$pendingCount ${context.tr('worker_home.demand_sub')}',
-              style: TextStyle(
-                fontSize: AppConstants.fontSizeXs,
-                color:    isDark
-                    ? AppTheme.darkSecondaryText
-                    : AppTheme.lightSecondaryText,
-              ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
+                  ),
             ),
           ],
         ),
@@ -493,8 +487,6 @@ class _NearbyJobTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
-          // [UI-FIX SPACING]: was spacingSm + 2 = 10dp — off grid.
-          // Replaced with spacingMd (16dp on-grid).
           vertical:   AppConstants.spacingMd,
         ),
         decoration: BoxDecoration(
@@ -521,29 +513,31 @@ class _NearbyJobTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // [W6 FIX]: was TextStyle(fontSize: fontSizeSm, fontWeight: w700, ...)
+                  // Replaced with textTheme.labelLarge?.copyWith(...).
                   Text(
                     job.serviceType.isNotEmpty
                         ? job.serviceType
                         : context.tr('home.filter_all'),
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeSm,
-                      fontWeight: FontWeight.w700,
-                      color:      isDark
-                          ? AppTheme.darkText
-                          : AppTheme.lightText,
-                    ),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:      isDark
+                              ? AppTheme.darkText
+                              : AppTheme.lightText,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...)
+                  // Replaced with textTheme.labelSmall?.copyWith(...).
                   Text(
                     job.userAddress.isNotEmpty
                         ? job.userAddress
                         : context.tr('worker_home.location_unknown'),
-                    style: TextStyle(
-                      fontSize: AppConstants.fontSizeXs,
-                      color:    isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -552,8 +546,6 @@ class _NearbyJobTile extends StatelessWidget {
             // NEW badge
             Container(
               padding: const EdgeInsets.symmetric(
-                // [UI-FIX SPACING]: was spacingXs + 2 = 6dp horizontal — off grid.
-                // Replaced with spacingSm (8dp on-grid).
                 horizontal: AppConstants.spacingSm,
                 vertical:   AppConstants.spacingXxs,
               ),
@@ -561,16 +553,15 @@ class _NearbyJobTile extends StatelessWidget {
                 color:        AppTheme.recordingRed,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSm),
               ),
+              // [W6 FIX]: was TextStyle(fontSize: 8, ...) — raw sub-threshold value.
+              // Replaced with textTheme.labelSmall?.copyWith(...) which maps to
+              // 10dp (fontSizeXs token) — smallest legible token in the system.
               child: Text(
                 context.tr('worker_home.badge_new'),
-                style: TextStyle(
-                  // [UI-FIX TYPE]: was bare fontSize: 8 — below legibility
-                  // threshold. Replaced with fontSizeXxs (11dp — smallest
-                  // legible token in the system).
-                  fontSize:   AppConstants.fontSizeXxs,
-                  fontWeight: FontWeight.w700,
-                  color:      Colors.white,
-                ),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color:      Colors.white,
+                    ),
               ),
             ),
           ],
