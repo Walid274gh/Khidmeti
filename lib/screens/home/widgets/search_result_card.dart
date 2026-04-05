@@ -35,8 +35,10 @@ class SearchResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Unified accent — consistent with global brand identity.
+    // getProfessionColor() has been removed; all chips/cards use accent.
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final color  = AppTheme.getProfessionColor(intent.profession ?? '', isDark);
+    final color  = accent;
     final icon   = intent.profession != null
         ? AppTheme.getProfessionIcon(intent.profession!)
         : AppIcons.search;
@@ -150,7 +152,7 @@ class _FullLayout extends StatelessWidget {
         // Urgent badge
         if (intent.isUrgent) ...[
           const SizedBox(height: AppConstants.spacingXs),
-          _UrgentBadge(context: context),
+          const _UrgentBadge(),
         ],
       ],
     );
@@ -300,12 +302,16 @@ class _ConfidenceBadge extends StatelessWidget {
   }
 }
 
+// [C3 FIX]: Removed `final BuildContext context` constructor parameter.
+// The original _UrgentBadge accepted a BuildContext in its constructor and
+// called `context.tr()` on the stale captured reference — this could crash
+// after the parent widget is disposed. Now uses the framework-provided
+// BuildContext from `build(BuildContext context)` instead.
 class _UrgentBadge extends StatelessWidget {
-  final BuildContext context;
-  const _UrgentBadge({required this.context});
+  const _UrgentBadge();
 
   @override
-  Widget build(BuildContext _) {
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.spacingSm,

@@ -236,9 +236,12 @@ class _ToggleSwitch extends StatelessWidget {
           width:  16,
           height: 16,
           margin: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white,
+            // [W1 FIX]: was Colors.white — hardcoded primitive.
+            // Replaced with colorScheme.surface so the thumb adapts
+            // correctly in both dark and light themes.
+            color: Theme.of(context).colorScheme.surface,
           ),
         ),
       ),

@@ -28,7 +28,9 @@ class WorkerPreviewSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color  = AppTheme.getProfessionColor(worker.profession, isDark);
+    // Unified accent — getProfessionColor() removed; all worker previews use
+    // the brand Indigo for consistent visual identity.
+    final color  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final theme  = Theme.of(context);
 
     return Padding(

@@ -31,7 +31,6 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
   Widget build(BuildContext context) {
     final isDark  = Theme.of(context).brightness == Brightness.dark;
     final accent  = isDark ? AppTheme.darkAccent  : AppTheme.lightAccent;
-    final surface = isDark ? AppTheme.darkSurface  : AppTheme.lightSurface;
     final border  = isDark ? AppTheme.darkBorder   : AppTheme.lightBorder;
     final text    = isDark ? AppTheme.darkText      : AppTheme.lightText;
     final subtext = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
@@ -67,12 +66,12 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                 // — off 4dp grid. Replaced with spacingChipGap (12dp on-grid).
                 const SizedBox(width: AppConstants.spacingChipGap),
 
-                // Square icon
-                // [UI-FIX SIZING]: was 38×38 — off 8dp grid.
-                // Snapped to 40×40 (on 8dp grid).
+                // Square icon container
+                // [W8 FIX]: was width: 40, height: 40 — raw literals.
+                // Replaced with AppConstants.iconContainerXl (40dp named token).
                 Container(
-                  width:  40,
-                  height: 40,
+                  width:  AppConstants.iconContainerXl,
+                  height: AppConstants.iconContainerXl,
                   decoration: BoxDecoration(
                     color:        accent.withOpacity(isDark ? 0.12 : 0.08),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -141,7 +140,10 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                     style: TextStyle(
                       fontSize:      AppConstants.fontSizeXs,
                       fontWeight:    FontWeight.w700,
-                      color:         Colors.white,
+                      // [W2 FIX]: was Colors.white — hardcoded primitive.
+                      // Replaced with colorScheme.onPrimary — semantically
+                      // correct: text that contrasts with the primary/accent fill.
+                      color:         Theme.of(context).colorScheme.onPrimary,
                       letterSpacing: -0.2,
                     ),
                   ),

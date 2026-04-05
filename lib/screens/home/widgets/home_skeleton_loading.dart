@@ -157,12 +157,16 @@ class _SkeletonServicesSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _Bone(w: 90,  h: AppConstants.spacingXs + 6, r: 4),
-              _Bone(w: 52,  h: AppConstants.spacingXs + 6, r: 4),
+              // [W5 FIX]: was h: AppConstants.spacingXs + 6 (=10dp) — off-grid.
+              // Replaced with AppConstants.spacingSm (8dp on-grid token).
+              _Bone(w: 90, h: AppConstants.spacingSm, r: 4),
+              _Bone(w: 52, h: AppConstants.spacingSm, r: 4),
             ],
           ),
 
-          const SizedBox(height: AppConstants.spacingSm + 2),
+          // [W5 FIX]: was SizedBox(height: AppConstants.spacingSm + 2) (=10dp)
+          // — off-grid. Replaced with AppConstants.spacingMd (16dp on-grid).
+          const SizedBox(height: AppConstants.spacingMd),
 
           SizedBox(
             height: _kCardH,
@@ -170,7 +174,10 @@ class _SkeletonServicesSection extends StatelessWidget {
               scrollDirection:  Axis.horizontal,
               physics:          const NeverScrollableScrollPhysics(),
               itemCount:        5,
-              separatorBuilder: (_, __) => const SizedBox(width: AppConstants.spacingSm + 2),
+              // [W5 FIX]: was SizedBox(width: AppConstants.spacingSm + 2) (=10dp)
+              // — off-grid. Replaced with AppConstants.spacingChipGap (12dp),
+              // matching the real HomeServiceGrid chip separator.
+              separatorBuilder: (_, __) => const SizedBox(width: AppConstants.spacingChipGap),
               itemBuilder: (_, __) =>
                   _Bone(w: _kCardW, h: _kCardH, r: AppConstants.radiusLg),
             ),

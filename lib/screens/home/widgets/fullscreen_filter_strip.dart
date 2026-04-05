@@ -46,7 +46,12 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
 
   @override
   Widget build(BuildContext context) {
-    final chips = _chips;
+    // [W7 FIX]: previously "All" chip used colorScheme.primary while profession
+    // chips used AppTheme.getProfessionColor() — two divergent access patterns
+    // for the same semantic intent. Now all chips use the unified accent token,
+    // and getProfessionColor() has been removed in favour of the brand Indigo.
+    final accent = widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final chips  = _chips;
 
     // [UI-FIX TOUCH]: outer SizedBox was 36dp — below 48dp minimum touch
     // target. Increased to 48dp. Chip vertical padding increased from 6→10
@@ -62,9 +67,6 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
         itemBuilder: (context, i) {
           final (type, label, icon) = chips[i];
           final isActive = widget.activeFilter == type;
-          final color    = type == null
-              ? Theme.of(context).colorScheme.primary
-              : AppTheme.getProfessionColor(type!, widget.isDark);
 
           return Semantics(
             label:    label,
@@ -85,13 +87,13 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                   // Replaced with AppTheme surface tokens so the chip
                   // adapts correctly in both dark and light themes.
                   color: isActive
-                      ? color.withOpacity(0.28)
+                      ? accent.withOpacity(0.28)
                       : (widget.isDark
                           ? AppTheme.darkSurface.withOpacity(0.52)
                           : AppTheme.lightSurface.withOpacity(0.82)),
                   borderRadius: BorderRadius.circular(AppConstants.radiusSm),
                   border: Border.all(
-                    color: isActive ? color : Colors.transparent,
+                    color: isActive ? accent : Colors.transparent,
                     width: 1.5,
                   ),
                 ),
@@ -102,7 +104,7 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                       icon,
                       size:  14,
                       color: isActive
-                          ? color
+                          ? accent
                           : (widget.isDark
                               ? AppTheme.darkSecondaryText
                               : AppTheme.lightSecondaryText),
@@ -112,7 +114,7 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                       label,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: isActive
-                                ? color
+                                ? accent
                                 : (widget.isDark
                                     ? AppTheme.darkSecondaryText
                                     : AppTheme.lightSecondaryText),

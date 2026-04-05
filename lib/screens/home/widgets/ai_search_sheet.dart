@@ -57,6 +57,7 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
   Widget build(BuildContext context) {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
     final accent      = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final onPrimary   = Theme.of(context).colorScheme.onPrimary;
     final searchState = ref.watch(homeSearchControllerProvider);
     final isLoading   = searchState.isLoading;
     final hasResult   = searchState.hasResults;
@@ -95,9 +96,11 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                         shape: BoxShape.circle,
                         color: accent,
                       ),
-                      child: const Center(
-                        child: Icon(AppIcons.ai, size: 14,
-                            color: Colors.white),
+                      child: Center(
+                        // [W3 FIX]: was Colors.white — hardcoded primitive.
+                        // Replaced with colorScheme.onPrimary — semantically
+                        // correct: icon contrasting with the accent fill.
+                        child: Icon(AppIcons.ai, size: 14, color: onPrimary),
                       ),
                     ),
                     const SizedBox(width: AppConstants.spacingSm),
@@ -241,12 +244,16 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                   child: ElevatedButton(
                     onPressed: isLoading ? null : _submit,
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width:  20,
                             height: 20,
                             child:  CircularProgressIndicator(
                               strokeWidth: 2,
-                              color:       Colors.white,
+                              // [W3 FIX]: was Colors.white — hardcoded primitive.
+                              // Replaced with colorScheme.onPrimary — the
+                              // ElevatedButton background is the accent colour,
+                              // so onPrimary gives the correct contrasting white.
+                              color: onPrimary,
                             ),
                           )
                         : Row(

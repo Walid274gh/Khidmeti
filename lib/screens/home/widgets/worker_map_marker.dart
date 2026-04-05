@@ -30,13 +30,18 @@ class WorkerMapMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Best-worker retains the distinctive warningAmber gold.
+    // All other workers use the unified brand accent — getProfessionColor()
+    // has been removed in favour of consistent visual identity.
     final color = isBest
         ? AppTheme.warningAmber
-        : AppTheme.getProfessionColor(worker.profession, isDark);
+        : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent);
+
     final icon  = AppTheme.getProfessionIcon(worker.profession);
     final size  = isBest ? 52.0 : 44.0;
 
-    // [UI-FIX COLOR]: was Colors.white (hardcoded primitive).
+    // [UI-FIX COLOR / C2]: was Colors.white (hardcoded primitive).
     // The bubble border sits on the map tile background — semantically it
     // needs "the colour that contrasts with the primary/accent fill".
     // colorScheme.onPrimary maps to white on this theme while remaining
@@ -60,7 +65,6 @@ class WorkerMapMarker extends StatelessWidget {
                   color:  color,
                   shape:  BoxShape.circle,
                   border: Border.all(
-                    // [UI-FIX COLOR]: Colors.white → colorScheme.onPrimary
                     color: borderColor,
                     width: isBest ? 3.0 : 2.5,
                   ),

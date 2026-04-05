@@ -29,8 +29,10 @@ class WorkerStoryModal {
         opaque:              false,
         barrierColor:        AppTheme.overlayDark,
         barrierDismissible:  true,
-        transitionDuration:  const Duration(milliseconds: 380),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
+        // [W6b FIX]: was 380ms — exceeds the 300ms page-transition standard.
+        // Reduced to 280ms for a snappier entry that stays within budget.
+        transitionDuration:         const Duration(milliseconds: 280),
+        reverseTransitionDuration:  const Duration(milliseconds: 280),
         pageBuilder: (_, __, ___) => const _WorkerStoryPage(),
         transitionsBuilder: (_, animation, __, child) {
           final slide = Tween<Offset>(

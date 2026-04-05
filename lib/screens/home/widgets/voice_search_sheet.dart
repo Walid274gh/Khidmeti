@@ -148,6 +148,9 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
   Widget build(BuildContext context) {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
     final accent      = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    // [W4 FIX]: resolve onPrimary once from theme — replaces two Colors.white
+    // hardcoded occurrences (CircularProgressIndicator + orb Icon).
+    final onPrimary   = Theme.of(context).colorScheme.onPrimary;
     final searchState = ref.watch(homeSearchControllerProvider);
     final isListening = searchState.status == HomeSearchStatus.listening;
     final isLoading   = searchState.isLoading;
@@ -242,18 +245,22 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ),
                       child: Center(
                         child: isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width:  24,   // was 22 — on 8dp grid
                                 height: 24,
                                 child:  CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color:       Colors.white,
+                                  // [W4 FIX]: was Colors.white — hardcoded.
+                                  // Replaced with colorScheme.onPrimary.
+                                  color: onPrimary,
                                 ),
                               )
                             : Icon(
                                 hasResult ? AppIcons.ai : AppIcons.mic,
                                 size:  AppConstants.iconSizeMd, // 24 — was 26
-                                color: Colors.white,
+                                // [W4 FIX]: was Colors.white — hardcoded.
+                                // Replaced with colorScheme.onPrimary.
+                                color: onPrimary,
                               ),
                       ),
                     ),
