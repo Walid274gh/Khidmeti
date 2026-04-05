@@ -140,8 +140,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                               // AppConstants.splashLogoSize = 248.0 (nearest on-grid).
                               width:  AppConstants.splashLogoSize,
                               height: AppConstants.splashLogoSize,
+                              // FIX [AUTO / W3]: was raw string literal
+                              // 'assets/splash_static.png' — bypassed the AppAssets
+                              // pattern used by every other asset in the codebase.
+                              // Now references AppAssets.splashStatic, the single
+                              // source of truth declared in constants.dart.
                               child: Image.asset(
-                                'assets/splash_static.png',
+                                AppAssets.splashStatic,
                                 fit: BoxFit.contain,
                               )
                               .animate()
