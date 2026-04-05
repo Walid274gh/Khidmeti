@@ -85,7 +85,7 @@ class BidCard extends StatelessWidget {
                             .titleSmall
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppConstants.spacingXxs),
                       Row(
                         children: [
                           Icon(AppIcons.ratingFilled,
