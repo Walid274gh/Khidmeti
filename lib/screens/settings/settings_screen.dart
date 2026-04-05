@@ -1,6 +1,8 @@
 // lib/screens/settings/settings_screen.dart
 //
 // CHANGE: settings_provider.dart import updated from local path to lib/providers/.
+// FIX [W11]: replaced colorScheme.scrim.withOpacity(0.35) with AppTheme.overlayScrim35
+//            — the pre-baked 35% black overlay token added to app_theme.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +12,8 @@ import 'package:go_router/go_router.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/system_ui_overlay.dart'; // NEW
-import '../../providers/settings_provider.dart'; // CHANGED: was './settings_provider.dart'
+import '../../utils/system_ui_overlay.dart';
+import '../../providers/settings_provider.dart';
 import 'widgets/settings_error_view.dart';
 import 'widgets/settings_content.dart';
 
@@ -24,7 +26,7 @@ class SettingsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: systemOverlayStyle(isDark), // REPLACED inline block
+      value: systemOverlayStyle(isDark),
       child: Scaffold(
         backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         extendBodyBehindAppBar: true,
@@ -76,7 +78,9 @@ class _FullScreenOverlay extends StatelessWidget {
       label:      context.tr('common.loading'),
       liveRegion: true,
       child: Container(
-        color: Theme.of(context).colorScheme.scrim.withOpacity(0.35),
+        // FIX [W11]: replaced scrim.withOpacity(0.35) with pre-baked token.
+        // overlayScrim35 = Color(0x59000000) — black at 35% opacity.
+        color: AppTheme.overlayScrim35,
         child: Center(
           child: CircularProgressIndicator(
             color: Theme.of(context).colorScheme.primary,
