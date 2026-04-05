@@ -33,6 +33,13 @@
 //   • navPillPaddingV: 7.0 → 8.0 (snapped to 4dp grid; nearest = spacingSm).
 //   • chipPaddingV: 5.0 → 4.0 (snapped to 4dp grid; nearest = spacingXs).
 //   • locationDotMarker: 38.0 → 40.0 (snapped to 8dp grid; nearest = iconContainerXl).
+//
+// CHANGES (ui-apply AUTO W3 / MANUAL):
+//   • splashRetryButtonMinWidth (120.0) added — promotes the local
+//     _kRetryButtonMinWidth literal from SplashBottomStatus to a canonical
+//     AppConstants token, consistent with all other splash-screen constants.
+//   • AppAssets.splashStatic added — centralises 'assets/splash_static.png'
+//     in AppAssets alongside every other asset path in the codebase.
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -228,6 +235,11 @@ class AppConstants {
   /// BorderRadius = splashErrorCircleSize / 2 keeps it a perfect circle.
   static const double splashErrorCircleSize = 200.0;
 
+  /// Minimum width of the retry button on the splash error state.
+  /// Promoted from local _kRetryButtonMinWidth = 120.0 in SplashBottomStatus
+  /// to a canonical token alongside the other splash-screen constants.
+  static const double splashRetryButtonMinWidth = 120.0;
+
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;
   static const double minSearchRadiusKm     = 5.0;
@@ -291,6 +303,11 @@ class AppAssets {
   static const String errorAnimation      = '$_animations/error.json';
   static const String locationAnimation   = '$_animations/location.json';
   static const String homeBoilerCare      = '$_animations/home_boiler_care.json';
+  // FIX [AUTO / W3]: centralises the splash static image path in AppAssets,
+  // consistent with every other asset reference in the codebase.
+  // Previously a raw string literal in SplashScreen — now a single source
+  // of truth that refactoring and asset-path changes will propagate correctly.
+  static const String splashStatic        = 'assets/splash_static.png';
 }
 
 class AppIcons {

@@ -374,7 +374,14 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5),
-        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1.2, height: 1.02),
+        // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
+        // The SplashBranding widget was locally overriding this to -0.5 without
+        // annotation, creating a silent divergence between the theme token and
+        // the actual rendered value. -0.5 is the canonical value for the splash
+        // app-name headline — tighter than body text but softer than display.
+        // The local copyWith(letterSpacing: -0.5) in splash_branding.dart has
+        // been removed; this token is now the single source of truth.
+        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5, height: 1.02),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
@@ -564,7 +571,9 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5),
-        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1.2, height: 1.02),
+        // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
+        // Matches the dark theme token update above. See dark theme comment for rationale.
+        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5, height: 1.02),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter'),
