@@ -63,15 +63,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
 
   @override
   void dispose() {
-    // Timer is captured by the closure; no explicit cancel needed because
-    // we guard with `mounted` inside the callback.
     super.dispose();
   }
 
   /// [AUTO FIX] Schedule a 3-second redirect to the worker jobs list.
-  /// Called once when the job-not-found state is first detected. The `mounted`
-  /// check inside the callback prevents navigation after the widget has been
-  /// disposed (e.g. user manually navigated away before the timer fires).
   void _scheduleRedirect() {
     if (_redirectScheduled) return;
     _redirectScheduled = true;
@@ -97,16 +92,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             .firstOrNull;
 
     // ── [AUTO FIX] Job not found — cancellation message + auto-redirect ──────
-    //
-    // This branch is reached when the job was cancelled or deleted while the
-    // worker was viewing it. Previously this showed a silent plain-text label
-    // with no navigation, leaving the worker stranded.
-    //
-    // Now:
-    //   1. Show a visible cancellation notice with an icon, message, and
-    //      countdown hint so the worker understands what happened.
-    //   2. Auto-navigate to /worker-jobs after 3 seconds.
-    //   3. Provide a manual "Go back" button for workers who don't want to wait.
     if (job == null) {
       _scheduleRedirect();
 
@@ -215,7 +200,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                 ),
               ),
               flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsets.fromLTRB(56, 0, 16, 14),
+                // FIX [WARN]: was `EdgeInsets.fromLTRB(56, 0, 16, 14)` —
+                // magic numbers inline. 56 = paddingXl + paddingLg (leading
+                // button clearance); 16 = paddingMd; 14 ≈ spacingSm + spacingXs.
+                titlePadding: const EdgeInsets.fromLTRB(
+                  AppConstants.paddingXl + AppConstants.paddingLg, // 56dp — leading clearance
+                  0,
+                  AppConstants.paddingMd,                          // 16dp
+                  AppConstants.spacingSm + AppConstants.spacingXs, // 12dp
+                ),
                 title: Text(
                   job.title,
                   style: const TextStyle(
