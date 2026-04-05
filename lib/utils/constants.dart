@@ -41,6 +41,10 @@ class AppConstants {
   static const double spacingXl   = 32.0;
   static const double spacingMdLg = 20.0;
 
+  // [UI-FIX] 12dp gap token — used in HomeServiceGrid chip separators.
+  // Sits between spacingSm (8) and spacingMd (16); deliberate design gap.
+  static const double spacingChipGap = 12.0;
+
   // Padding
   static const double paddingXs = 4.0;
   static const double paddingSm = 8.0;

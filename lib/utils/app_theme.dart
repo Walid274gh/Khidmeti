@@ -71,6 +71,11 @@ class AppTheme {
   // FIX (README5 WCAG AA): improved contrast token for body text on darkBackground.
   static const Color darkSecondaryTextWcag = Color(0xFF9B91C0);
 
+  // [UI-FIX] Shared semi-opaque overlay used for modal barriers and image
+  // scan overlays. Replaces every inline Colors.black.withOpacity(0.45).
+  // 0.45 × 255 = 115 ≈ 0x73.
+  static const Color overlayDark = Color(0x73000000);
+
   // ==========================================================
   // 🎨 WHATSAPP TOKENS — [MANUAL FIX]
   // ==========================================================
