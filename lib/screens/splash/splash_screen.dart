@@ -111,12 +111,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 children: [
 
                   // ── Logo / error icon ──────────────────────────────────
+                  // FIX [MANUAL / W1]: SplashErrorIcon now receives
+                  // key: ValueKey(controller.errorType) at the call site.
+                  //
+                  // Why this matters: AnimatedSwitcher detects child changes
+                  // by comparing runtime type AND key. Both branches here are
+                  // different types (SplashErrorIcon vs ExcludeSemantics), so
+                  // the cross-fade already fires on the error ↔ logo transition.
+                  // The ValueKey on SplashErrorIcon additionally forces a
+                  // rebuild when errorType changes while already in error state
+                  // (e.g. noInternet → serverError after a reconnect attempt),
+                  // ensuring the icon and accessibility label always reflect
+                  // the latest error without a stale widget surviving the diff.
                   AnimatedSwitcher(
                     duration:       const Duration(milliseconds: 300),
                     switchInCurve:  Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
                     child: controller.phase == SplashPhase.error
                         ? SplashErrorIcon(
+                            key:       ValueKey(controller.errorType),
                             isDark:    isDark,
                             errorType: controller.errorType,
                           )
@@ -168,16 +181,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   // FIX [UI1-W]: was SizedBox(height: 64) — raw literal.
                   // AppConstants.splashStatusAreaHeight = 64.0 is the
                   // single source of truth shared with SplashBottomStatus.
+                  //
+                  // FIX [MANUAL / C1]: AnimatedSwitcher removed from here.
+                  // It has been moved inside SplashBottomStatus (Option B),
+                  // where it can observe keyed children directly and fire
+                  // the cross-fade on every phase transition. Keeping it here
+                  // was ineffective because SplashBottomStatus never changed
+                  // type, so the switcher never triggered.
                   SizedBox(
                     height: AppConstants.splashStatusAreaHeight,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: SplashBottomStatus(
-                        controller: controller,
-                        isDark:     isDark,
-                        onRetry:    () =>
-                            ref.read(splashControllerProvider.notifier).retry(),
-                      ),
+                    child: SplashBottomStatus(
+                      controller: controller,
+                      isDark:     isDark,
+                      onRetry:    () =>
+                          ref.read(splashControllerProvider.notifier).retry(),
                     ),
                   ),
 
