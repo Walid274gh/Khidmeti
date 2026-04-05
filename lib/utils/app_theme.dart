@@ -47,47 +47,29 @@ class AppTheme {
   // 🎨 TOKENS — misc
   // ==========================================================
 
-  /// Dark surface for the WhatsApp contact button.
-  static const Color whatsAppDarkSurface = Color(0xFF1B2B1B);
-
-  /// Semantic overlay border for cards in light mode.
+  static const Color whatsAppDarkSurface    = Color(0xFF1B2B1B);
   static const Color lightCardBorderOverlay = Color(0x12000000);
+  static const Color darkCardBorderOverlay  = Color(0x12FFFFFF);
 
-  /// Semantic overlay border for cards in dark mode.
-  static const Color darkCardBorderOverlay = Color(0x12FFFFFF);
-
-  // Named token for text shadow on ProfileCard.
   static const List<Shadow> profileCardTextShadow = [
     Shadow(color: Color(0xAA000000), blurRadius: 8, offset: Offset(0, 2)),
   ];
 
-  // Dedicated tokens for HomePromoSection.
-  static const Color promoBlueDark  = Color(0xFF60A5FA);
-  static const Color promoBlueLight = Color(0xFF2563EB);
-
-  // Improved contrast token for body text on darkBackground (WCAG AA).
-  static const Color darkSecondaryTextWcag = Color(0xFF9B91C0);
-
-  // Shared semi-opaque overlay for modal barriers and image scan overlays.
-  // 0.45 × 255 ≈ 0x73.
-  static const Color overlayDark = Color(0x73000000);
+  static const Color promoBlueDark          = Color(0xFF60A5FA);
+  static const Color promoBlueLight         = Color(0xFF2563EB);
+  static const Color darkSecondaryTextWcag  = Color(0xFF9B91C0);
+  static const Color overlayDark            = Color(0x73000000);
 
   // ==========================================================
   // 🎨 MODAL SHADOW TOKENS
   // ==========================================================
 
-  /// Box shadow for slide-up modals — dark theme variant.
-  /// Replaces inline `Colors.black.withOpacity(0.40)`.
-  /// 0.40 × 255 = 102 = 0x66.
   static const BoxShadow modalShadowDark = BoxShadow(
     color:      Color(0x66000000),
     blurRadius: 24,
     offset:     Offset(0, -4),
   );
 
-  /// Box shadow for slide-up modals — light theme variant.
-  /// Replaces inline `Colors.black.withOpacity(0.18)`.
-  /// 0.18 × 255 = 46 = 0x2E.
   static const BoxShadow modalShadowLight = BoxShadow(
     color:      Color(0x2E000000),
     blurRadius: 24,
@@ -98,25 +80,10 @@ class AppTheme {
   // 🎨 SHIMMER / SKELETON TOKENS
   // ==========================================================
 
-  /// Base shimmer colour for dark theme skeleton screens.
-  /// Equivalent to darkText (0xFFF0EAFF) at ~7% opacity.
-  /// Alpha: round(0.07 × 255) = 18 = 0x12.
-  static const Color shimmerBaseDark = Color(0x12F0EAFF);
-
-  /// Highlight shimmer colour for dark theme skeleton screens.
-  /// Equivalent to darkText (0xFFF0EAFF) at ~15% opacity.
-  /// Alpha: round(0.15 × 255) = 38 = 0x26.
-  static const Color shimmerHighlightDark = Color(0x26F0EAFF);
-
-  /// Base shimmer colour for light theme skeleton screens.
-  /// Equivalent to lightText (0xFF12041C) at ~5% opacity.
-  /// Alpha: round(0.05 × 255) = 13 = 0x0D.
-  static const Color shimmerBaseLight = Color(0x0D12041C);
-
-  /// Highlight shimmer colour for light theme skeleton screens.
-  /// Equivalent to lightText (0xFF12041C) at ~10% opacity.
-  /// Alpha: round(0.10 × 255) = 26 = 0x1A.
-  static const Color shimmerHighlightLight = Color(0x1A12041C);
+  static const Color shimmerBaseDark        = Color(0x12F0EAFF);
+  static const Color shimmerHighlightDark   = Color(0x26F0EAFF);
+  static const Color shimmerBaseLight       = Color(0x0D12041C);
+  static const Color shimmerHighlightLight  = Color(0x1A12041C);
 
   // ==========================================================
   // 🎨 WHATSAPP TOKENS
@@ -140,14 +107,52 @@ class AppTheme {
   static const Color darkAuthHeroTop    = Color(0xFF120820);
 
   // ==========================================================
-  // 🎨 STATUS COLOURS
+  // 🎨 STATUS COLOUR TOKENS — complete semantic set
+  //
+  // Design contract:
+  //   • Every ServiceStatus lifecycle phase gets its own dark + light token.
+  //   • getStatusColor() references ONLY these tokens — no inline
+  //     .withOpacity() calls, no accent re-use at the call site.
+  //   • Opacity-baked tokens encode their alpha directly in the hex value
+  //     so the tokens remain compile-time constants.
+  //   • Adding a new ServiceStatus: (1) add tokens here, (2) add a case in
+  //     getStatusColor(), (3) the compiler will enforce exhaustiveness.
+  //
+  // Lifecycle:
+  //   open / pending
+  //     → awaitingSelection
+  //     → bidSelected / accepted
+  //     → inProgress
+  //     → completed
+  //     ↘ cancelled / declined / expired
   // ==========================================================
 
-  static const Color statusAcceptedDark    = Color(0xFF60A5FA);
-  static const Color statusAcceptedLight   = Color(0xFF2563EB);
+  /// open / pending — dimmed accent; "waiting, no action yet".
+  /// Alpha 0xCC = 204 ≈ 80% — baked in so the token is const-safe.
+  /// Both themes share the same hue (darkAccent == lightAccent == #4F46E5).
+  static const Color statusOpenDark  = Color(0xCC4F46E5);
+  static const Color statusOpenLight = Color(0xCC4F46E5);
+
+  /// awaiting selection — warning amber; client must choose a bid urgently.
+  /// Delegates to darkWarning / lightWarning (no separate alias needed).
+
+  /// bid selected / accepted — calm blue; a worker is confirmed.
+  /// bidSelected and accepted share this token: both mean "a specific worker
+  /// is engaged" and distinguishing them visually adds no user value.
+  static const Color statusAcceptedDark  = Color(0xFF60A5FA);
+  static const Color statusAcceptedLight = Color(0xFF2563EB);
+
+  /// in progress — violet; active work underway, distinct from "confirmed".
   static const Color statusInProgressDark  = Color(0xFFA78BFA);
   static const Color statusInProgressLight = Color(0xFF7C3AED);
-  static const Color statusCancelledDark   = Color(0xFFF87171);
+
+  /// completed — success green. Delegates to darkSuccess / lightSuccess.
+
+  /// cancelled / declined / expired — muted red; terminal negative outcome.
+  /// All three share this token: the distinction between them is handled by
+  /// status labels and icons, not colour.
+  static const Color statusCancelledDark  = Color(0xFFF87171);
+  static const Color statusCancelledLight = Color(0xFFDC2626);
 
   // ==========================================================
   // 🎨 DISABLED STATE
@@ -167,9 +172,6 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         brightness:              Brightness.dark,
         primary:                 darkAccent,
-        // [C2 FIX]: was darkBackground (0xFF080510) — map marker / location
-        // dot borders read colorScheme.onPrimary expecting white, but got
-        // near-black. Corrected to Colors.white.
         onPrimary:               Colors.white,
         secondary:               darkAccent,
         onSecondary:             Colors.white,
@@ -215,9 +217,9 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
-        labelStyle: const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
+        labelStyle:      const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600),
-        hintStyle: TextStyle(color: darkSecondaryText.withOpacity(0.6), fontFamily: 'Inter'),
+        hintStyle:       TextStyle(color: darkSecondaryText.withOpacity(0.6), fontFamily: 'Inter'),
         contentPadding:  const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         prefixIconColor: darkSecondaryText,
         suffixIconColor: darkSecondaryText,
@@ -405,12 +407,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
           borderSide: const BorderSide(color: lightError, width: 1.5),
         ),
-        labelStyle:          const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        floatingLabelStyle:  const TextStyle(color: lightAccent, fontWeight: FontWeight.w600),
-        hintStyle:           TextStyle(color: lightSecondaryText.withOpacity(0.7), fontFamily: 'Inter'),
-        contentPadding:      const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-        prefixIconColor:     lightSecondaryText,
-        suffixIconColor:     lightSecondaryText,
+        labelStyle:         const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
+        floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600),
+        hintStyle:          TextStyle(color: lightSecondaryText.withOpacity(0.7), fontFamily: 'Inter'),
+        contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        prefixIconColor:    lightSecondaryText,
+        suffixIconColor:    lightSecondaryText,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -539,28 +541,50 @@ class AppTheme {
   // 🎨 HELPER METHODS
   // ==========================================================
 
-  // getProfessionColor() removed — unified accent color is used globally
-  // for all profession chips, markers, and category tiles.
-  // Call sites replaced with: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
+  // getProfessionColor() removed — unified accent color is used globally.
+  // Call sites: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
 
+  /// Returns the semantic colour for a given [ServiceStatus].
+  ///
+  /// Contract:
+  /// • References only the status token pairs defined in this file.
+  /// • No inline .withOpacity() — opacity is pre-baked into tokens.
+  /// • Dart's exhaustive switch enforces coverage: the compiler will flag
+  ///   any new ServiceStatus value that lacks a case here.
+  /// • Grouping two statuses under one token is intentional when they
+  ///   share user-facing meaning; the grouping is documented per case.
   static Color getStatusColor(ServiceStatus status, bool isDark) {
     switch (status) {
+      // Waiting — no worker engaged yet. Dimmed accent.
       case ServiceStatus.open:
       case ServiceStatus.pending:
-        return isDark ? darkAccent.withOpacity(0.80) : lightAccent.withOpacity(0.80);
+        return isDark ? statusOpenDark : statusOpenLight;
+
+      // Client action required — choose a bid. Warning amber.
       case ServiceStatus.awaitingSelection:
         return isDark ? darkWarning : lightWarning;
+
+      // Worker confirmed. bidSelected ≈ accepted: same semantic,
+      // same colour. Calm blue.
       case ServiceStatus.bidSelected:
       case ServiceStatus.accepted:
-        return isDark ? darkAccent : lightAccent;
+        return isDark ? statusAcceptedDark : statusAcceptedLight;
+
+      // Active work underway. Violet — distinct from "confirmed".
       case ServiceStatus.inProgress:
-        return isDark ? darkAccent : lightAccent;
+        return isDark ? statusInProgressDark : statusInProgressLight;
+
+      // Job finished successfully. Success green.
       case ServiceStatus.completed:
         return isDark ? darkSuccess : lightSuccess;
+
+      // Terminal negative outcome. Muted red.
+      // cancelled / declined / expired share a colour; the distinction
+      // between them is communicated via labels and icons, not hue.
       case ServiceStatus.cancelled:
       case ServiceStatus.declined:
       case ServiceStatus.expired:
-        return isDark ? darkSecondaryText : lightSecondaryText;
+        return isDark ? statusCancelledDark : statusCancelledLight;
     }
   }
 
