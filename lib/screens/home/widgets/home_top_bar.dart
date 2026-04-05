@@ -68,7 +68,7 @@ class HomeTopBar extends ConsumerWidget {
                 // headlineLarge in this project is 38px; using it would change
                 // the design. A custom 32px hero size is intentional here, so
                 // we keep the value but document it explicitly.
-                fontSize:      32,
+                fontSize:      AppConstants.heroFontSize,
                 fontWeight:    FontWeight.w700,
                 letterSpacing: -1.2,
                 height:        1.02,
