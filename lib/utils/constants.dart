@@ -70,6 +70,11 @@ class AppConstants {
   static const double cardBorderWidth = 0.5;
   static const double accentBarWidth  = 3.0;
 
+  // [MANUAL FIX]: gap between a circular icon and its label in grid chips
+  // (HomeServiceGrid, HomeCategoriesSheet). Replaces bare `7` and
+  // `spacingXs + 3` expressions throughout. On-grid at 8dp (= spacingSm).
+  static const double cardIconLabelGap = 8.0;
+
   // Inputs
   static const double inputRadius   = 14.0;
   static const double inputPaddingH = 18.0;
@@ -108,6 +113,7 @@ class AppConstants {
   static const double wordmarkFontSize = 13.0;
 
   // Font sizes
+  static const double heroFontSize    = 32.0; // intentional display-size breakout from textTheme (home hero headline)
   static const double fontSizeTileLg  = 15.0;
   static const double fontSizeXxs     = 11.0;
   static const double fontSizeXs      = 10.0;
@@ -365,10 +371,6 @@ class AppRoutes {
   static const String submitBid         = '/worker/jobs/:id/bid';
   static const String workerJobDetail   = '/worker/jobs/:id';
 
-  // REMOVED (dead — not registered in app_router.dart):
-  //   messages, workerMessages, chat, mediaViewer, becomeWorker,
-  //   serviceRequestDetails
-  //
   // KEPT — used only in app_router.dart redirect logic (not a registered route):
   static const String workerHome = '/worker-home';
 }
