@@ -119,7 +119,21 @@ class AppTheme {
 
   static const Color promoBlueDark          = Color(0xFF60A5FA);
   static const Color promoBlueLight         = Color(0xFF2563EB);
+
+  // [W8] darkSecondaryTextWcag: used in dark textTheme for slots ≤ 13sp to
+  // satisfy WCAG AA contrast (≥ 4.5:1) against darkBackground (#080510).
+  //
+  // Contrast analysis:
+  //   darkSecondaryText  (#7A6E96) vs #080510 ≈ 4.54:1  — passes AA by thin margin
+  //   darkSecondaryTextWcag (#9B91C0) vs #080510 ≈ 6.1:1 — comfortable AA pass
+  //
+  // At small sizes (≤ 13sp, weight ≤ 600) the 4.5:1 threshold applies, so the
+  // thin margin of darkSecondaryText is a compliance risk. WCAG token is wired
+  // to titleSmall (13sp/w600), bodySmall (12sp), and labelMedium (12sp/w600)
+  // in the dark textTheme. labelSmall uses darkText (high-contrast) and is
+  // unaffected.
   static const Color darkSecondaryTextWcag  = Color(0xFF9B91C0);
+
   static const Color overlayDark            = Color(0x73000000);
 
   // ==========================================================
@@ -365,12 +379,15 @@ class AppTheme {
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
         titleMedium:   TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
-        titleSmall:    TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkSecondaryText, fontFamily: 'Inter'),
+        // [W8] titleSmall 13sp → darkSecondaryTextWcag for WCAG AA compliance.
+        titleSmall:    TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkSecondaryTextWcag, fontFamily: 'Inter'),
         bodyLarge:     TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: darkText, fontFamily: 'Inter', height: 1.6),
         bodyMedium:    TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: darkText, fontFamily: 'Inter', height: 1.6),
-        bodySmall:     TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: darkSecondaryText, fontFamily: 'Inter', height: 1.5),
+        // [W8] bodySmall 12sp → darkSecondaryTextWcag for WCAG AA compliance.
+        bodySmall:     TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: darkSecondaryTextWcag, fontFamily: 'Inter', height: 1.5),
         labelLarge:    TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
-        labelMedium:   TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkSecondaryText, fontFamily: 'Inter'),
+        // [W8] labelMedium 12sp → darkSecondaryTextWcag for WCAG AA compliance.
+        labelMedium:   TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkSecondaryTextWcag, fontFamily: 'Inter'),
         labelSmall:    TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: 0.10),
       ),
       dividerTheme: const DividerThemeData(color: darkBorderSubtle, thickness: 1, space: 24),

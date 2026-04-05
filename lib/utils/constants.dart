@@ -25,6 +25,14 @@
 //   • splashErrorCircleSize (200.0) added — backs SplashErrorIcon Container
 //     width/height; BorderRadius.circular(splashErrorCircleSize / 2) replaces
 //     the bare BorderRadius.circular(100).
+//
+// CHANGES (ui-apply W9 / W10):
+//   • cardRadius = 20.0 REMOVED — was a duplicate of radiusCard (20.0).
+//     All usages should reference radiusCard directly.
+//   • sectionMT: 22.0 → 24.0 (snapped to 8dp grid; nearest on-grid = spacingLg).
+//   • navPillPaddingV: 7.0 → 8.0 (snapped to 4dp grid; nearest = spacingSm).
+//   • chipPaddingV: 5.0 → 4.0 (snapped to 4dp grid; nearest = spacingXs).
+//   • locationDotMarker: 38.0 → 40.0 (snapped to 8dp grid; nearest = iconContainerXl).
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -80,6 +88,8 @@ class AppConstants {
   static const double radiusCircle = 28.0;
   static const double radiusCard   = 20.0;
   static const double radiusTile   = 18.0;
+  // NOTE [W9]: cardRadius was removed — it was an exact duplicate of radiusCard (20.0).
+  //            All usages must reference radiusCard directly.
 
   // Buttons
   static const double buttonHeight   = 54.0;
@@ -87,7 +97,7 @@ class AppConstants {
   static const double buttonHeightSm = 44.0;
 
   // Cards
-  static const double cardRadius      = 20.0;
+  // NOTE: cardRadius removed (duplicate of radiusCard). Use radiusCard everywhere.
   static const double cardPadding     = 18.0;
   static const double cardBorderWidth = 0.5;
   static const double accentBarWidth  = 3.0;
@@ -108,7 +118,8 @@ class AppConstants {
   static const double navBarMarginH   = 16.0;
   static const double navBarMarginB   = 10.0;
   static const double navPillPaddingH = 14.0;
-  static const double navPillPaddingV = 7.0;
+  // [W10]: was 7.0 (off 4dp grid) → snapped to 8.0 (spacingSm).
+  static const double navPillPaddingV = 8.0;
   static const double navDotSize      = 4.0;
 
   // Hero
@@ -118,7 +129,8 @@ class AppConstants {
 
   // Sections
   static const double sectionLabelMB = 12.0;
-  static const double sectionMT      = 22.0;
+  // [W10]: was 22.0 (off 8dp grid) → snapped to 24.0 (spacingLg).
+  static const double sectionMT      = 24.0;
   static const double sectionCardGap = 10.0;
 
   // Badges / chips / tile gaps
@@ -127,7 +139,8 @@ class AppConstants {
   static const double badgePaddingV    = 3.0;
   static const double chipRadius       = 8.0;
   static const double chipPaddingH     = 10.0;
-  static const double chipPaddingV     = 5.0;
+  // [W10]: was 5.0 (off 4dp grid) → snapped to 4.0 (spacingXs).
+  static const double chipPaddingV     = 4.0;
 
   // Wordmark
   static const double wordmarkDotSize  = 8.0;
@@ -168,7 +181,8 @@ class AppConstants {
   static const double buttonIconSize   = 20.0;
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
-  static const double locationDotMarker  = 38.0;
+  // [W10]: was 38.0 (off 8dp grid) → snapped to 40.0 (= iconContainerXl).
+  static const double locationDotMarker  = 40.0;
   static const int    maxEmailLength     = 254;
 
   // Sheet handle
