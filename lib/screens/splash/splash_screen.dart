@@ -72,8 +72,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!_brandingAnimationDone) {
       setState(() => _retryCount++);
     }
-    // Always reset the local tracking flag so the screen stays consistent.
-    _brandingAnimationDone = false;
+    // FIX [S1]: moved _brandingAnimationDone = false inside setState so that
+    // build() never reads a stale value of the flag between the assignment and
+    // the next frame. Previously the reset was outside setState, which meant
+    // a lint warning and a theoretical race if build() ran mid-reset.
+    setState(() {
+      _brandingAnimationDone = false;
+    });
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
