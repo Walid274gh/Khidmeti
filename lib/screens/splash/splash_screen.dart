@@ -14,8 +14,6 @@ import 'widgets/splash_bottom_status.dart';
 import 'widgets/splash_branding.dart';
 import 'widgets/splash_error_icon.dart';
 
-const double _kLogoSize = 250.0;
-
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -125,8 +123,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         : ExcludeSemantics(
                             child: SizedBox(
                               key:    const ValueKey('logo'),
-                              width:  _kLogoSize,
-                              height: _kLogoSize,
+                              // FIX [UI4-W]: was 250.0 (off 8dp grid).
+                              // AppConstants.splashLogoSize = 248.0 (nearest on-grid).
+                              width:  AppConstants.splashLogoSize,
+                              height: AppConstants.splashLogoSize,
                               child: Image.asset(
                                 'assets/splash_static.png',
                                 fit: BoxFit.contain,
@@ -165,8 +165,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   const SizedBox(height: AppConstants.spacingXl),
 
                   // ── Bottom status ──────────────────────────────────────
+                  // FIX [UI1-W]: was SizedBox(height: 64) — raw literal.
+                  // AppConstants.splashStatusAreaHeight = 64.0 is the
+                  // single source of truth shared with SplashBottomStatus.
                   SizedBox(
-                    height: 64,
+                    height: AppConstants.splashStatusAreaHeight,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
                       child: SplashBottomStatus(
