@@ -26,6 +26,10 @@ class JobTimelineContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MMM d, HH:mm');
 
+    // FIX [CRITICAL]: was `color: AppTheme.darkAccent` — hardcoded dark token
+    // breaks the completed step colour in light theme. Now theme-aware.
+    final completedAccent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+
     return Padding(
       padding: const EdgeInsets.only(top: AppConstants.spacingMd),
       child: Column(
@@ -52,7 +56,7 @@ class JobTimelineContent extends StatelessWidget {
                 ? dateFormatter.format(job.completedAt!)
                 : '—',
             isCompleted: job.completedAt != null,
-            color:       AppTheme.darkAccent,
+            color:       completedAccent,
             isDark:      isDark,
             isLast:      true,
           ),

@@ -33,10 +33,12 @@ class JobMetaChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
+            // FIX [WARN]: was `fontSize: 10` inline — bypasses textTheme.
+            // Now delegates to textTheme.labelSmall (10sp in this project's
+            // theme) so size responds to user accessibility settings.
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
+                  color:      color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 10,
                 ),
           ),
         ],
@@ -44,4 +46,3 @@ class JobMetaChip extends StatelessWidget {
     );
   }
 }
-
