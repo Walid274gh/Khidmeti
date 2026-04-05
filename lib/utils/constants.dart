@@ -7,6 +7,14 @@
 //     (none of these are registered in app_router.dart)
 //   • AppIcons.info2 removed — duplicate of AppIcons.info, both mapped to
 //     Icons.info_outline_rounded. Dead code.
+//
+// CHANGES (UI Manual Pass):
+//   • toggleTrackW / toggleTrackH / toggleThumbSize added — back the
+//     HomeWorkerSection _ToggleSwitch raw literals (40×20 track, 16dp thumb).
+//   • statusDotSize added — backs the 8dp status indicator dot in
+//     _AvailabilityToggle.
+//   • locationDotSize added — backs the PulsingLocationDot core diameter,
+//     promoted from off-grid 14dp to the nearest on-grid value 16dp.
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -156,6 +164,25 @@ class AppConstants {
   // Search / input
   static const double searchBarHeight      = 44.0;
   static const double categoryTileIconSize = 48.0;
+
+  // ── Toggle switch ────────────────────────────────────────────────────────
+  // Used by HomeWorkerSection._ToggleSwitch and _AvailabilityToggle.
+  // Track dimensions match Material switch proportions (40×20) on an 8dp grid.
+  // Thumb is 16dp — fits inside the 20dp track with 2dp margin each side.
+  /// Width of the toggle track.
+  static const double toggleTrackW    = 40.0;
+  /// Height of the toggle track.
+  static const double toggleTrackH    = 20.0;
+  /// Diameter of the toggle thumb circle.
+  static const double toggleThumbSize = 16.0;
+  /// Diameter of the online/offline status indicator dot.
+  static const double statusDotSize   =  8.0;
+
+  // ── Map / location ───────────────────────────────────────────────────────
+  /// Core diameter of PulsingLocationDot's solid inner circle.
+  /// Promoted from off-grid 14dp to the nearest on-grid value (16dp = 2×spacingSm).
+  /// Outer ripple ring scales from this value via the animation controller.
+  static const double locationDotSize = 16.0;
 
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;
