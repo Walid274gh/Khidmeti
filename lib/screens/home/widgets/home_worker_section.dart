@@ -126,7 +126,6 @@ class _AvailabilityToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent    = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final onColor   = AppTheme.onlineGreen;
     final offColor  = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
     final dotColor  = isOnline ? onColor : offColor;
@@ -140,7 +139,9 @@ class _AvailabilityToggle extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.paddingMd,
-            vertical:   AppConstants.spacingSm + 2,
+            // [UI-FIX SPACING]: was spacingSm + 2 = 10dp — off 4dp grid.
+            // Replaced with spacingMd (16dp on-grid).
+            vertical:   AppConstants.spacingMd,
           ),
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
@@ -216,10 +217,15 @@ class _ToggleSwitch extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      width:  38,
+      // [UI-FIX SIZING]: was width: 38 — off 8dp grid.
+      // Snapped to 40dp (on 8dp grid). Thumb (16dp) + margins (2dp × 2) = 20dp
+      // still centres correctly within the 40dp track.
+      width:  40,
       height: 20,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        // [UI-FIX RADIUS]: was BorderRadius.circular(10) — raw magic number.
+        // Replaced with AppConstants.radiusSm (8dp design token).
+        borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         color: isOn ? onColor : offTrackColor,
       ),
       child: AnimatedAlign(
@@ -327,7 +333,9 @@ class _RoiCard extends StatelessWidget {
                 color:      accent,
               ),
             ),
-            const SizedBox(height: 2),
+            // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
+            // Replaced with AppConstants.spacingXxs (2dp token).
+            SizedBox(height: AppConstants.spacingXxs),
             Text(
               label,
               style: TextStyle(
@@ -422,7 +430,9 @@ class _DemandBar extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: AppConstants.spacingXs + 2),
+            // [UI-FIX SPACING]: was spacingXs + 2 = 6dp — off 4dp grid.
+            // Replaced with spacingSm (8dp on-grid).
+            const SizedBox(height: AppConstants.spacingSm),
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: Stack(
@@ -480,7 +490,9 @@ class _NearbyJobTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
-          vertical:   AppConstants.spacingSm + 2,
+          // [UI-FIX SPACING]: was spacingSm + 2 = 10dp — off grid.
+          // Replaced with spacingMd (16dp on-grid).
+          vertical:   AppConstants.spacingMd,
         ),
         decoration: BoxDecoration(
           color:        surface,
@@ -537,8 +549,10 @@ class _NearbyJobTile extends StatelessWidget {
             // NEW badge
             Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppConstants.spacingXs + 2,
-                vertical:   2,
+                // [UI-FIX SPACING]: was spacingXs + 2 = 6dp horizontal — off grid.
+                // Replaced with spacingSm (8dp on-grid).
+                horizontal: AppConstants.spacingSm,
+                vertical:   AppConstants.spacingXxs,
               ),
               decoration: BoxDecoration(
                 color:        AppTheme.recordingRed,

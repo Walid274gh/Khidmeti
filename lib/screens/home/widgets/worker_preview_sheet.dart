@@ -73,7 +73,9 @@ class WorkerPreviewSheet extends StatelessWidget {
                       children: [
                         Text(worker.name,
                             style: theme.textTheme.titleMedium),
-                        const SizedBox(height: 2),
+                        // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
+                        // Replaced with AppConstants.spacingXxs (2dp token).
+                        SizedBox(height: AppConstants.spacingXxs),
                         Text(
                           context.tr('services.${worker.profession}'),
                           style: theme.textTheme.bodySmall
@@ -179,10 +181,12 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
           backgroundColor: widget.isDark
               ? AppTheme.darkSurfaceVariant
               : Colors.white,
-          foregroundColor: kWhatsAppGreen,
+          // [UI-FIX TOKEN]: was kWhatsAppGreen (local constant).
+          // Replaced with AppTheme.whatsAppGreen (0xFF25D366) — verified match.
+          foregroundColor: AppTheme.whatsAppGreen,
           elevation:       0,
           side: BorderSide(
-            color: kWhatsAppGreen.withOpacity(0.55),
+            color: AppTheme.whatsAppGreen.withOpacity(0.55),
             width: 1.2,
           ),
           shape: RoundedRectangleBorder(
@@ -197,21 +201,24 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: kWhatsAppGreen,
+                  color: AppTheme.whatsAppGreen,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   WhatsAppIcon(size: 20),
-                  const SizedBox(width: 8),
+                  // [UI-FIX SPACING]: was SizedBox(width: 8) — raw px.
+                  // Replaced with AppConstants.spacingSm (8dp token — same value).
+                  const SizedBox(width: AppConstants.spacingSm),
                   Flexible(
                     child: Text(
                       widget.label,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        color:      kWhatsAppGreen,
+                        // [UI-FIX TOKEN]: was kWhatsAppGreen — now AppTheme token.
+                        color: AppTheme.whatsAppGreen,
                       ),
                     ),
                   ),

@@ -66,7 +66,11 @@ class _AddressShimmerState extends State<_AddressShimmer>
         width:  120,
         height: 12,
         decoration: BoxDecoration(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(_anim.value * 0.12),
+          // [UI-FIX COLOR]: was (isDark ? Colors.white : Colors.black).withOpacity(...)
+          // — hardcoded primitives. Replaced with darkText / lightText tokens
+          // so the shimmer pulse is expressed in the theme's actual text colour.
+          color: (isDark ? AppTheme.darkText : AppTheme.lightText)
+              .withOpacity(_anim.value * 0.12),
           borderRadius: BorderRadius.circular(4),
         ),
       ),
@@ -118,7 +122,9 @@ class _AddressTextState extends State<_AddressText>
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(AppIcons.location, size: 13, color: iconColor),
-          const SizedBox(width: 4),
+          // [UI-FIX SPACING]: was SizedBox(width: 4) — raw px.
+          // Replaced with AppConstants.spacingXs (4dp — same value, now tokenised).
+          const SizedBox(width: AppConstants.spacingXs),
           Flexible(
             child: Text(
               widget.address,

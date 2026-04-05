@@ -214,7 +214,9 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   ),
                 Container(
                   width:  0.5,
-                  height: 22,
+                  // [UI-FIX SIZING]: was height: 22 — off 4dp grid (expect 24).
+                  // Replaced with AppConstants.iconSizeMd (24dp on-grid token).
+                  height: AppConstants.iconSizeMd,
                   color:  border,
                   margin: const EdgeInsets.symmetric(
                       horizontal: AppConstants.spacingXs),

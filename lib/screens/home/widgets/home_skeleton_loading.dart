@@ -28,12 +28,15 @@ class HomeSkeletonLoading extends StatelessWidget {
       backgroundColor:
           isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
       body: Shimmer.fromColors(
+        // [UI-FIX COLOR]: was Colors.white.withOpacity(0.07) / Colors.black.withOpacity(0.05).
+        // Replaced with AppTheme shimmer tokens — themed to darkText / lightText
+        // so shimmer adapts correctly without hardcoded primitive colours.
         baseColor: isDark
-            ? Colors.white.withOpacity(0.07)
-            : Colors.black.withOpacity(0.05),
+            ? AppTheme.shimmerBaseDark
+            : AppTheme.shimmerBaseLight,
         highlightColor: isDark
-            ? Colors.white.withOpacity(0.15)
-            : Colors.black.withOpacity(0.10),
+            ? AppTheme.shimmerHighlightDark
+            : AppTheme.shimmerHighlightLight,
         child: SafeArea(
           bottom: false,
           child: SingleChildScrollView(
@@ -210,9 +213,12 @@ class _Bone extends StatelessWidget {
       height: h,
       decoration: BoxDecoration(
         shape:        circle ? BoxShape.circle : BoxShape.rectangle,
+        // [UI-FIX COLOR]: was Colors.white.withOpacity(0.10) / Colors.black.withOpacity(0.07).
+        // Replaced with AppTheme.darkText / lightText at matching opacities —
+        // same visual weight, no primitive colour references.
         color:        isDark
-            ? Colors.white.withOpacity(0.10)
-            : Colors.black.withOpacity(0.07),
+            ? AppTheme.darkText.withOpacity(0.10)
+            : AppTheme.lightText.withOpacity(0.07),
         borderRadius: circle ? null : BorderRadius.circular(r),
       ),
     );

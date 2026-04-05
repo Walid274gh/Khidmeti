@@ -197,7 +197,9 @@ class _InlineLayout extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 2),
+              // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
+              // Replaced with AppConstants.spacingXxs (2dp token).
+              SizedBox(height: AppConstants.spacingXxs),
 
               Text(
                 intent.profession != null

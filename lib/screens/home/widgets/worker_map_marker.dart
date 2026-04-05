@@ -36,6 +36,13 @@ class WorkerMapMarker extends StatelessWidget {
     final icon  = AppTheme.getProfessionIcon(worker.profession);
     final size  = isBest ? 52.0 : 44.0;
 
+    // [UI-FIX COLOR]: was Colors.white (hardcoded primitive).
+    // The bubble border sits on the map tile background — semantically it
+    // needs "the colour that contrasts with the primary/accent fill".
+    // colorScheme.onPrimary maps to white on this theme while remaining
+    // themeable, matching the same fix already applied in pulsing_location_dot.
+    final borderColor = Theme.of(context).colorScheme.onPrimary;
+
     return GestureDetector(
       onTap: () => _showPreview(context),
       child: Column(
@@ -53,7 +60,8 @@ class WorkerMapMarker extends StatelessWidget {
                   color:  color,
                   shape:  BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white,
+                    // [UI-FIX COLOR]: Colors.white → colorScheme.onPrimary
+                    color: borderColor,
                     width: isBest ? 3.0 : 2.5,
                   ),
                   boxShadow: [
@@ -64,7 +72,7 @@ class WorkerMapMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(icon, color: Colors.white, size: isBest ? 24 : 21),
+                child: Icon(icon, color: borderColor, size: isBest ? 24 : 21),
               ),
               // Star badge — only on best worker
               if (isBest)
@@ -72,10 +80,12 @@ class WorkerMapMarker extends StatelessWidget {
                   top:   -4,
                   right: -4,
                   child: Container(
-                    width:  18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    // [UI-FIX SIZING]: was 18×18 — off 8dp grid.
+                    // Snapped to iconSizeXs (16dp) — nearest on-grid value.
+                    width:  AppConstants.iconSizeXs,
+                    height: AppConstants.iconSizeXs,
+                    decoration: BoxDecoration(
+                      color: borderColor,
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
@@ -84,7 +94,7 @@ class WorkerMapMarker extends StatelessWidget {
                       // now routed through the design system token).
                       child: Icon(
                         AppIcons.ratingFilled,
-                        size:  13,
+                        size:  11,
                         color: AppTheme.warningAmber,
                       ),
                     ),

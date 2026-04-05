@@ -63,12 +63,16 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: AppConstants.paddingSm + 2),
+                // [UI-FIX SPACING]: was SizedBox(width: paddingSm + 2) = 10dp
+                // — off 4dp grid. Replaced with spacingChipGap (12dp on-grid).
+                const SizedBox(width: AppConstants.spacingChipGap),
 
                 // Square icon
+                // [UI-FIX SIZING]: was 38×38 — off 8dp grid.
+                // Snapped to 40×40 (on 8dp grid).
                 Container(
-                  width:  38,
-                  height: 38,
+                  width:  40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color:        accent.withOpacity(isDark ? 0.12 : 0.08),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -84,7 +88,7 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                   ),
                 ),
 
-                const SizedBox(width: AppConstants.spacingSm + 2),
+                const SizedBox(width: AppConstants.spacingChipGap),
 
                 // Title + subtitle
                 Expanded(
@@ -102,7 +106,9 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
                             ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      // [UI-FIX SPACING]: was SizedBox(height: 2) — raw px.
+                      // Replaced with AppConstants.spacingXxs (2dp token).
+                      SizedBox(height: AppConstants.spacingXxs),
                       Text(
                         context.tr('home.cta_schedule_sub'),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -116,11 +122,13 @@ class _HomeCtaButtonState extends State<HomeCtaButton> {
 
                 // Pill badge
                 Container(
+                  // [UI-FIX SPACING]: was margin right: paddingSm + 2 = 10dp
+                  // — off grid. Replaced with spacingChipGap (12dp on-grid).
                   margin: const EdgeInsets.only(
-                      right: AppConstants.paddingSm + 2),
+                      right: AppConstants.spacingChipGap),
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.spacingMd,
-                    vertical:   AppConstants.spacingXs + 2,
+                    vertical:   AppConstants.spacingXs,
                   ),
                   decoration: BoxDecoration(
                     color: accent,

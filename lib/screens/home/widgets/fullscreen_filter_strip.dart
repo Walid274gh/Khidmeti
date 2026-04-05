@@ -80,11 +80,15 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                   vertical:   10,
                 ),
                 decoration: BoxDecoration(
+                  // [UI-FIX COLOR]: was Colors.black.withOpacity(0.52) /
+                  // Colors.white.withOpacity(0.82) — hardcoded primitives.
+                  // Replaced with AppTheme surface tokens so the chip
+                  // adapts correctly in both dark and light themes.
                   color: isActive
                       ? color.withOpacity(0.28)
                       : (widget.isDark
-                          ? Colors.black.withOpacity(0.52)
-                          : Colors.white.withOpacity(0.82)),
+                          ? AppTheme.darkSurface.withOpacity(0.52)
+                          : AppTheme.lightSurface.withOpacity(0.82)),
                   borderRadius: BorderRadius.circular(AppConstants.radiusSm),
                   border: Border.all(
                     color: isActive ? color : Colors.transparent,
@@ -99,7 +103,9 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                       size:  14,
                       color: isActive
                           ? color
-                          : (widget.isDark ? Colors.white70 : Colors.black54),
+                          : (widget.isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText),
                     ),
                     const SizedBox(width: AppConstants.spacingXs),
                     Text(
@@ -107,7 +113,9 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: isActive
                                 ? color
-                                : (widget.isDark ? Colors.white70 : Colors.black54),
+                                : (widget.isDark
+                                    ? AppTheme.darkSecondaryText
+                                    : AppTheme.lightSecondaryText),
                             fontWeight: isActive
                                 ? FontWeight.w700
                                 : FontWeight.w400,
