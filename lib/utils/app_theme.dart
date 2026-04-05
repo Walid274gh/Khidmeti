@@ -294,7 +294,8 @@ class AppTheme {
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
         labelStyle:         const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600),
+        // FIX [C3]: added fontFamily: 'Inter' — was missing, causing system font on Android.
+        floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: darkHintText, fontFamily: 'Inter'),
         contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         prefixIconColor:    darkSecondaryText,
@@ -305,9 +306,12 @@ class AppTheme {
           backgroundColor: darkAccent,
           foregroundColor: Colors.white,
           elevation:       0,
-          minimumSize:     const Size(double.infinity, 54),
+          // FIX [S2]: was const Size(double.infinity, 54) — magic literal.
+          // AppConstants.buttonHeight = 54.0 is the canonical token.
+          minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+          // FIX [C1]: added fontFamily: 'Inter' — was missing, causing system font on Android.
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -347,8 +351,10 @@ class AppTheme {
         unselectedItemColor:  darkSecondaryText,
         type:                 BottomNavigationBarType.fixed,
         elevation:            0,
-        selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+        // FIX [C2]: added fontFamily: 'Inter' to both label styles — was missing,
+        // causing system font fallback on Android.
+        selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'Inter'),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12, fontFamily: 'Inter'),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: darkSurface,
@@ -364,7 +370,10 @@ class AppTheme {
       dialogTheme: DialogTheme(
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          // FIX [W5]: was BorderRadius.circular(28) — raw magic number.
+          // radiusCircle=28 is semantically named for circles, not dialogs.
+          // AppConstants.radiusXxl=24 is the correct dialog corner token.
+          borderRadius: BorderRadius.circular(AppConstants.radiusXxl),
           side: const BorderSide(color: darkBorderSubtle, width: 0.5),
         ),
         titleTextStyle:   const TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
@@ -374,6 +383,12 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5),
+        // FIX [W1]: was 38sp — exceeded displayMedium (34sp), inverting the
+        // type hierarchy. Corrected to 30sp (Option A) which restores proper
+        // display > headline ordering: 40/34/28 > 30/26/20.
+        // FIX [W7]: removed height: 1.02 — sole explicit height in the
+        // display/headline scale. All other styles inherit Flutter's default
+        // (~1.2). Explicit height here was inconsistent and undocumented.
         // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
         // The SplashBranding widget was locally overriding this to -0.5 without
         // annotation, creating a silent divergence between the theme token and
@@ -381,7 +396,7 @@ class AppTheme {
         // app-name headline — tighter than body text but softer than display.
         // The local copyWith(letterSpacing: -0.5) in splash_branding.dart has
         // been removed; this token is now the single source of truth.
-        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5, height: 1.02),
+        headlineLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
@@ -408,9 +423,12 @@ class AppTheme {
         selectedColor:       darkAccentOverlay,
         labelStyle:          const TextStyle(color: darkText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: darkAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // FIX [W2]: was horizontal: 12, vertical: 8 — mismatched AppConstants.
+        // chipPaddingH=10.0, chipPaddingV=4.0 are the canonical tokens.
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.chipPaddingH, vertical: AppConstants.chipPaddingV),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          // FIX [W6]: was BorderRadius.circular(8) — bypassed AppConstants.chipRadius.
+          borderRadius: BorderRadius.circular(AppConstants.chipRadius),
           side: const BorderSide(color: darkBorderSubtle),
         ),
       ),
@@ -454,6 +472,9 @@ class AppTheme {
         onSecondary:             Colors.white,
         surface:                 lightSurface,
         onSurface:               lightText,
+        // FIX [W4]: added surfaceContainerLowest: lightBackground — was missing
+        // from the light colorScheme while dark had it. Symmetry restored.
+        surfaceContainerLowest:  lightBackground,
         error:                   lightError,
         onError:                 Colors.white,
         surfaceContainerHighest: lightSurfaceVariant,
@@ -494,7 +515,8 @@ class AppTheme {
           borderSide: const BorderSide(color: lightError, width: 1.5),
         ),
         labelStyle:         const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600),
+        // FIX [C3]: added fontFamily: 'Inter' — was missing, causing system font on Android.
+        floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: lightHintText, fontFamily: 'Inter'),
         contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         prefixIconColor:    lightSecondaryText,
@@ -505,9 +527,12 @@ class AppTheme {
           backgroundColor: lightAccent,
           foregroundColor: Colors.white,
           elevation:       0,
-          minimumSize:     const Size(double.infinity, 54),
+          // FIX [S2]: was const Size(double.infinity, 54) — magic literal.
+          // AppConstants.buttonHeight = 54.0 is the canonical token.
+          minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+          // FIX [C1]: added fontFamily: 'Inter' — was missing, causing system font on Android.
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -547,13 +572,20 @@ class AppTheme {
         unselectedItemColor:  lightSecondaryText,
         type:                 BottomNavigationBarType.fixed,
         elevation:            0,
-        selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+        // FIX [C2]: added fontFamily: 'Inter' to both label styles — was missing,
+        // causing system font fallback on Android.
+        selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'Inter'),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12, fontFamily: 'Inter'),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: lightText,
         contentTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
+        // FIX [W3]: added side: const BorderSide(color: lightBorder) to match
+        // dark snackBarTheme which already had a border side. Parity restored.
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+          side: const BorderSide(color: lightBorder),
+        ),
         behavior:     SnackBarBehavior.floating,
         elevation:    4,
         insetPadding: const EdgeInsets.all(16),
@@ -561,7 +593,10 @@ class AppTheme {
       dialogTheme: DialogTheme(
         backgroundColor: lightSurface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          // FIX [W5]: was BorderRadius.circular(28) — raw magic number.
+          // radiusCircle=28 is semantically named for circles, not dialogs.
+          // AppConstants.radiusXxl=24 is the correct dialog corner token.
+          borderRadius: BorderRadius.circular(AppConstants.radiusXxl),
           side: const BorderSide(color: lightBorder, width: 0.5),
         ),
         titleTextStyle:   const TextStyle(color: lightText, fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
@@ -571,9 +606,15 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5),
+        // FIX [W1]: was 38sp — exceeded displayMedium (34sp), inverting the
+        // type hierarchy. Corrected to 30sp (Option A) which restores proper
+        // display > headline ordering: 40/34/28 > 30/26/20.
+        // FIX [W7]: removed height: 1.02 — sole explicit height in the
+        // display/headline scale. Inconsistent with all other styles inheriting
+        // Flutter's default (~1.2). Removed for consistency.
         // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
         // Matches the dark theme token update above. See dark theme comment for rationale.
-        headlineLarge: TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5, height: 1.02),
+        headlineLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter'),
@@ -597,9 +638,12 @@ class AppTheme {
         selectedColor:       lightAccentChipOverlay,
         labelStyle:          const TextStyle(color: lightText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: lightAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // FIX [W2]: was horizontal: 12, vertical: 8 — mismatched AppConstants.
+        // chipPaddingH=10.0, chipPaddingV=4.0 are the canonical tokens.
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.chipPaddingH, vertical: AppConstants.chipPaddingV),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          // FIX [W6]: was BorderRadius.circular(8) — bypassed AppConstants.chipRadius.
+          borderRadius: BorderRadius.circular(AppConstants.chipRadius),
           side: const BorderSide(color: lightBorder, width: 0.5),
         ),
       ),
