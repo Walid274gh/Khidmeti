@@ -73,7 +73,16 @@ class WorkerMapMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(icon, color: borderColor, size: isBest ? 24 : 21),
+                // [S3 FIX]: was "size: isBest ? 24 : 21" — 21dp is off the
+                // icon scale (between iconSizeSm=20 and iconSizeMd=24).
+                // Replaced with named tokens so both values are on-grid.
+                // ⚠️ MANUAL: verify that iconSizeSm (20dp) does not visually
+                // crowd the non-best bubble at default map zoom before shipping.
+                child: Icon(
+                  icon,
+                  color: borderColor,
+                  size:  isBest ? AppConstants.iconSizeMd : AppConstants.iconSizeSm,
+                ),
               ),
               // Star badge — only on best worker
               if (isBest)

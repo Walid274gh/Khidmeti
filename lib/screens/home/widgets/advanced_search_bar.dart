@@ -154,6 +154,10 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
     final border  = isDark ? AppTheme.darkBorder         : AppTheme.lightBorder;
     final hasText = _ctrl.text.isNotEmpty;
 
+    // [C1 FIX]: resolved once in build so the mic icon can reference it
+    // without being const — colorScheme.onPrimary is a runtime value.
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
+
     if (isMapFullscreen) return const SizedBox.shrink();
 
     return Padding(
@@ -179,15 +183,18 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   child: TextField(
                     controller: _ctrl,
                     focusNode:  _focus,
-                    style: TextStyle(
-                      fontSize: AppConstants.fontSizeMd,
+                    // [C2 FIX]: was inline TextStyle(fontSize: fontSizeMd, ...) —
+                    // bypasses textTheme. Replaced with bodyMedium?.copyWith(...)
+                    // so the input text participates in the design-system type scale.
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isDark ? AppTheme.darkText : AppTheme.lightText,
                     ),
                     decoration: InputDecoration(
                       hintText: context.tr('home.search_placeholder'),
-                      hintStyle: TextStyle(
-                        color:    subtext,
-                        fontSize: AppConstants.fontSizeMd,
+                      // [C2 FIX]: was inline TextStyle(color: subtext, fontSize: fontSizeMd).
+                      // Replaced with bodyMedium?.copyWith(...).
+                      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: subtext,
                       ),
                       border:         InputBorder.none,
                       enabledBorder:  InputBorder.none,
@@ -265,8 +272,13 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                             color: accent,
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
-                            child: Icon(AppIcons.mic, size: 18, color: Colors.white),
+                          // [C1 FIX]: was const Icon(..., color: Colors.white) —
+                          // hardcoded primitive. Replaced with onPrimary from
+                          // colorScheme — semantically correct for icon on
+                          // accent-filled container. const removed because
+                          // onPrimary is a runtime value.
+                          child: Center(
+                            child: Icon(AppIcons.mic, size: 18, color: onPrimary),
                           ),
                         ),
                       ),

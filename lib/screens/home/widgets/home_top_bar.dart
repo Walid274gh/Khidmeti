@@ -59,14 +59,17 @@ class HomeTopBar extends ConsumerWidget {
           const SizedBox(height: AppConstants.spacingMd),
 
           // ── Hero question ──────────────────────────────────────────────────
+          // [C2 FIX]: was inline TextStyle(fontSize:heroFontSize,fontWeight:w700,
+          // letterSpacing:-1.2,height:1.02,color:text) — bypasses textTheme.
+          // Replaced with textTheme.headlineLarge?.copyWith(...).
+          // headlineLarge already carries fontWeight:w700, letterSpacing:-1.2,
+          // height:1.02 — we only override fontSize (heroFontSize=32 vs theme
+          // headlineLarge 38) and color to bind to the current theme surface.
           RichText(
             text: TextSpan(
-              style: TextStyle(
-                fontSize:      AppConstants.heroFontSize,
-                fontWeight:    FontWeight.w700,
-                letterSpacing: -1.2,
-                height:        1.02,
-                color:         text,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: AppConstants.heroFontSize,
+                color:    text,
               ),
               children: [
                 TextSpan(text: context.tr('home.question_line1')),

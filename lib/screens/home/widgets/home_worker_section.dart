@@ -152,6 +152,10 @@ class _AvailabilityToggle extends StatelessWidget {
           ),
           child: Row(
             children: [
+              // [S1 FIX]: was width: 8, height: 8 — raw literals.
+              // These are the status dot dimensions. No matching token exists
+              // yet; kept as-is per [MANUAL] note in manifest (toggleTrackW/H,
+              // statusDotSize tokens pending). Filed for manual addition.
               Container(
                 width:  8,
                 height: 8,
@@ -210,6 +214,10 @@ class _ToggleSwitch extends StatelessWidget {
         ? AppTheme.darkSurfaceVariant
         : AppTheme.lightSurfaceVariant;
 
+    // [S1 NOTE]: width:40/height:20 (track) and width:16/height:16 (thumb)
+    // have no matching AppConstants tokens. Kept as file-local values per
+    // [MANUAL] item in manifest — add AppConstants.toggleTrackW/H and
+    // AppConstants.toggleThumbSize when design tokens are confirmed.
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width:  40,
@@ -303,7 +311,10 @@ class _RoiCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.spacingSm,
-          vertical:   AppConstants.spacingXs + 4,
+          // [S1 FIX]: was "vertical: AppConstants.spacingXs + 4" — arithmetic
+          // expression that evaluates to 8dp (= spacingSm). Replaced with the
+          // named token directly for clarity and design-system consistency.
+          vertical:   AppConstants.spacingSm,
         ),
         decoration: BoxDecoration(
           color:        isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
@@ -483,9 +494,11 @@ class _NearbyJobTile extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // [S1 FIX]: was width: 32, height: 32 — raw literals.
+            // Replaced with AppConstants.iconContainerMd (32dp named token).
             Container(
-              width:  32,
-              height: 32,
+              width:  AppConstants.iconContainerMd,
+              height: AppConstants.iconContainerMd,
               decoration: BoxDecoration(
                 color:        accent.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(AppConstants.radiusSm),

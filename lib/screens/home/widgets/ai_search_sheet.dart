@@ -184,21 +184,23 @@ class _AiSearchSheetState extends ConsumerState<AiSearchSheet> {
                       maxLines:     4,
                       minLines:     3,
                       enabled:      !isLoading,
-                      style: TextStyle(
-                        fontSize: AppConstants.fontSizeMd,
-                        color: isDark
-                            ? AppTheme.darkText
-                            : AppTheme.lightText,
+                      // [C2 FIX]: was inline TextStyle(fontSize:fontSizeMd,height:1.5,…) —
+                      // bypasses textTheme. Replaced with bodyMedium?.copyWith(...)
+                      // preserving the height:1.5 override that is intentional here
+                      // (multi-line input needs looser line-height than the default 1.6).
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: isDark ? AppTheme.darkText : AppTheme.lightText,
                         height: 1.5,
                       ),
                       decoration: InputDecoration(
                         hintText:  context.tr('home.ai_search_hint'),
-                        hintStyle: TextStyle(
+                        // [C2 FIX]: was inline TextStyle(fontSize:fontSizeMd,height:1.5,…).
+                        // Replaced with bodyMedium?.copyWith(...).
+                        hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: isDark
                               ? AppTheme.darkSecondaryText
                               : AppTheme.lightSecondaryText,
-                          fontSize: AppConstants.fontSizeMd,
-                          height:   1.5,
+                          height: 1.5,
                         ),
                         border:         InputBorder.none,
                         contentPadding:

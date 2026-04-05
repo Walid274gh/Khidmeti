@@ -15,6 +15,16 @@ import '../../../utils/localization.dart';
 import '../../../widgets/sheet_chrome.dart';
 import 'search_result_card.dart';
 
+// ── File-local dimension tokens ───────────────────────────────────────────────
+// [S1 FIX]: extracted from magic numbers scattered in the widget tree.
+// _kPickButtonH replaces bare `height: 80` in _PickButton.
+// _kPreviewH replaces bare `height: 180` in _ImagePreview and the dependent
+// scan-line calculation `_scan.value * 160` which is now derived from the
+// token: `_scan.value * (_kPreviewH - 20)` — the 20dp offset is the scan
+// line's own height clearance so it never exits the clipped container bounds.
+const double _kPickButtonH = 80.0;
+const double _kPreviewH    = 180.0;
+
 // ============================================================================
 // IMAGE SEARCH SHEET
 // ============================================================================
@@ -340,7 +350,9 @@ class _ImagePreviewState extends State<_ImagePreview>
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppConstants.radiusLg),
       child: SizedBox(
-        height: 180,
+        // [S1 FIX]: was bare `height: 180` — magic number.
+        // Replaced with _kPreviewH (file-local const token = 180.0).
+        height: _kPreviewH,
         width:  double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -351,7 +363,12 @@ class _ImagePreviewState extends State<_ImagePreview>
               AnimatedBuilder(
                 animation: _scan,
                 builder:   (_, __) => Positioned(
-                  top:   _scan.value * 160,
+                  // [S1 FIX]: was `_scan.value * 160` — the literal 160 was
+                  // a hand-computed approximation of (180 - 20) with no link
+                  // to the container height token. Derived from _kPreviewH
+                  // so the scan line stays within bounds if the height token
+                  // is ever updated: (_kPreviewH - 20) = 160 currently.
+                  top:   _scan.value * (_kPreviewH - 20),
                   left:  0,
                   right: 0,
                   child: Container(
@@ -403,7 +420,9 @@ class _PickButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 80,
+          // [S1 FIX]: was bare `height: 80` — magic number.
+          // Replaced with _kPickButtonH (file-local const token = 80.0).
+          height: _kPickButtonH,
           decoration: BoxDecoration(
             color:        isDark
                 ? AppTheme.darkSurface
