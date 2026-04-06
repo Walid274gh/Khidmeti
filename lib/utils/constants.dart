@@ -83,6 +83,24 @@
 //         email_verification_screen (was hardcoded width:56, height:56).
 //         Designer sign-off pending: keep 56dp or align to 48/64?
 //
+// CHANGES (auth ui-apply — MANUAL pass, dimension tokens):
+//   logoOrbSize = 64.0 — login header logo orb container (raw 64 literals).
+//   logoOrbIconSize = 30.0 — icon inside login logo orb (off-grid 30dp; pending
+//       designer sign-off: 32dp would snap to grid).
+//   socialButtonSize = 52.0 — CircularSocialButton width/height (raw 52 literals).
+//   socialSpinnerSize = 18.0 — loading spinner inside social button (was 18dp;
+//       note: sits between spinnerSizeSm=14 and spinnerSizeLg=20, not on grid).
+//   roleToggleHeight = 56.0 — RegisterRoleSelector toggle container height.
+//   strengthBarHeight = 3.0 — password strength segment bar height.
+//   strengthBarGap = 3.0 — gap between password strength segments.
+//   strengthBarRadius = 2.0 — border radius of strength bar segments
+//       (nearest token radiusXs=4; kept at 2 pending designer sign-off).
+//   accentShadowOpacity = 0.35 — opacity used for accent-coloured box shadows.
+//   goodPasswordLength = 10 — threshold above minPasswordLength (6) used in the
+//       strength scorer to award the "good length" bonus point.
+//   lineHeightTight = 1.4 — tighter line-height used in dense inline text
+//       (e.g. _LockoutWidget body). Standard body uses 1.6 in the textTheme.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -207,13 +225,9 @@ class AppConstants {
 
   // ── Border widths ─────────────────────────────────────────────────────────
   /// Standard tile / option border stroke (unselected state).
-  /// [M1]: backs the unselected SheetOption border and standard container
-  /// borders throughout the settings module.
   static const double borderWidthDefault  = 1.0;
 
   /// Selected-state emphasis border stroke.
-  /// [M2]: backs the selected SheetOption border — slightly heavier than
-  /// borderWidthDefault to communicate active selection.
   static const double borderWidthSelected = 1.5;
 
   // Wordmark
@@ -234,6 +248,11 @@ class AppConstants {
   static const double fontSizeXxl     = 20.0;
   static const double fontSizeDisplay = 24.0;
 
+  // Line heights
+  /// Tight line-height for dense inline text (e.g. lockout banner body).
+  /// Standard body line-height is 1.6 in the textTheme.
+  static const double lineHeightTight = 1.4;
+
   // Icons
   static const double iconSizeXs = 16.0;
   static const double iconSizeSm = 20.0;
@@ -242,14 +261,9 @@ class AppConstants {
   static const double iconSizeXl = 48.0;
 
   /// Mid-scale icon token between iconSizeXl (48) and iconSizeHero (80).
-  /// [C12]: used for in-content error state icons (e.g. SettingsErrorView).
-  /// 64dp is appropriate for content-area illustrations — larger than a
-  /// standard action icon but smaller than full-screen hero art.
   static const double iconSizeLg2 = 64.0;
 
-  /// Hero-scale icon used in full-screen state illustrations (e.g. SplashErrorIcon).
-  /// Intentionally outside the standard icon scale — it is a decorative display
-  /// element, not a UI control icon.
+  /// Hero-scale icon used in full-screen state illustrations.
   static const double iconSizeHero = 80.0;
 
   // Container sizes
@@ -259,24 +273,56 @@ class AppConstants {
   static const double iconContainerXl  = 40.0;
   static const double buttonIconSize   = 20.0;
 
-  /// Feature icon container — circular container wrapping a content icon
-  /// (e.g. email verification screen, success/error state illustrations).
-  /// [A1/C3]: promotes the hardcoded width:56/height:56 literals.
-  /// Designer sign-off pending: keep 56dp or align to 48/64?
+  /// Feature icon container — circular container wrapping a content icon.
   static const double iconContainerFeature = 56.0;
 
   /// Emoji / flag icon size used in SheetOption rows.
-  /// [W5]: promotes the raw 22dp literal from sheet_option.dart to a
-  /// named token. Applied to Text(flag, fontSize) and Icon(icon, size).
   static const double emojiIconSize = 22.0;
 
   /// Large spinner size — primary action button CircularProgressIndicator.
-  /// [C3]: promotes the raw 20dp literal used across ElevatedButton spinners.
   static const double spinnerSizeLg = 20.0;
 
   /// Small spinner size — secondary / text button CircularProgressIndicator.
-  /// [C3]: promotes the raw 14dp literal used in TextButton loading states.
   static const double spinnerSizeSm = 14.0;
+
+  // ── Auth UI tokens ────────────────────────────────────────────────────────
+
+  /// Login header logo orb container size (width = height).
+  /// Pending designer sign-off: 64dp diverges from iconContainerFeature (56dp).
+  static const double logoOrbSize = 64.0;
+
+  /// Icon size inside the login logo orb.
+  /// Note: 30dp is off the 20/24/32 icon scale — designer sign-off pending.
+  static const double logoOrbIconSize = 30.0;
+
+  /// CircularSocialButton width and height.
+  static const double socialButtonSize = 52.0;
+
+  /// Loading spinner inside CircularSocialButton.
+  /// Note: 18dp sits between spinnerSizeSm (14) and spinnerSizeLg (20).
+  static const double socialSpinnerSize = 18.0;
+
+  /// RegisterRoleSelector toggle container height.
+  static const double roleToggleHeight = 56.0;
+
+  /// Password strength bar segment height.
+  /// Note: 3dp is off the 4dp grid — designer sign-off pending.
+  static const double strengthBarHeight = 3.0;
+
+  /// Gap between password strength bar segments.
+  /// Note: 3dp is off the 4dp grid — designer sign-off pending.
+  static const double strengthBarGap = 3.0;
+
+  /// Border radius of password strength bar segments.
+  /// Note: 2dp; nearest token is radiusXs (4dp) — designer sign-off pending.
+  static const double strengthBarRadius = 2.0;
+
+  /// Opacity applied to accent-coloured box shadows (e.g. logo orb, submit button).
+  static const double accentShadowOpacity = 0.35;
+
+  /// Password length threshold above [minPasswordLength] that awards the
+  /// "good length" bonus point in the strength scorer.
+  static const int goodPasswordLength = 10;
 
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
@@ -287,33 +333,19 @@ class AppConstants {
   static const double sheetHandleWidth  = 40.0;
   static const double sheetHandleHeight = 4.0;
 
-  /// Maximum number of worker documents fetched in the unscoped fallback
-  /// Firestore stream (_subscribeFallback). Prevents reading every online
-  /// worker document on every snapshot in production.
   static const int fallbackWorkerQueryLimit = 100;
 
   // Search / input
   static const double searchBarHeight      = 44.0;
   static const double categoryTileIconSize = 48.0;
 
-  // ── Settings tile height ─────────────────────────────────────────────────
   /// Canonical row height for SettingsTile, SignOutTile, _DeleteAccountTile.
-  /// [W6]: promotes the magic literal 64 (repeated 3×) to a named token.
-  /// Note: 64dp sits between the M3 one-line (56dp) and two-line (72dp)
-  /// standard heights — this is an explicit product design decision.
   static const double tileHeight = 64.0;
 
-  // ── Settings error view ──────────────────────────────────────────────────
   /// Width of the retry button in SettingsErrorView.
-  /// [W8]: replaces the arithmetic `splashRetryButtonMinWidth * 1.5`
-  /// (120.0 × 1.5 = 180.0) with a named token — arithmetic in layout
-  /// code is a code smell.
   static const double settingsRetryButtonWidth = 180.0;
 
-  // ── Profile card skeleton ─────────────────────────────────────────────────
   /// Height of the ProfileCard shimmer skeleton in _ProfileCardSkeleton.
-  /// [S2-AUTO]: promotes the magic literal 110 to a named token. If ProfileCard
-  /// content grows, updating this single constant keeps the skeleton in sync.
   static const double profileCardSkeletonHeight = 110.0;
 
   // ── Toggle switch ─────────────────────────────────────────────────────────
@@ -332,96 +364,26 @@ class AppConstants {
   static const double splashRetryButtonMinWidth = 120.0;
 
   // ── Opacity tokens — state-conditional destructive tiles ─────────────────
-  // Applied at runtime via .withValues(alpha: x) to caller-resolved colors
-  // (AppTheme.signOutRed, colorScheme.error, iconColor). Cannot be baked as
-  // const Colors because the base color is dynamic. Named constants replace
-  // magic literals and make each opacity level's intent explicit.
-  //
-  // Usage map:
-  //   opacityDisabledColor    → disabled text/icon dimming (sign-out, delete)
-  //   opacityChevron          → chevron / muted icon alpha (both tiles)
-  //   opacityTileFillDisabled → sign-out tile bg, disabled state
-  //   opacityTileFillDarkEn   → sign-out tile bg, dark theme, enabled
-  //   opacityTileFillLightEn  → sign-out tile bg, light theme, enabled
-  //   opacityDeleteTileFillDarkEn → delete tile bg, dark theme, enabled
-  //                                 Same design value as opacityTileFillLightEn
-  //                                 (0.08) but a distinct token so the two
-  //                                 contexts can diverge independently.
-  //   opacityDeleteFillLightEn→ delete tile bg, light theme, enabled
-  //   opacityDeleteFillDis    → delete tile bg, disabled state
-  //   opacityIconBg           → delete tile icon container background
-  //   opacityIconBgAlt        → sign-out tile icon container background
-  //                             ↳ also: delete tile border, enabled state
-  //   opacityBorderEnabled    → sign-out tile border, enabled state
-  //   opacityBorderDisabled   → sign-out tile border, disabled state
-  //                             ↳ also: delete tile border alternative
-  //   opacityDeleteBorderDis  → delete tile border, disabled state
-
-  /// Disabled text/icon alpha — applied to error color to produce the muted
-  /// disabled variant. Used in both destructive tiles.
   static const double opacityDisabledColor    = 0.40;
-
-  /// Chevron and secondary icon mute alpha. Applied to the trailing icon
-  /// in SignOutTile and _DeleteAccountTile.
   static const double opacityChevron          = 0.50;
-
-  /// Sign-out tile background, disabled state.
   static const double opacityTileFillDisabled = 0.04;
-
-  /// Sign-out tile background, enabled, dark theme.
   static const double opacityTileFillDarkEn   = 0.12;
-
-  /// Sign-out tile background, enabled, light theme.
   static const double opacityTileFillLightEn  = 0.08;
-
-  /// Delete tile background, enabled, dark theme.
-  /// Semantically distinct from opacityTileFillLightEn despite sharing the
-  /// same design value (0.08). Separate token prevents silent breakage if
-  /// the sign-out and delete dark backgrounds ever need to diverge.
   static const double opacityDeleteTileFillDarkEn = 0.08;
-
-  /// Delete tile background, enabled, light theme (tighter fill than sign-out).
   static const double opacityDeleteFillLightEn = 0.05;
-
-  /// Delete tile background, disabled state (tighter than sign-out).
   static const double opacityDeleteFillDis     = 0.03;
-
-  /// Icon container background — delete tile (slightly darker than sign-out).
   static const double opacityIconBg            = 0.12;
-
-  /// Icon container background — sign-out tile.
-  /// Also: delete tile border colour, enabled state (same design value).
   static const double opacityIconBgAlt         = 0.15;
-
-  /// Tile border colour, enabled — sign-out tile.
   static const double opacityBorderEnabled     = 0.20;
-
-  /// Tile border colour, disabled — sign-out tile.
   static const double opacityBorderDisabled    = 0.08;
-
-  /// Delete tile border colour, disabled state (tighter than sign-out).
   static const double opacityDeleteBorderDis   = 0.06;
 
   // ── Opacity tokens — SheetOption ─────────────────────────────────────────
-  // [W1-AUTO]: 5 new constants replace the 5 raw float literals in
-  // sheet_option.dart that bypassed the opacity token system.
-  // These are runtime .withValues() calls — the base color (colorScheme.primary
-  // or colorScheme.onSurface) is resolved dynamically at build time.
-
-  /// SheetOption selected fill — dark theme (accent @ 20%).
-  static const double opacitySheetFillDark  = 0.20;
-
-  /// SheetOption selected fill — light theme (accent @ 10%).
-  static const double opacitySheetFillLight = 0.10;
-
-  /// SheetOption border — selected state (accent @ 50%).
-  static const double opacitySheetBorderSel = 0.50;
-
-  /// SheetOption border — unselected state (outline @ 20%).
+  static const double opacitySheetFillDark    = 0.20;
+  static const double opacitySheetFillLight   = 0.10;
+  static const double opacitySheetBorderSel   = 0.50;
   static const double opacitySheetBorderUnsel = 0.20;
-
-  /// SheetOption icon — unselected / muted state (onSurface @ 60%).
-  static const double opacitySheetIconMuted = 0.60;
+  static const double opacitySheetIconMuted   = 0.60;
 
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;
