@@ -55,7 +55,9 @@ class AppTheme {
   //     e.g. darkBgAppBar = darkBackground @ 80 % opacity.
   //
   // Alpha reference (opacity → hex):
-  //   10% → 0x1A  |  15% → 0x26  |  20% → 0x33  |  35% → 0x59
+  //   4%  → 0x0A  |  6%  → 0x0F  |  7%  → 0x12  |  8%  → 0x14
+  //   10% → 0x1A  |  12% → 0x1F  |  15% → 0x26  |  18% → 0x2E
+  //   20% → 0x33  |  25% → 0x40  |  30% → 0x4D  |  35% → 0x59
   //   50% → 0x80  |  60% → 0x99  |  70% → 0xB3  |  80% → 0xCC
   //   90% → 0xE6
   // ==========================================================
@@ -113,6 +115,81 @@ class AppTheme {
   // ── Light — muted error icon color (lightError @ 60%) ────────────────────
   // [C11]: used in SettingsErrorView icon color, light branch.
   static const Color lightErrorMuted = Color(0x99DC2626);
+
+  // ==========================================================
+  // 🎨 AUTH / SHEET OPACITY-BAKED TOKENS
+  //
+  // Added (ui-apply H1/H3/H4/Col1/Col2/Col4):
+  //   • Eliminates all remaining inline .withOpacity() calls in the
+  //     auth module. Every token below is a const Color with alpha
+  //     encoded in the hex value.
+  // ==========================================================
+
+  // ── Auth background radial halo ───────────────────────────────────────────
+  // [H4]: auth_background.dart used
+  //   (isDark ? darkAccent : lightAccent).withOpacity(isDark ? 0.18 : 0.07)
+  // darkAccent #4F46E5 @ 18% → alpha 0x2E
+  static const Color darkAccentHalo  = Color(0x2E4F46E5);
+  // lightAccent #4F46E5 @ 7%  → alpha 0x12
+  static const Color lightAccentHalo = Color(0x124F46E5);
+
+  // ── Sheet drag handle ─────────────────────────────────────────────────────
+  // [H3]: login_forgot_password_sheet + profession_picker_sheet used
+  //   Colors.white.withOpacity(0.15)  (dark)
+  //   Colors.black.withOpacity(0.12)  (light)
+  // white @ 15% → alpha 0x26
+  static const Color sheetHandleDark  = Color(0x26FFFFFF);
+  // black @ 12% → alpha 0x1F
+  static const Color sheetHandleLight = Color(0x1F000000);
+
+  // ── Warning subtle fill — lockout / rate-limit banner ────────────────────
+  // [H1/Col1]: login_form_card._LockoutWidget used
+  //   AppTheme.darkWarning.withOpacity(0.08) in both themes
+  // darkWarning #FBBF24 @ 8% → alpha 0x14
+  static const Color darkWarningSubtle  = Color(0x14FBBF24);
+  // lightWarning #D97706 @ 8% → alpha 0x14
+  static const Color lightWarningSubtle = Color(0x14D97706);
+
+  // ── Warning border — lockout / rate-limit banner ──────────────────────────
+  // [Col4]: login_form_card._LockoutWidget border used
+  //   AppTheme.darkWarning.withOpacity(0.30) in both themes
+  // darkWarning #FBBF24 @ 30% → alpha 0x4D
+  static const Color darkWarningBorder  = Color(0x4DFBBF24);
+  // lightWarning #D97706 @ 30% → alpha 0x4D
+  static const Color lightWarningBorder = Color(0x4DD97706);
+
+  // ── Surface tile unselected fill — service/profession picker cells ─────────
+  // [Col2]: register_service_picker used raw withOpacity() calls
+  // white @ 6% → alpha 0x0F
+  static const Color darkTileFill  = Color(0x0FFFFFFF);
+  // black @ 4% → alpha 0x0A
+  static const Color lightTileFill = Color(0x0A000000);
+
+  // ── Surface tile unselected border ────────────────────────────────────────
+  // [Col2]: register_service_picker used raw withOpacity() calls
+  // white @ 10% → alpha 0x1A
+  static const Color darkTileBorder  = Color(0x1AFFFFFF);
+  // black @ 8% → alpha 0x14
+  static const Color lightTileBorder = Color(0x14000000);
+
+  // ── Social button border (dark theme) ────────────────────────────────────
+  // [SVG]: CircularSocialButton border used Colors.white.withOpacity(0.18)
+  // white @ 18% → alpha 0x2E
+  static const Color darkSocialBorder = Color(0x2EFFFFFF);
+
+  // ── Back button circular container fill ───────────────────────────────────
+  // [C1/P1]: register_header back button used raw withOpacity() calls
+  // white @ 8% → alpha 0x14
+  static const Color darkBackButtonFill  = Color(0x14FFFFFF);
+  // black @ 6% → alpha 0x0F
+  static const Color lightBackButtonFill = Color(0x0F000000);
+
+  // ── Checkbox unchecked border ─────────────────────────────────────────────
+  // register_terms_checkbox used raw withOpacity() calls
+  // white @ 25% → alpha 0x40
+  static const Color darkCheckboxBorder  = Color(0x40FFFFFF);
+  // black @ 20% → alpha 0x33
+  static const Color lightCheckboxBorder = Color(0x33000000);
 
   // ==========================================================
   // 🎨 OVERLAY TOKENS
@@ -381,7 +458,7 @@ class AppTheme {
           elevation:       0,
           minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
+          textStyle: const TextStyle(fontSize: AppConstants.buttonFontSize, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -572,7 +649,7 @@ class AppTheme {
           elevation:       0,
           minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
+          textStyle: const TextStyle(fontSize: AppConstants.buttonFontSize, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

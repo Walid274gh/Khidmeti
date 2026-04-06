@@ -70,6 +70,19 @@
 //        duration used in SheetOption AnimatedContainer. Replaces the bare
 //        Duration(milliseconds: 200) magic literal.
 //
+// CHANGES (auth ui-apply — H2/A1/C3):
+//   [H2]  buttonFontSize = 15.0 — tokenises the raw 15 literal in
+//         auth_submit_button.dart and both elevatedButton theme textStyles.
+//   [A1]  authCardEntranceDuration = Duration(milliseconds: 900) — the
+//         reference entrance animation duration from register_screen.dart,
+//         applied to email_verification_screen.dart (was 700ms).
+//   [C3]  spinnerSizeLg = 20.0 — large CircularProgressIndicator dimension
+//         used across primary action buttons.
+//         spinnerSizeSm = 14.0 — small spinner used in secondary / text buttons.
+//   [A1]  iconContainerFeature = 56.0 — feature icon container size used in
+//         email_verification_screen (was hardcoded width:56, height:56).
+//         Designer sign-off pending: keep 56dp or align to 48/64?
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -99,6 +112,11 @@ class AppConstants {
   /// the SheetOption AnimatedContainer selection highlight.
   /// [M3]: promotes the raw Duration(milliseconds: 200) magic literal.
   static const Duration animDurationMicro = Duration(milliseconds: 200);
+
+  /// Auth card entrance animation duration — card fade/slide in from off-screen.
+  /// [A1]: reference implementation is register_screen.dart (900ms).
+  /// Applied to email_verification_screen.dart (was 700ms — inconsistent).
+  static const Duration authCardEntranceDuration = Duration(milliseconds: 900);
 
   static const int biddingDeadlineMinutes  = 120;
   static const int maxPendingBidsPerWorker = 5;
@@ -139,6 +157,11 @@ class AppConstants {
   static const double buttonHeight   = 54.0;
   static const double buttonHeightMd = 48.0;
   static const double buttonHeightSm = 44.0;
+
+  /// Canonical button label font size.
+  /// [H2]: tokenises the raw literal 15 in auth_submit_button.dart and
+  /// elevatedButtonTheme textStyles in app_theme.dart.
+  static const double buttonFontSize = 15.0;
 
   // Cards
   static const double cardPadding     = 18.0;
@@ -236,10 +259,24 @@ class AppConstants {
   static const double iconContainerXl  = 40.0;
   static const double buttonIconSize   = 20.0;
 
+  /// Feature icon container — circular container wrapping a content icon
+  /// (e.g. email verification screen, success/error state illustrations).
+  /// [A1/C3]: promotes the hardcoded width:56/height:56 literals.
+  /// Designer sign-off pending: keep 56dp or align to 48/64?
+  static const double iconContainerFeature = 56.0;
+
   /// Emoji / flag icon size used in SheetOption rows.
   /// [W5]: promotes the raw 22dp literal from sheet_option.dart to a
   /// named token. Applied to Text(flag, fontSize) and Icon(icon, size).
   static const double emojiIconSize = 22.0;
+
+  /// Large spinner size — primary action button CircularProgressIndicator.
+  /// [C3]: promotes the raw 20dp literal used across ElevatedButton spinners.
+  static const double spinnerSizeLg = 20.0;
+
+  /// Small spinner size — secondary / text button CircularProgressIndicator.
+  /// [C3]: promotes the raw 14dp literal used in TextButton loading states.
+  static const double spinnerSizeSm = 14.0;
 
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
