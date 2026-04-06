@@ -39,9 +39,6 @@ class _EmailVerificationScreenState
   late final AnimationController _cardController;
   late final Animation<double>   _cardFade;
 
-  // FIX (Cross-Screen Flow P1): automatic 30-second polling.
-  // If the user verifies on another device or from the email link, the app
-  // auto-redirects without requiring a manual tap.
   Timer? _pollingTimer;
   static const Duration _pollInterval = Duration(seconds: 30);
 
@@ -51,9 +48,6 @@ class _EmailVerificationScreenState
 
     _cardController = AnimationController(
       vsync: this,
-      // FIX [A1]: was Duration(milliseconds: 700) — inconsistent with the
-      // 900ms entrance used in login_screen and register_screen.
-      // Unified to AppConstants.authCardEntranceDuration (900ms).
       duration: AppConstants.authCardEntranceDuration,
     )..forward();
     _cardFade = CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
@@ -68,15 +62,9 @@ class _EmailVerificationScreenState
     super.dispose();
   }
 
-  // --------------------------------------------------------------------------
-  // Auto-poll — silent, triggers router redirect on success
-  // --------------------------------------------------------------------------
-
   Future<void> _pollVerification() async {
     if (_checkingVerification || _signingOut || !mounted) return;
     final authService = ref.read(authServiceProvider);
-    // Background poll uses the default forceReload: false — respects the
-    // 3-second cooldown so we never hammer Firebase on high-frequency polling.
     final isVerified  = await authService.reloadAndCheckEmailVerification();
     if (isVerified && mounted) {
       AppLogger.info(
@@ -85,21 +73,11 @@ class _EmailVerificationScreenState
     }
   }
 
-  // --------------------------------------------------------------------------
-  // Manual check
-  // --------------------------------------------------------------------------
-
   Future<void> _onCheckVerification() async {
     if (_checkingVerification) return;
     setState(() => _checkingVerification = true);
 
     final authService = ref.read(authServiceProvider);
-
-    // FIX [A12]: pass forceReload: true so the 3-second cooldown is bypassed.
-    // Without this, tapping "I Verified" within 3 seconds of the automatic
-    // poll would skip the Firebase reload entirely and return the cached
-    // (stale, unverified) result — making the button appear broken even when
-    // the user has already clicked the verification link in their email.
     final isVerified  = await authService.reloadAndCheckEmailVerification(
       forceReload: true,
     );
@@ -119,10 +97,6 @@ class _EmailVerificationScreenState
     }
   }
 
-  // --------------------------------------------------------------------------
-  // Resend
-  // --------------------------------------------------------------------------
-
   Future<void> _onResend() async {
     if (_resending) return;
     setState(() {
@@ -141,10 +115,6 @@ class _EmailVerificationScreenState
     }
   }
 
-  // --------------------------------------------------------------------------
-  // Change account
-  // --------------------------------------------------------------------------
-
   Future<void> _onChangeAccount() async {
     if (_signingOut) return;
     setState(() => _signingOut = true);
@@ -152,15 +122,9 @@ class _EmailVerificationScreenState
     if (mounted) setState(() => _signingOut = false);
   }
 
-  // --------------------------------------------------------------------------
-  // Build
-  // --------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     final isDark    = Theme.of(context).brightness == Brightness.dark;
-    // FIX (Engineer P1): was ref.watch(authServiceProvider) — rebuilt on every
-    // isLoading fluctuation. currentUserProvider rebuilds only when User changes.
     final user      = ref.watch(currentUserProvider);
     final userEmail = user?.email ?? '';
     final isAnyBusy = _checkingVerification || _resending || _signingOut;
@@ -255,9 +219,6 @@ class _VerificationCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon container
-          // FIX [A1/C3]: was hardcoded width:56, height:56 — now uses
-          // AppConstants.iconContainerFeature (56dp, pending designer sign-off).
           Container(
             width:  AppConstants.iconContainerFeature,
             height: AppConstants.iconContainerFeature,
@@ -287,9 +248,6 @@ class _VerificationCard extends StatelessWidget {
 
           SizedBox(height: AppConstants.spacingXs),
 
-          // FIX: using 'verify_email.description' — the existing key in all
-          // 3 locales. Previously used 'verify_email.subtitle' which doesn't
-          // exist and would have rendered as the raw key string.
           Text(
             context.tr('verify_email.description'),
             style: TextStyle(
@@ -322,17 +280,17 @@ class _VerificationCard extends StatelessWidget {
               onPressed: isAnyBusy ? null : onCheckVerification,
               child: checkingVerification
                   ? SizedBox(
-                      // FIX [C3]: tokenised spinner dimensions.
                       width:  AppConstants.spinnerSizeLg,
                       height: AppConstants.spinnerSizeLg,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: isDark
-                            ? AppTheme.darkBackground
-                            : AppTheme.lightBackground,
+                        // FIX [Col-INCON]: was isDark ? AppTheme.darkBackground :
+                        // AppTheme.lightBackground — replaced with
+                        // colorScheme.onPrimary to match forgot_password_screen
+                        // and login_forgot_password_sheet.
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
-                  // FIX: using 'verify_email.i_verified' — the existing key.
                   : Text(context.tr('verify_email.i_verified')),
             ),
           ),
@@ -347,7 +305,6 @@ class _VerificationCard extends StatelessWidget {
               onPressed: isAnyBusy ? null : onResend,
               child: resending
                   ? SizedBox(
-                      // FIX [C3]: tokenised spinner dimensions.
                       width:  AppConstants.spinnerSizeSm,
                       height: AppConstants.spinnerSizeSm,
                       child: CircularProgressIndicator(
@@ -382,18 +339,16 @@ class _VerificationCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 vertical: AppConstants.spacingMd),
             child: Divider(
+              // FIX [Col-SEM]: was AppTheme.sheetHandleDark in dark branch
+              // (a drag-handle token, semantic mismatch) — replaced with
+              // AppTheme.darkBorder, the correct divider token.
               color: isDark
-                  ? AppTheme.sheetHandleDark
+                  ? AppTheme.darkBorder
                   : AppTheme.lightBorder,
               height: 1,
             ),
           ),
 
-          // Change account
-          // FIX [A1]: minimumSize was Size(double.infinity, 44) — replaced
-          // with AppConstants.buttonHeight (54dp) for consistency; the
-          // minimum height of 44 was below the standard button height and
-          // off the design system grid.
           Semantics(
             button: true,
             label:  context.tr('verify_email.change_account'),
@@ -407,7 +362,6 @@ class _VerificationCard extends StatelessWidget {
               ),
               icon: signingOut
                   ? SizedBox(
-                      // FIX [C3]: tokenised spinner dimensions.
                       width:  AppConstants.spinnerSizeSm,
                       height: AppConstants.spinnerSizeSm,
                       child: CircularProgressIndicator(
@@ -420,14 +374,12 @@ class _VerificationCard extends StatelessWidget {
                   : const Icon(Icons.logout_rounded, size: AppConstants.iconSizeXs),
               label: Text(
                 context.tr('verify_email.change_account'),
-                // FIX (Designer): was const TextStyle(fontSize: 13) — tokenised.
                 style: const TextStyle(
                     fontSize: AppConstants.fontSizeCaption),
               ),
             ),
           ),
 
-          // FIX (Designer): was const TextStyle(fontSize: 11) — tokenised.
           Text(
             context.tr('verify_email.change_account_hint'),
             textAlign: TextAlign.center,
