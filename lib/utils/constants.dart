@@ -61,6 +61,15 @@
 //         to the same design value today; the separate token documents intent and
 //         prevents silent breakage if the two contexts ever diverge.
 //
+// CHANGES (settings ui-apply — MANUAL pass):
+//   [M1] borderWidthDefault = 1.0 — standard tile / option border stroke.
+//        Backs the unselected SheetOption border and any future standard border.
+//   [M2] borderWidthSelected = 1.5 — selected-state emphasis border stroke.
+//        Backs the selected SheetOption border.
+//   [M3] animDurationMicro = Duration(milliseconds: 200) — short micro-interaction
+//        duration used in SheetOption AnimatedContainer. Replaces the bare
+//        Duration(milliseconds: 200) magic literal.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -82,9 +91,14 @@ class AppConstants {
   static const double fabClearance = 80.0;
   static const double maxBidPrice  = 500000.0;
 
-  static const Duration defaultTimeout = Duration(seconds: 30);
-  static const Duration longTimeout    = Duration(minutes: 2);
-  static const Duration cacheExpiry    = Duration(hours: 1);
+  static const Duration defaultTimeout  = Duration(seconds: 30);
+  static const Duration longTimeout     = Duration(minutes: 2);
+  static const Duration cacheExpiry     = Duration(hours: 1);
+
+  /// Micro-interaction animation duration — short state transitions such as
+  /// the SheetOption AnimatedContainer selection highlight.
+  /// [M3]: promotes the raw Duration(milliseconds: 200) magic literal.
+  static const Duration animDurationMicro = Duration(milliseconds: 200);
 
   static const int biddingDeadlineMinutes  = 120;
   static const int maxPendingBidsPerWorker = 5;
@@ -167,6 +181,17 @@ class AppConstants {
   static const double chipRadius       = 8.0;
   static const double chipPaddingH     = 10.0;
   static const double chipPaddingV     = 4.0;
+
+  // ── Border widths ─────────────────────────────────────────────────────────
+  /// Standard tile / option border stroke (unselected state).
+  /// [M1]: backs the unselected SheetOption border and standard container
+  /// borders throughout the settings module.
+  static const double borderWidthDefault  = 1.0;
+
+  /// Selected-state emphasis border stroke.
+  /// [M2]: backs the selected SheetOption border — slightly heavier than
+  /// borderWidthDefault to communicate active selection.
+  static const double borderWidthSelected = 1.5;
 
   // Wordmark
   static const double wordmarkDotSize  = 8.0;
