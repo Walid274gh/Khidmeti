@@ -12,6 +12,13 @@
 //           token AppConstants.settingsRetryButtonWidth (180.0). Arithmetic in
 //           layout code is a code smell — the resolved value (180dp) is now a
 //           single source of truth.
+// FIX [MANUAL-A11Y]: removed redundant outer Semantics(label:, button: true)
+//           wrapper around the ElevatedButton.icon. ElevatedButton already
+//           exposes its own semantics node with the correct role and label derived
+//           from its child Text. Wrapping it in an additional Semantics node
+//           creates a duplicate a11y surface, causing screen readers to announce
+//           the action twice. The SizedBox constraint is preserved; only the
+//           Semantics wrapper is removed.
 
 import 'package:flutter/material.dart';
 
@@ -71,16 +78,17 @@ class SettingsErrorView extends StatelessWidget {
             // splashRetryButtonMinWidth * 1.5. The global ElevatedButton theme
             // sets minimumSize: Size(double.infinity, 54) which would otherwise
             // cause this button to stretch full-width inside the centered column.
-            Semantics(
-              label:  context.tr('common.retry'),
-              button: true,
-              child: SizedBox(
-                width: AppConstants.settingsRetryButtonWidth,
-                child: ElevatedButton.icon(
-                  onPressed: onRetry,
-                  icon:      const Icon(Icons.refresh_rounded),
-                  label:     Text(context.tr('common.retry')),
-                ),
+            //
+            // [MANUAL-A11Y]: outer Semantics(label:, button: true) wrapper
+            // removed — ElevatedButton already carries its own semantics node.
+            // The duplicate wrapper caused TalkBack/VoiceOver to announce the
+            // retry action twice. SizedBox constraint is preserved as-is.
+            SizedBox(
+              width: AppConstants.settingsRetryButtonWidth,
+              child: ElevatedButton.icon(
+                onPressed: onRetry,
+                icon:      const Icon(Icons.refresh_rounded),
+                label:     Text(context.tr('common.retry')),
               ),
             ),
           ],

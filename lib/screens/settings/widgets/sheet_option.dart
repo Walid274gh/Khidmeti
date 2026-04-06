@@ -16,6 +16,17 @@
 //   0.5 (border sel)    → opacitySheetBorderSel
 //   0.2 (border unsel)  → opacitySheetBorderUnsel
 //   0.6 (icon muted)    → opacitySheetIconMuted
+//
+// FIX [W-BORDER-UNTOKEN]: border widths replaced with named tokens:
+//           width: isSelected ? 1.5 : 1
+//           → width: isSelected
+//               ? AppConstants.borderWidthSelected
+//               : AppConstants.borderWidthDefault
+//           borderWidthSelected (1.5) and borderWidthDefault (1.0) added to
+//           constants.dart — previously these were the only two raw stroke
+//           literals in the settings module without a named home.
+// FIX [M3]: Duration(milliseconds: 200) → AppConstants.animDurationMicro
+//           Promotes the bare duration literal to the shared animation token.
 
 import 'package:flutter/material.dart';
 
@@ -50,8 +61,10 @@ class SheetOption extends StatelessWidget {
       selected: isSelected,
       button:   true,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin:   const EdgeInsets.only(bottom: AppConstants.spacingSm),
+        // [M3]: animDurationMicro = Duration(milliseconds: 200) — promotes
+        // the raw duration literal to the shared animation token.
+        duration:  AppConstants.animDurationMicro,
+        margin:    const EdgeInsets.only(bottom: AppConstants.spacingSm),
         decoration: BoxDecoration(
           // [W1-AUTO]: opacitySheetFillDark (0.20) / opacitySheetFillLight (0.10)
           // replace the inline isDark ? 0.2 : 0.1 literals.
@@ -71,7 +84,10 @@ class SheetOption extends StatelessWidget {
                 : theme.colorScheme.outline.withValues(
                     alpha: AppConstants.opacitySheetBorderUnsel,
                   ),
-            width: isSelected ? 1.5 : 1,
+            // [W-BORDER-UNTOKEN]: named tokens replace the raw 1.5 / 1 literals.
+            width: isSelected
+                ? AppConstants.borderWidthSelected
+                : AppConstants.borderWidthDefault,
           ),
         ),
         child: Material(

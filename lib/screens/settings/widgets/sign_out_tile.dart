@@ -16,6 +16,10 @@
 //           hierarchy. Unifying both to colorScheme.error ensures consistent
 //           visual weight and correct severity ordering across both themes.
 //           Design token: lightError (#DC2626) / darkError (#F87171).
+// FIX [S1-MISSED]: copyWith now only overrides color — fontSize and fontWeight
+//           dropped because titleMedium is already 15sp/w600 in both themes.
+//           Mirrors the S1-AUTO fix already applied to _DeleteAccountTile.
+//           Any future change to titleMedium size/weight propagates automatically.
 
 import 'package:flutter/material.dart';
 
@@ -105,10 +109,12 @@ class SignOutTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     context.tr('auth.logout'),
+                    // [S1-MISSED]: copyWith retains only the color override.
+                    // fontSize and fontWeight dropped — titleMedium is already
+                    // 15sp/w600 in both themes; the overrides were no-ops that
+                    // resisted future changes to the theme token.
                     style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize:   AppConstants.fontSizeTileLg,
-                      fontWeight: FontWeight.w600,
-                      color:      errorColor,
+                      color: errorColor,
                     ),
                   ),
                 ),

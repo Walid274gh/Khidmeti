@@ -24,6 +24,9 @@
 //            to app_theme.dart. If the two accents ever diverge, replace this token with
 //            a runtime BoxShadow built from colorScheme.primary below.
 //            See: AppTheme.profileCardShadow — TODO(theme-divergence).
+// FIX [W-BORDER-RAW]: Border.all(width: 0.5) → width: AppConstants.cardBorderWidth
+//            The raw literal is now the canonical cardBorderWidth token, consistent
+//            with settings_tile.dart.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -52,7 +55,9 @@ class ProfileCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
           border: Border.all(
             color: AppTheme.profileCardBorder,
-            width: 0.5,
+            // [W-BORDER-RAW]: cardBorderWidth (0.5) — canonical border-stroke
+            // token, consistent with settings_tile.dart.
+            width: AppConstants.cardBorderWidth,
           ),
           boxShadow: [
             BoxShadow(

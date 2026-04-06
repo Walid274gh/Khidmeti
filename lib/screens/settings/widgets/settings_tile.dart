@@ -20,6 +20,10 @@
 //           was a no-op that added noise and would silently resist future theme
 //           changes. Using theme.textTheme.titleMedium directly is now the
 //           single source of truth.
+// FIX [W-BORDER-RAW]: Border.all(width: 0.5) → width: AppConstants.cardBorderWidth
+//           cardBorderWidth = 0.5 already exists in constants.dart and is the
+//           canonical token for this stroke width. Using the raw literal here
+//           was an untracked deviation from the token system.
 
 import 'package:flutter/material.dart';
 
@@ -74,7 +78,9 @@ class SettingsTile extends StatelessWidget {
                 border: Border.all(
                   // Resolves from colorScheme.outline — responds to theme changes.
                   color: theme.colorScheme.outline,
-                  width: 0.5,
+                  // [W-BORDER-RAW]: cardBorderWidth (0.5) — canonical border-stroke
+                  // token that already existed in constants.dart unused here.
+                  width: AppConstants.cardBorderWidth,
                 ),
               ),
               child: Row(
