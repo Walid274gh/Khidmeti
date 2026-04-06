@@ -48,16 +48,23 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // FIX [H3/W1]: was raw width:40/height:4 with
-            // Colors.white.withOpacity(0.15)/Colors.black.withOpacity(0.12).
-            // Replaced with SheetHandle widget (uses pre-baked tokens).
+            // FIX [Dim-RAW]: was EdgeInsets.only(top: 12, bottom: 4) — replaced
+            // with token-backed values: spacingChipGap (12dp) and spacingXs (4dp).
             Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              padding: const EdgeInsets.only(
+                top:    AppConstants.spacingChipGap,
+                bottom: AppConstants.spacingXs,
+              ),
               child: SheetHandle(isDark: isDark),
             ),
+            // FIX [Dim-RAW]: was EdgeInsets.fromLTRB(paddingLg, 12, paddingLg, 8) —
+            // the inner 12 → spacingChipGap; 8 → spacingSm (already a token).
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppConstants.paddingLg, 12, AppConstants.paddingLg, 8,
+                AppConstants.paddingLg,
+                AppConstants.spacingChipGap,
+                AppConstants.paddingLg,
+                AppConstants.spacingSm,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,15 +119,15 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                         duration:  AppConstants.animDurationMicro,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
+                          // FIX [Col-OPAC]: was accent.withOpacity(0.15) —
+                          // replaced with pre-baked AppTheme.accentSelectedFill
+                          // (accent #4F46E5 @ 15%, alpha 0x26).
                           color: isSelected
-                              ? accent.withOpacity(0.15)
+                              ? AppTheme.accentSelectedFill
                               : Colors.transparent,
                           borderRadius:
                               BorderRadius.circular(AppConstants.radiusMd),
                           border: Border.all(
-                            // FIX [H3/W1]: was Colors.white.withOpacity(0.15)
-                            // — replaced with pre-baked sheetHandleDark /
-                            // lightBorder tokens.
                             color: isSelected
                                 ? accent
                                 : (isDark
@@ -153,10 +160,6 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                 child: ElevatedButton(
                   onPressed: _selected == null
                       ? null
-                      // FIX (QA P0): added mounted check before pop — the
-                      // sheet can be dismissed by a system swipe gesture
-                      // simultaneously with a tap on Confirm, leaving the
-                      // context unmounted.
                       : () {
                           if (!mounted) return;
                           Navigator.of(context).pop(_selected);

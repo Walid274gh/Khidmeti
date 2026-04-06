@@ -22,8 +22,11 @@ class SocialDivider extends StatelessWidget {
       children: [
         Expanded(
           child: Divider(
+            // FIX [Col-SEM]: was AppTheme.sheetHandleDark (a drag-handle token)
+            // in the dark branch — replaced with AppTheme.darkBorder, which is
+            // the correct semantic token for divider lines.
             color:  isDark
-                ? AppTheme.sheetHandleDark
+                ? AppTheme.darkBorder
                 : AppTheme.lightBorder,
             height: 1,
           ),
@@ -44,7 +47,7 @@ class SocialDivider extends StatelessWidget {
         Expanded(
           child: Divider(
             color:  isDark
-                ? AppTheme.sheetHandleDark
+                ? AppTheme.darkBorder
                 : AppTheme.lightBorder,
             height: 1,
           ),
@@ -56,10 +59,8 @@ class SocialDivider extends StatelessWidget {
 
 // ============================================================================
 // CIRCULAR SOCIAL BUTTON
-// FIX (UI Quality): logo SizedBox changed from 22×22 to 24×24.
-// 22dp is off the 8dp grid (16 / 20 / 24 / 32). 24dp is the standard icon
-// size in AppConstants.iconSizeMd and aligns with the rest of the app.
-//
+// FIX [Dim-RAW]: width/height 52×52 → AppConstants.socialButtonSize (52.0).
+// FIX [Dim-RAW]: spinner 18×18 → AppConstants.socialSpinnerSize (18.0).
 // FIX [SVG]: border colour was Colors.white.withOpacity(0.18) — replaced
 // with pre-baked AppTheme.darkSocialBorder token (white @ 18%).
 // ============================================================================
@@ -84,8 +85,6 @@ class CircularSocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX [SVG]: was Colors.white.withOpacity(0.18) — now uses
-    // AppTheme.darkSocialBorder (pre-baked const token, white @ 18%).
     final borderColor = isDisabled
         ? AppTheme.disabledBorder
         : (isDark
@@ -96,8 +95,9 @@ class CircularSocialButton extends StatelessWidget {
       button: true,
       label:  semanticLabel,
       child: SizedBox(
-        width:  52,
-        height: 52,
+        // FIX [Dim-RAW]: was raw 52 literals — now AppConstants.socialButtonSize.
+        width:  AppConstants.socialButtonSize,
+        height: AppConstants.socialButtonSize,
         child: Material(
           color: isDark
               ? AppTheme.darkSurface.withOpacity(0.5)
@@ -111,8 +111,10 @@ class CircularSocialButton extends StatelessWidget {
             child: Center(
               child: isLoading
                   ? SizedBox(
-                      width:  18,
-                      height: 18,
+                      // FIX [Dim-RAW]: was raw 18 literals — now
+                      // AppConstants.socialSpinnerSize.
+                      width:  AppConstants.socialSpinnerSize,
+                      height: AppConstants.socialSpinnerSize,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: isDark
@@ -135,11 +137,6 @@ class CircularSocialButton extends StatelessWidget {
 
 // ============================================================================
 // GOOGLE LOGO
-// FIX [SVG]: CustomPainter replaced with SvgPicture.asset.
-// Requires:
-//   • flutter_svg: ^2.0.10+1 in pubspec.yaml
-//   • assets/images/social/google.svg (official Google G logo)
-//   • assets/images/social/ declared in pubspec.yaml flutter.assets block
 // ============================================================================
 
 class GoogleLogo extends StatelessWidget {
@@ -156,11 +153,6 @@ class GoogleLogo extends StatelessWidget {
 
 // ============================================================================
 // FACEBOOK LOGO
-// FIX [SVG]: CustomPainter replaced with SvgPicture.asset.
-// Requires:
-//   • flutter_svg: ^2.0.10+1 in pubspec.yaml
-//   • assets/images/social/facebook.svg (official Facebook f logo)
-//   • assets/images/social/ declared in pubspec.yaml flutter.assets block
 // ============================================================================
 
 class FacebookLogo extends StatelessWidget {
@@ -177,15 +169,6 @@ class FacebookLogo extends StatelessWidget {
 
 // ============================================================================
 // APPLE LOGO
-// FIX [SVG]: CustomPainter replaced with SvgPicture.asset.
-// The monochrome Apple SVG must be colourised per theme at runtime using
-// colorFilter — the official logo uses a single path, so a ColorFilter
-// is the correct approach rather than separate dark/light SVG files.
-//
-// Requires:
-//   • flutter_svg: ^2.0.10+1 in pubspec.yaml
-//   • assets/images/social/apple.svg (official Apple logo, monochrome)
-//   • assets/images/social/ declared in pubspec.yaml flutter.assets block
 // ============================================================================
 
 class AppleLogo extends StatelessWidget {

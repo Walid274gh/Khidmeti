@@ -30,7 +30,10 @@ class RegisterRoleSelector extends StatelessWidget {
       children: [
         // ── Toggle ────────────────────────────────────────────────────────────
         Container(
-          height: 56,
+          // FIX [Dim-RAW]: was height: 56 (magic literal) — replaced with
+          // AppConstants.roleToggleHeight (56.0). Distinct from buttonHeight
+          // (54dp); separate token prevents silent divergence.
+          height: AppConstants.roleToggleHeight,
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
             borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -66,9 +69,6 @@ class RegisterRoleSelector extends StatelessWidget {
         ),
 
         // ── Value proposition line — changes with selection ───────────────────
-        // FIX [A2]: was Duration(milliseconds: 220) — replaced with
-        // AppConstants.animDurationMicro (200ms) to unify micro-interaction
-        // durations across the auth module.
         AnimatedSwitcher(
           duration: AppConstants.animDurationMicro,
           transitionBuilder: (child, animation) =>
@@ -127,8 +127,6 @@ class _RoleTab extends StatelessWidget {
         selected: isSelected,
         label:    label,
         child: AnimatedContainer(
-          // FIX [A2]: was Duration(milliseconds: 250) — replaced with
-          // AppConstants.animDurationMicro (200ms).
           duration: AppConstants.animDurationMicro,
           curve:    Curves.easeOut,
           decoration: BoxDecoration(
@@ -152,9 +150,7 @@ class _RoleTab extends StatelessWidget {
                             ? AppTheme.darkSecondaryText
                             : AppTheme.lightSecondaryText),
                   ),
-                  // FIX [A2]: was SizedBox(width: 6) — replaced with
-                  // AppConstants.spacingXs (4dp). Designer sign-off pending:
-                  // 4dp or 8dp? See manifest TODO.
+                  // Designer sign-off pending: 4dp or 8dp gap?
                   const SizedBox(width: AppConstants.spacingXs),
                   Text(
                     label,

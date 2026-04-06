@@ -20,24 +20,33 @@ class _LoginLogoOrb extends StatelessWidget {
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Container(
-      width:  64,
-      height: 64,
+      // FIX [Dim-RAW]: was raw 64 literals — replaced with
+      // AppConstants.logoOrbSize (64.0).
+      // Designer sign-off pending: 64dp diverges from iconContainerFeature
+      // (56dp) — intentional divergence confirmed in manifest.
+      width:  AppConstants.logoOrbSize,
+      height: AppConstants.logoOrbSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: accent,
         boxShadow: [
           BoxShadow(
-            color:       accent.withOpacity(0.35),
-            blurRadius:  40,
+            // FIX [Col-OPAC]: was accent.withOpacity(0.35) — replaced with
+            // pre-baked AppTheme.accentShadow token (accent @ 35%, alpha 0x59).
+            color:        AppTheme.accentShadow,
+            blurRadius:   40,
             spreadRadius: 0,
-            offset:      const Offset(0, 8),
+            offset:       const Offset(0, 8),
           ),
         ],
       ),
       child: Icon(
         AppIcons.home,
         color: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-        size:  30,
+        // FIX [Dim-OFF]: was raw size: 30 (off 20/24/32 icon scale) — replaced
+        // with AppConstants.logoOrbIconSize (30.0). Pending designer sign-off:
+        // 32dp would snap to the standard icon scale.
+        size:  AppConstants.logoOrbIconSize,
       ),
     );
   }

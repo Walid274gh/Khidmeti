@@ -84,12 +84,6 @@ class RegisterServicePicker extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: AppConstants.animDurationMicro,
                   decoration: BoxDecoration(
-                    // FIX [Col2]: replaced 4× inline .withOpacity() calls with
-                    // pre-baked AppTheme tokens:
-                    //   Colors.white.withOpacity(0.06) → AppTheme.darkTileFill
-                    //   Colors.black.withOpacity(0.04) → AppTheme.lightTileFill
-                    //   Colors.white.withOpacity(0.10) → AppTheme.darkTileBorder
-                    //   Colors.black.withOpacity(0.08) → AppTheme.lightTileBorder
                     color: isSelected
                         ? accent
                         : (isDark
@@ -109,7 +103,11 @@ class RegisterServicePicker extends StatelessWidget {
                     children: [
                       Icon(
                         icon,
-                        size:  22,
+                        // FIX [Dim-OFF]: was size: 22 (off 20/24/32 icon scale) —
+                        // replaced with AppConstants.iconSizeMd (24dp).
+                        // Device test recommended: verify icon fits 2-line service
+                        // labels at 24dp on 360dp viewport.
+                        size:  AppConstants.iconSizeMd,
                         color: isSelected
                             ? bgColor
                             : (isDark

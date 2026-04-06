@@ -25,8 +25,7 @@ class AuthSubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent  = isDark ? AppTheme.darkAccent    : AppTheme.lightAccent;
-    final bgColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Semantics(
       button:  true,
@@ -40,7 +39,10 @@ class AuthSubmitButton extends StatelessWidget {
           boxShadow: _isEnabled
               ? [
                   BoxShadow(
-                    color:        accent.withOpacity(0.35),
+                    // FIX [Col-OPAC]: was accent.withOpacity(0.35) — replaced
+                    // with the pre-baked AppTheme.accentShadow token
+                    // (darkAccent #4F46E5 @ 35%, alpha 0x59).
+                    color:        AppTheme.accentShadow,
                     blurRadius:   40,
                     spreadRadius: 0,
                     offset:       const Offset(0, 8),
@@ -49,7 +51,10 @@ class AuthSubmitButton extends StatelessWidget {
               : null,
         ),
         child: Material(
-          color:        _isEnabled ? accent : accent.withOpacity(0.45),
+          // FIX [Col-OPAC]: was accent.withOpacity(0.45) for disabled bg —
+          // replaced with pre-baked AppTheme.accentDisabledFill token
+          // (darkAccent #4F46E5 @ 45%, alpha 0x73).
+          color:        _isEnabled ? accent : AppTheme.accentDisabledFill,
           borderRadius: BorderRadius.circular(AppConstants.radiusLg),
           child: InkWell(
             onTap:        _isEnabled ? onPressed : null,
@@ -61,14 +66,22 @@ class AuthSubmitButton extends StatelessWidget {
                       height: AppConstants.spinnerSizeLg,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color:       bgColor,
+                        // Spinner uses onPrimary so it stays readable against
+                        // the accent-filled button surface in both themes.
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
                   : Text(
                       context.tr(labelKey),
                       style: TextStyle(
-                        color: bgColor.withOpacity(_isEnabled ? 1.0 : 0.55),
-                        // FIX [H2]: was hardcoded 15 — now uses AppConstants.buttonFontSize.
+                        // FIX [Col-OPAC]: was bgColor.withOpacity(1.0 or 0.55) —
+                        // replaced with colorScheme.onPrimary (enabled) and
+                        // onPrimary dimmed by opacityDisabledColor (disabled).
+                        // Matches the pattern used in settings tiles.
+                        color: _isEnabled
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onPrimary
+                                .withValues(alpha: AppConstants.opacityDisabledColor),
                         fontSize:      AppConstants.buttonFontSize,
                         fontWeight:    FontWeight.w700,
                         letterSpacing: -0.2,

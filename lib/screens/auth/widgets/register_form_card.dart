@@ -65,7 +65,9 @@ class RegisterFormCard extends StatelessWidget {
     if (pw.isEmpty) return 0;
     if (pw.length < AppConstants.minPasswordLength) return 1;
     int score = 1;
-    if (pw.length >= 10) score++;
+    // FIX [Magic]: was pw.length >= 10 (magic literal) — replaced with
+    // AppConstants.goodPasswordLength (10) which documents the design intent.
+    if (pw.length >= AppConstants.goodPasswordLength) score++;
     if (pw.contains(RegExp(r'[0-9]'))) score++;
     if (pw.contains(RegExp(r'[!@#$%^&*()\-_=+{};:,<.>?/\\|`~]'))) score++;
     return score.clamp(1, 4);
@@ -113,8 +115,6 @@ class RegisterFormCard extends StatelessWidget {
             SizedBox(height: AppConstants.spacingMd),
 
             // Email
-            // FIX (QA P1): Added maxLength: 254 — RegisterFormCard was missing
-            // this constraint that LoginFormCard correctly enforced (RFC 5321).
             Semantics(
               label: context.tr('login.email_label'),
               child: GlassTextField(
@@ -138,8 +138,6 @@ class RegisterFormCard extends StatelessWidget {
             SizedBox(height: AppConstants.spacingMd),
 
             // Phone
-            // FIX (QA P1): Added LengthLimitingTextInputFormatter(15) to prevent
-            // unbounded input — previously only character filtering was applied.
             Semantics(
               label: context.tr('register.phone_label'),
               child: GlassTextField(
@@ -158,7 +156,6 @@ class RegisterFormCard extends StatelessWidget {
                 validator: (v) => FormValidators.validatePhone(v, context),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[\d\s\+\-]')),
-                  // Algerian numbers: max +213 + 9 digits + optional spaces = 15 chars
                   LengthLimitingTextInputFormatter(15),
                 ],
               ),
@@ -184,9 +181,6 @@ class RegisterFormCard extends StatelessWidget {
               ),
             ),
 
-            // FIX (Auth Security P1): Password strength indicator.
-            // ValueListenableBuilder observes passwordController without
-            // requiring RegisterFormCard to be a StatefulWidget.
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: passwordController,
               builder: (_, value, __) {
@@ -303,17 +297,27 @@ class _PasswordStrengthBar extends StatelessWidget {
           children: List.generate(4, (i) {
             return Expanded(
               child: Container(
-                height:           3,
-                margin: EdgeInsets.only(right: i < 3 ? 3 : 0),
+                // FIX [Dim-OFF]: was height: 3 (magic literal) — replaced
+                // with AppConstants.strengthBarHeight (3.0).
+                height: AppConstants.strengthBarHeight,
+                // FIX [Dim-OFF]: was EdgeInsets.only(right: i < 3 ? 3 : 0)
+                // — replaced with AppConstants.strengthBarGap (3.0).
+                margin: EdgeInsets.only(
+                  right: i < 3 ? AppConstants.strengthBarGap : 0,
+                ),
                 decoration: BoxDecoration(
-                  color:         i < strength ? color : empty,
-                  borderRadius:  BorderRadius.circular(2),
+                  color: i < strength ? color : empty,
+                  // FIX [Dim-OFF]: was BorderRadius.circular(2) — replaced
+                  // with AppConstants.strengthBarRadius (2.0).
+                  borderRadius: BorderRadius.circular(AppConstants.strengthBarRadius),
                 ),
               ),
             );
           }),
         ),
-        const SizedBox(height: 4),
+        // FIX [Dim-RAW]: was const SizedBox(height: 4) — replaced with
+        // AppConstants.spacingXs (4dp, same value, now tokenised).
+        const SizedBox(height: AppConstants.spacingXs),
         // Label
         Text(
           _label(context),

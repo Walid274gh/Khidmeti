@@ -165,14 +165,6 @@ class LoginFormCard extends StatelessWidget {
 
 // ============================================================================
 // LOCKOUT WIDGET
-// FIX (Auth Security P1): shown when Firebase returns too-many-requests,
-// replacing the generic red error text with a contextual amber warning.
-// Firebase does not expose the lockout duration, so no countdown is shown.
-//
-// FIX (H1/Col1): replaced AppTheme.darkWarning.withOpacity(0.08/0.30) in
-// both branches with isDark-branched pre-baked tokens:
-//   fill:   darkWarningSubtle / lightWarningSubtle  (warningColor @ 8%)
-//   border: darkWarningBorder  / lightWarningBorder  (warningColor @ 30%)
 // ============================================================================
 
 class _LockoutWidget extends StatelessWidget {
@@ -185,15 +177,11 @@ class _LockoutWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
-        // FIX [H1/Col1]: was AppTheme.darkWarning.withOpacity(0.08) in both
-        // theme branches — now uses per-theme pre-baked tokens.
         color: isDark
             ? AppTheme.darkWarningSubtle
             : AppTheme.lightWarningSubtle,
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         border: Border.all(
-          // FIX [Col4]: was AppTheme.darkWarning.withOpacity(0.30) in both
-          // theme branches — now uses per-theme pre-baked tokens.
           color: isDark
               ? AppTheme.darkWarningBorder
               : AppTheme.lightWarningBorder,
@@ -215,7 +203,9 @@ class _LockoutWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: AppConstants.fontSizeSm,
                 color: isDark ? AppTheme.darkWarning : AppTheme.lightWarning,
-                height: 1.4,
+                // FIX [Dim-RAW]: was height: 1.4 (magic literal) — replaced
+                // with AppConstants.lineHeightTight (1.4).
+                height: AppConstants.lineHeightTight,
               ),
             ),
           ),
