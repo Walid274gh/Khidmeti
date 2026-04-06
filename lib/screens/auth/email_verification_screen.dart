@@ -15,6 +15,7 @@ import '../../utils/logger.dart';
 import '../../utils/snack_utils.dart';
 import '../../utils/system_ui_overlay.dart';
 import 'widgets/auth_background.dart';
+import 'widgets/auth_submit_button.dart';
 
 // ============================================================================
 // EMAIL VERIFICATION SCREEN
@@ -273,75 +274,56 @@ class _VerificationCard extends StatelessWidget {
 
           SizedBox(height: AppConstants.spacingMd),
 
-          // Primary CTA
-          SizedBox(
-            height: AppConstants.buttonHeight,
-            child: ElevatedButton(
-              onPressed: isAnyBusy ? null : onCheckVerification,
-              child: checkingVerification
-                  ? SizedBox(
-                      width:  AppConstants.spinnerSizeLg,
-                      height: AppConstants.spinnerSizeLg,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        // FIX [Col-INCON]: was isDark ? AppTheme.darkBackground :
-                        // AppTheme.lightBackground — replaced with
-                        // colorScheme.onPrimary to match forgot_password_screen
-                        // and login_forgot_password_sheet.
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    )
-                  : Text(context.tr('verify_email.i_verified')),
-            ),
+          // FIX [BTN-SPLIT]: ElevatedButton primary CTA → AuthSubmitButton
+          AuthSubmitButton(
+            isLoading: checkingVerification,
+            isDark:    isDark,
+            onPressed: isAnyBusy ? null : onCheckVerification,
+            labelKey:  'verify_email.i_verified',
           ),
 
           SizedBox(height: AppConstants.spacingMd),
 
-          // Resend
-          Semantics(
-            button: true,
-            label:  context.tr('verify_email.resend'),
-            child: TextButton(
-              onPressed: isAnyBusy ? null : onResend,
-              child: resending
-                  ? SizedBox(
-                      width:  AppConstants.spinnerSizeSm,
-                      height: AppConstants.spinnerSizeSm,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 1.5, color: accent),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          context.tr('verify_email.resend'),
-                          style: TextStyle(
-                            color:      accent,
-                            fontWeight: FontWeight.w600,
-                          ),
+          // FIX [A11Y-DUP]: removed redundant Semantics(button: true, label:)
+          // wrapper — TextButton with visible text child already exposes correct
+          // semantics. Double-labelling harms screen readers.
+          TextButton(
+            onPressed: isAnyBusy ? null : onResend,
+            child: resending
+                ? SizedBox(
+                    width:  AppConstants.spinnerSizeSm,
+                    height: AppConstants.spinnerSizeSm,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 1.5, color: accent),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        context.tr('verify_email.resend'),
+                        style: TextStyle(
+                          color:      accent,
+                          fontWeight: FontWeight.w600,
                         ),
-                        if (resentSuccess) ...[
-                          const SizedBox(width: AppConstants.spacingXs),
-                          Icon(
-                            Icons.check_circle_outline_rounded,
-                            size:  AppConstants.iconSizeXs,
-                            color: isDark
-                                ? AppTheme.darkSuccess
-                                : AppTheme.lightSuccess,
-                          ),
-                        ],
+                      ),
+                      if (resentSuccess) ...[
+                        const SizedBox(width: AppConstants.spacingXs),
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size:  AppConstants.iconSizeXs,
+                          color: isDark
+                              ? AppTheme.darkSuccess
+                              : AppTheme.lightSuccess,
+                        ),
                       ],
-                    ),
-            ),
+                    ],
+                  ),
           ),
 
           Padding(
             padding: const EdgeInsets.symmetric(
                 vertical: AppConstants.spacingMd),
             child: Divider(
-              // FIX [Col-SEM]: was AppTheme.sheetHandleDark in dark branch
-              // (a drag-handle token, semantic mismatch) — replaced with
-              // AppTheme.darkBorder, the correct divider token.
               color: isDark
                   ? AppTheme.darkBorder
                   : AppTheme.lightBorder,
@@ -349,34 +331,33 @@ class _VerificationCard extends StatelessWidget {
             ),
           ),
 
-          Semantics(
-            button: true,
-            label:  context.tr('verify_email.change_account'),
-            child: TextButton.icon(
-              onPressed: isAnyBusy ? null : onChangeAccount,
-              style: TextButton.styleFrom(
-                minimumSize: const Size(double.infinity, AppConstants.buttonHeightSm),
-                foregroundColor: isDark
-                    ? AppTheme.darkSecondaryText
-                    : AppTheme.lightSecondaryText,
-              ),
-              icon: signingOut
-                  ? SizedBox(
-                      width:  AppConstants.spinnerSizeSm,
-                      height: AppConstants.spinnerSizeSm,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: isDark
-                            ? AppTheme.darkSecondaryText
-                            : AppTheme.lightSecondaryText,
-                      ),
-                    )
-                  : const Icon(Icons.logout_rounded, size: AppConstants.iconSizeXs),
-              label: Text(
-                context.tr('verify_email.change_account'),
-                style: const TextStyle(
-                    fontSize: AppConstants.fontSizeCaption),
-              ),
+          // FIX [A11Y-DUP]: removed redundant Semantics(button: true, label:)
+          // wrapper — TextButton.icon with visible text child already exposes
+          // correct semantics. Double-labelling harms screen readers.
+          TextButton.icon(
+            onPressed: isAnyBusy ? null : onChangeAccount,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(double.infinity, AppConstants.buttonHeightSm),
+              foregroundColor: isDark
+                  ? AppTheme.darkSecondaryText
+                  : AppTheme.lightSecondaryText,
+            ),
+            icon: signingOut
+                ? SizedBox(
+                    width:  AppConstants.spinnerSizeSm,
+                    height: AppConstants.spinnerSizeSm,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText,
+                    ),
+                  )
+                : const Icon(Icons.logout_rounded, size: AppConstants.iconSizeXs),
+            label: Text(
+              context.tr('verify_email.change_account'),
+              style: const TextStyle(
+                  fontSize: AppConstants.fontSizeCaption),
             ),
           ),
 

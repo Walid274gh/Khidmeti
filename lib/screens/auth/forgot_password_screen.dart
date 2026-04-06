@@ -12,6 +12,7 @@ import '../../utils/localization.dart';
 import '../../utils/snack_utils.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../utils/validation_form.dart';
+import 'widgets/auth_submit_button.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -72,7 +73,6 @@ class _ForgotPasswordScreenState
     final subtextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
     final accent       = isDark ? AppTheme.darkAccent       : AppTheme.lightAccent;
 
-    // FIX (L10n+RTL P1): RTL-safe directional icon for AppBar back button.
     final isRTL = Directionality.of(context) == TextDirection.rtl;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -88,9 +88,6 @@ class _ForgotPasswordScreenState
                 ? Icons.arrow_forward_rounded
                 : Icons.arrow_back_rounded),
             tooltip:  context.tr('common.back'),
-            // FIX (Cross-Screen Flow P1): context.pop() without canPop() check
-            // caused a dead-end when ForgotPasswordScreen was the root route
-            // (e.g. deep link entry). Now falls back to the login route.
             onPressed: () => context.canPop()
                 ? context.pop()
                 : context.go(AppRoutes.login),
@@ -108,8 +105,6 @@ class _ForgotPasswordScreenState
                     isDark:       isDark,
                     accent:       accent,
                     subtextColor: subtextColor,
-                    // FIX (Cross-Screen Flow P1): same canPop guard applied
-                    // on the success state's "Back to login" button.
                     onBack: () => context.canPop()
                         ? context.pop()
                         : context.go(AppRoutes.login),
@@ -204,25 +199,12 @@ class _FormState extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppConstants.spacingXl),
-          SizedBox(
-            width:  double.infinity,
-            height: AppConstants.buttonHeight,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
-              child: isLoading
-                  ? SizedBox(
-                      width:  AppConstants.spinnerSizeLg,
-                      height: AppConstants.spinnerSizeLg,
-                      // FIX [C1]: was Colors.white (hardcoded) — replaced with
-                      // Theme.of(context).colorScheme.onPrimary so the spinner
-                      // colour adapts if the primary button colour ever changes.
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    )
-                  : Text(context.tr('login.reset_send')),
-            ),
+          // FIX [BTN-SPLIT]: ElevatedButton primary CTA → AuthSubmitButton
+          AuthSubmitButton(
+            isLoading: isLoading,
+            isDark:    isDark,
+            onPressed: isLoading ? null : onSubmit,
+            labelKey:  'login.reset_send',
           ),
         ],
       ),

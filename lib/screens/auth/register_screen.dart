@@ -21,8 +21,6 @@ import 'widgets/auth_switch_cta.dart';
 import 'widgets/register_role_selector.dart';
 import 'widgets/register_service_picker.dart';
 import 'widgets/social_button_widgets.dart';
-// FIX (Structure): _ProfessionPickerSheet extracted from this file to its own
-// widget file. Import replaces the former private class definition below.
 import 'widgets/profession_picker_sheet.dart';
 
 // ============================================================================
@@ -59,8 +57,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   late final Animation<Offset>   _cardSlide;
   late final Animation<double>   _roleScale;
 
-  // FIX (Engineer P1): ref.listen moved to initState() via ref.listenManual.
-  // See login_screen.dart for the full rationale.
   ProviderSubscription<RegisterState>? _registerStateSubscription;
 
   @override
@@ -68,8 +64,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     super.initState();
 
     _cardController = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 900),
+      vsync: this,
+      // FIX [Anim-DUR]: was Duration(milliseconds: 900) raw literal —
+      // replaced with AppConstants.authCardEntranceDuration token.
+      duration: AppConstants.authCardEntranceDuration,
     );
     _roleController = AnimationController(
       vsync:    this,
@@ -87,7 +85,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
     _cardController.forward();
 
-    // Stable listener — registered once, torn down in dispose().
     _registerStateSubscription = ref.listenManual<RegisterState>(
       registerControllerProvider,
       (previous, next) {
@@ -151,8 +148,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     final isWorker = ref.read(registerControllerProvider).isWorker;
 
     if (isWorker) {
-      // FIX (Structure): _showProfessionPicker now uses ProfessionPickerSheet
-      // (extracted widget) instead of the formerly-private _ProfessionPickerSheet.
       final selectedProfession = await _showProfessionPicker();
       if (selectedProfession == null || !mounted) return;
 

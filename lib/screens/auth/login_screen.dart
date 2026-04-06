@@ -49,22 +49,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late final Animation<double>   _cardFade;
   late final Animation<Offset>   _cardSlide;
 
-  // FIX (Engineer P1 — double error bug):
-  // ref.listenManual is placed in initState() so it is registered ONCE per
-  // widget lifetime. Previously ref.listen was called inside build(), which
-  // re-registered the listener on every rebuild.
-  //
-  // DOUBLE ERROR BUG FIX:
-  // The original listener showed a SnackBar for ALL error states. Because
-  // LoginFormCard already renders errors inline (red text or lockout widget),
-  // the SnackBar was a second, duplicate display for the same message.
-  //
-  // Correct split:
-  //   • Errors       → inline inside LoginFormCard only (no SnackBar)
-  //   • Success info → SnackBar only (used by the forgot-password callback)
-  //
-  // The listener below handles only the success log; all error UI is owned
-  // exclusively by LoginFormCard.
   ProviderSubscription<LoginState>? _loginStateSubscription;
 
   @override
@@ -75,8 +59,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _passwordController.addListener(_onFieldChanged);
 
     _cardController = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 900),
+      vsync: this,
+      // FIX [Anim-DUR]: was Duration(milliseconds: 900) raw literal —
+      // replaced with AppConstants.authCardEntranceDuration token.
+      duration: AppConstants.authCardEntranceDuration,
     );
     _cardFade = CurvedAnimation(
         parent: _cardController, curve: Curves.easeOut);
@@ -92,16 +78,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       (previous, next) {
         if (!mounted) return;
 
-        // Success path — router will handle navigation; just log.
         if (next.isSuccess) {
           AppLogger.info('LoginScreen: sign-in success, router will redirect');
           return;
         }
 
-        // Error path — LoginFormCard renders errors inline.
-        // No SnackBar here to avoid double display.
         if (next.hasError) {
-          // Clear the social loading spinner if a social sign-in errored.
           if (_loadingProvider != null) {
             setState(() => _loadingProvider = null);
           }
@@ -158,8 +140,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               .resetPassword(email);
           if (mounted && ctx.mounted) {
             Navigator.of(ctx).pop();
-            // This SnackBar is a SUCCESS notification (email sent), not an
-            // error — it belongs here, not inside the form card.
             showAuthSnackBar(context, context.tr('login.reset_email_sent'));
           }
         },
