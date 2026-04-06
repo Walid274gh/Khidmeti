@@ -202,6 +202,11 @@ class AppConstants {
   // Sheet handle
   static const double sheetHandleWidth  = 40.0;
   static const double sheetHandleHeight = 4.0;
+  
+  /// Maximum number of worker documents fetched in the unscoped fallback
+  /// Firestore stream (_subscribeFallback). Prevents reading every online
+  /// worker document on every snapshot in production.
+  static const int fallbackWorkerQueryLimit = 100;
 
   // Search / input
   static const double searchBarHeight      = 44.0;
