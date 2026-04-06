@@ -33,7 +33,7 @@ class AuthSubmitButton extends StatelessWidget {
       enabled: _isEnabled,
       label:   context.tr(labelKey),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppConstants.animDurationMicro,
         height: AppConstants.buttonHeight,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppConstants.radiusLg),
@@ -57,8 +57,8 @@ class AuthSubmitButton extends StatelessWidget {
             child: Center(
               child: isLoading
                   ? SizedBox(
-                      width:  22,
-                      height: 22,
+                      width:  AppConstants.spinnerSizeLg,
+                      height: AppConstants.spinnerSizeLg,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
                         color:       bgColor,
@@ -68,7 +68,8 @@ class AuthSubmitButton extends StatelessWidget {
                       context.tr(labelKey),
                       style: TextStyle(
                         color: bgColor.withOpacity(_isEnabled ? 1.0 : 0.55),
-                        fontSize:      15,
+                        // FIX [H2]: was hardcoded 15 — now uses AppConstants.buttonFontSize.
+                        fontSize:      AppConstants.buttonFontSize,
                         fontWeight:    FontWeight.w700,
                         letterSpacing: -0.2,
                       ),

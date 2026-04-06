@@ -82,20 +82,26 @@ class RegisterServicePicker extends StatelessWidget {
               child: GestureDetector(
                 onTap: enabled ? () => onSelected(key) : null,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
+                  duration: AppConstants.animDurationMicro,
                   decoration: BoxDecoration(
+                    // FIX [Col2]: replaced 4× inline .withOpacity() calls with
+                    // pre-baked AppTheme tokens:
+                    //   Colors.white.withOpacity(0.06) → AppTheme.darkTileFill
+                    //   Colors.black.withOpacity(0.04) → AppTheme.lightTileFill
+                    //   Colors.white.withOpacity(0.10) → AppTheme.darkTileBorder
+                    //   Colors.black.withOpacity(0.08) → AppTheme.lightTileBorder
                     color: isSelected
                         ? accent
                         : (isDark
-                            ? Colors.white.withOpacity(0.06)
-                            : Colors.black.withOpacity(0.04)),
+                            ? AppTheme.darkTileFill
+                            : AppTheme.lightTileFill),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                     border: Border.all(
                       color: isSelected
                           ? accent
                           : (isDark
-                              ? Colors.white.withOpacity(0.10)
-                              : Colors.black.withOpacity(0.08)),
+                              ? AppTheme.darkTileBorder
+                              : AppTheme.lightTileBorder),
                     ),
                   ),
                   child: Column(
@@ -110,7 +116,7 @@ class RegisterServicePicker extends StatelessWidget {
                                 ? AppTheme.darkSecondaryText
                                 : AppTheme.lightSecondaryText),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppConstants.spacingXs),
                       Text(
                         context.tr('services.$key'),
                         style: TextStyle(

@@ -66,8 +66,11 @@ class RegisterRoleSelector extends StatelessWidget {
         ),
 
         // ── Value proposition line — changes with selection ───────────────────
+        // FIX [A2]: was Duration(milliseconds: 220) — replaced with
+        // AppConstants.animDurationMicro (200ms) to unify micro-interaction
+        // durations across the auth module.
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
+          duration: AppConstants.animDurationMicro,
           transitionBuilder: (child, animation) =>
               FadeTransition(opacity: animation, child: child),
           child: Padding(
@@ -124,7 +127,9 @@ class _RoleTab extends StatelessWidget {
         selected: isSelected,
         label:    label,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          // FIX [A2]: was Duration(milliseconds: 250) — replaced with
+          // AppConstants.animDurationMicro (200ms).
+          duration: AppConstants.animDurationMicro,
           curve:    Curves.easeOut,
           decoration: BoxDecoration(
             color:        isSelected ? accent : Colors.transparent,
@@ -147,7 +152,10 @@ class _RoleTab extends StatelessWidget {
                             ? AppTheme.darkSecondaryText
                             : AppTheme.lightSecondaryText),
                   ),
-                  const SizedBox(width: 6),
+                  // FIX [A2]: was SizedBox(width: 6) — replaced with
+                  // AppConstants.spacingXs (4dp). Designer sign-off pending:
+                  // 4dp or 8dp? See manifest TODO.
+                  const SizedBox(width: AppConstants.spacingXs),
                   Text(
                     label,
                     style: TextStyle(

@@ -36,13 +36,19 @@ class RegisterHeader extends StatelessWidget {
                 ? context.pop()
                 : context.go(AppRoutes.login),
             child: Container(
-              width:  44,
-              height: 44,
+              // FIX [C1/P1]: was raw literals width:44, height:44 — replaced
+              // with AppConstants.buttonHeightSm (44dp). Touch target meets
+              // the 44dp minimum.
+              width:  AppConstants.buttonHeightSm,
+              height: AppConstants.buttonHeightSm,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                // FIX [C1/P1]: was Colors.white.withOpacity(0.08) /
+                // Colors.black.withOpacity(0.06) — replaced with pre-baked
+                // AppTheme.darkBackButtonFill / lightBackButtonFill tokens.
                 color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.black.withOpacity(0.06),
+                    ? AppTheme.darkBackButtonFill
+                    : AppTheme.lightBackButtonFill,
                 border: Border.all(
                   color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                   width: 0.5,
@@ -53,7 +59,7 @@ class RegisterHeader extends StatelessWidget {
                     ? Icons.arrow_forward_rounded
                     : Icons.arrow_back_rounded,
                 color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                size:  20,
+                size:  AppConstants.iconSizeSm,
               ),
             ),
           ),

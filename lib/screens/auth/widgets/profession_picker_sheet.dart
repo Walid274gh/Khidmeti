@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/sheet_handle.dart';
 import 'register_service_picker.dart';
 
 class ProfessionPickerSheet extends StatefulWidget {
@@ -47,18 +48,12 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // FIX [H3/W1]: was raw width:40/height:4 with
+            // Colors.white.withOpacity(0.15)/Colors.black.withOpacity(0.12).
+            // Replaced with SheetHandle widget (uses pre-baked tokens).
             Padding(
               padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Container(
-                width:  AppConstants.sheetHandleWidth,
-                height: AppConstants.sheetHandleHeight,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.15)
-                      : Colors.black.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              child: SheetHandle(isDark: isDark),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -114,7 +109,7 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                     child: GestureDetector(
                       onTap: () => setState(() => _selected = prof),
                       child: AnimatedContainer(
-                        duration:  const Duration(milliseconds: 200),
+                        duration:  AppConstants.animDurationMicro,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
@@ -123,10 +118,13 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                           borderRadius:
                               BorderRadius.circular(AppConstants.radiusMd),
                           border: Border.all(
+                            // FIX [H3/W1]: was Colors.white.withOpacity(0.15)
+                            // — replaced with pre-baked sheetHandleDark /
+                            // lightBorder tokens.
                             color: isSelected
                                 ? accent
                                 : (isDark
-                                    ? Colors.white.withOpacity(0.15)
+                                    ? AppTheme.sheetHandleDark
                                     : AppTheme.lightBorder),
                           ),
                         ),

@@ -168,6 +168,11 @@ class LoginFormCard extends StatelessWidget {
 // FIX (Auth Security P1): shown when Firebase returns too-many-requests,
 // replacing the generic red error text with a contextual amber warning.
 // Firebase does not expose the lockout duration, so no countdown is shown.
+//
+// FIX (H1/Col1): replaced AppTheme.darkWarning.withOpacity(0.08/0.30) in
+// both branches with isDark-branched pre-baked tokens:
+//   fill:   darkWarningSubtle / lightWarningSubtle  (warningColor @ 8%)
+//   border: darkWarningBorder  / lightWarningBorder  (warningColor @ 30%)
 // ============================================================================
 
 class _LockoutWidget extends StatelessWidget {
@@ -180,10 +185,18 @@ class _LockoutWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
-        color: AppTheme.darkWarning.withOpacity(0.08),
+        // FIX [H1/Col1]: was AppTheme.darkWarning.withOpacity(0.08) in both
+        // theme branches — now uses per-theme pre-baked tokens.
+        color: isDark
+            ? AppTheme.darkWarningSubtle
+            : AppTheme.lightWarningSubtle,
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         border: Border.all(
-          color: AppTheme.darkWarning.withOpacity(0.30),
+          // FIX [Col4]: was AppTheme.darkWarning.withOpacity(0.30) in both
+          // theme branches — now uses per-theme pre-baked tokens.
+          color: isDark
+              ? AppTheme.darkWarningBorder
+              : AppTheme.lightWarningBorder,
           width: 0.5,
         ),
       ),

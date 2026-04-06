@@ -6,6 +6,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/validation_form.dart';
+import '../../../widgets/sheet_handle.dart';
 import '../../../widgets/text_field.dart';
 
 // ============================================================================
@@ -70,19 +71,10 @@ class _LoginForgotPasswordSheetState
           mainAxisSize:       MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Handle indicator
-            Center(
-              child: Container(
-                width:  40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color:        isDark
-                      ? Colors.white.withOpacity(0.15)
-                      : Colors.black.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            // FIX [H3/W1]: was raw width:40/height:4 with
+            // Colors.white.withOpacity(0.15)/Colors.black.withOpacity(0.12).
+            // Replaced with SheetHandle widget (uses pre-baked tokens).
+            const SheetHandle(),
 
             const SizedBox(height: AppConstants.spacingLg),
 
@@ -121,17 +113,23 @@ class _LoginForgotPasswordSheetState
 
             const SizedBox(height: AppConstants.spacingLg),
 
+            // FIX [H3/W1]: was height:52 (off-grid) — replaced with
+            // AppConstants.buttonHeight (54dp, the canonical button height).
             SizedBox(
-              height: 52,
+              height: AppConstants.buttonHeight,
               child: ElevatedButton(
                 onPressed: _sending ? null : _send,
                 child: _sending
-                    ? const SizedBox(
-                        width:  20,
-                        height: 20,
-                        child:  CircularProgressIndicator(
+                    ? SizedBox(
+                        width:  AppConstants.spinnerSizeLg,
+                        height: AppConstants.spinnerSizeLg,
+                        // FIX [C1]: was Colors.white (hardcoded) — replaced
+                        // with Theme.of(context).colorScheme.onPrimary so the
+                        // spinner colour adapts correctly if the accent colour
+                        // ever changes.
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color:       Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
                     : Text(context.tr('login.reset_send')),

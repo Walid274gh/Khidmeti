@@ -19,7 +19,11 @@ class AuthBackground extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: isDark
                 ? [AppTheme.darkAuthHeroTop, AppTheme.darkBackground]
-                : [Colors.white, AppTheme.lightBackground],
+                // FIX [H6]: was Colors.white (hardcoded) — replaced with
+                // AppTheme.lightSurface (#FFFFFF). Visually identical but
+                // semantically correct and respects the token system.
+                // Verify on a physical device before shipping.
+                : [AppTheme.lightSurface, AppTheme.lightBackground],
           ),
         ),
         child: IgnorePointer(
@@ -29,8 +33,10 @@ class AuthBackground extends StatelessWidget {
                 center: const Alignment(0.0, -1.2),
                 radius: 1.0,
                 colors: [
-                  (isDark ? AppTheme.darkAccent : AppTheme.lightAccent)
-                      .withOpacity(isDark ? 0.18 : 0.07),
+                  // FIX [H4]: was (isDark ? darkAccent : lightAccent)
+                  // .withOpacity(isDark ? 0.18 : 0.07) — replaced with
+                  // pre-baked const tokens darkAccentHalo / lightAccentHalo.
+                  isDark ? AppTheme.darkAccentHalo : AppTheme.lightAccentHalo,
                   Colors.transparent,
                 ],
               ),
