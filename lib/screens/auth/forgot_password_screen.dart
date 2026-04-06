@@ -210,12 +210,15 @@ class _FormState extends StatelessWidget {
             child: ElevatedButton(
               onPressed: isLoading ? null : onSubmit,
               child: isLoading
-                  ? const SizedBox(
-                      width:  20,
-                      height: 20,
-                      child:  CircularProgressIndicator(
+                  ? SizedBox(
+                      width:  AppConstants.spinnerSizeLg,
+                      height: AppConstants.spinnerSizeLg,
+                      // FIX [C1]: was Colors.white (hardcoded) — replaced with
+                      // Theme.of(context).colorScheme.onPrimary so the spinner
+                      // colour adapts if the primary button colour ever changes.
+                      child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color:       Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
                   : Text(context.tr('login.reset_send')),
@@ -250,7 +253,7 @@ class _SuccessState extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: AppConstants.spacingXl),
-        Icon(Icons.mark_email_read_rounded, size: 64, color: accent),
+        Icon(Icons.mark_email_read_rounded, size: AppConstants.iconSizeLg2, color: accent),
         const SizedBox(height: AppConstants.spacingLg),
         Text(
           context.tr('login.reset_email_sent'),

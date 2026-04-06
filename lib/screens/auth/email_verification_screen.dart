@@ -50,8 +50,11 @@ class _EmailVerificationScreenState
     super.initState();
 
     _cardController = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 700),
+      vsync: this,
+      // FIX [A1]: was Duration(milliseconds: 700) — inconsistent with the
+      // 900ms entrance used in login_screen and register_screen.
+      // Unified to AppConstants.authCardEntranceDuration (900ms).
+      duration: AppConstants.authCardEntranceDuration,
     )..forward();
     _cardFade = CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
 
@@ -252,10 +255,12 @@ class _VerificationCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon
+          // Icon container
+          // FIX [A1/C3]: was hardcoded width:56, height:56 — now uses
+          // AppConstants.iconContainerFeature (56dp, pending designer sign-off).
           Container(
-            width:  56,
-            height: 56,
+            width:  AppConstants.iconContainerFeature,
+            height: AppConstants.iconContainerFeature,
             decoration: BoxDecoration(
               color:  accent.withOpacity(0.12),
               shape:  BoxShape.circle,
@@ -317,8 +322,9 @@ class _VerificationCard extends StatelessWidget {
               onPressed: isAnyBusy ? null : onCheckVerification,
               child: checkingVerification
                   ? SizedBox(
-                      width:  20,
-                      height: 20,
+                      // FIX [C3]: tokenised spinner dimensions.
+                      width:  AppConstants.spinnerSizeLg,
+                      height: AppConstants.spinnerSizeLg,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: isDark
@@ -341,8 +347,9 @@ class _VerificationCard extends StatelessWidget {
               onPressed: isAnyBusy ? null : onResend,
               child: resending
                   ? SizedBox(
-                      width:  14,
-                      height: 14,
+                      // FIX [C3]: tokenised spinner dimensions.
+                      width:  AppConstants.spinnerSizeSm,
+                      height: AppConstants.spinnerSizeSm,
                       child: CircularProgressIndicator(
                           strokeWidth: 1.5, color: accent),
                     )
@@ -357,10 +364,10 @@ class _VerificationCard extends StatelessWidget {
                           ),
                         ),
                         if (resentSuccess) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: AppConstants.spacingXs),
                           Icon(
                             Icons.check_circle_outline_rounded,
-                            size:  16,
+                            size:  AppConstants.iconSizeXs,
                             color: isDark
                                 ? AppTheme.darkSuccess
                                 : AppTheme.lightSuccess,
@@ -376,28 +383,33 @@ class _VerificationCard extends StatelessWidget {
                 vertical: AppConstants.spacingMd),
             child: Divider(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
+                  ? AppTheme.sheetHandleDark
                   : AppTheme.lightBorder,
               height: 1,
             ),
           ),
 
           // Change account
+          // FIX [A1]: minimumSize was Size(double.infinity, 44) — replaced
+          // with AppConstants.buttonHeight (54dp) for consistency; the
+          // minimum height of 44 was below the standard button height and
+          // off the design system grid.
           Semantics(
             button: true,
             label:  context.tr('verify_email.change_account'),
             child: TextButton.icon(
               onPressed: isAnyBusy ? null : onChangeAccount,
               style: TextButton.styleFrom(
-                minimumSize: const Size(double.infinity, 44),
+                minimumSize: const Size(double.infinity, AppConstants.buttonHeightSm),
                 foregroundColor: isDark
                     ? AppTheme.darkSecondaryText
                     : AppTheme.lightSecondaryText,
               ),
               icon: signingOut
                   ? SizedBox(
-                      width:  14,
-                      height: 14,
+                      // FIX [C3]: tokenised spinner dimensions.
+                      width:  AppConstants.spinnerSizeSm,
+                      height: AppConstants.spinnerSizeSm,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.5,
                         color: isDark
@@ -405,7 +417,7 @@ class _VerificationCard extends StatelessWidget {
                             : AppTheme.lightSecondaryText,
                       ),
                     )
-                  : const Icon(Icons.logout_rounded, size: 16),
+                  : const Icon(Icons.logout_rounded, size: AppConstants.iconSizeXs),
               label: Text(
                 context.tr('verify_email.change_account'),
                 // FIX (Designer): was const TextStyle(fontSize: 13) — tokenised.
