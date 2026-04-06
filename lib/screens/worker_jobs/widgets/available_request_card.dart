@@ -41,7 +41,7 @@ class AvailableRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final serviceColor =
-        AppTheme.getProfessionColor(request.serviceType, isDark);
+        isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final serviceIcon  = AppTheme.getProfessionIcon(request.serviceType);
     final isUrgent     = request.priority == ServicePriority.urgent;
 

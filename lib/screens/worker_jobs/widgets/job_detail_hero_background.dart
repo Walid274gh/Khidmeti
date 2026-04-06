@@ -20,7 +20,7 @@ class JobDetailHeroBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final serviceColor = AppTheme.getProfessionColor(job.serviceType, isDark);
+    final serviceColor = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Container(
       decoration: BoxDecoration(
