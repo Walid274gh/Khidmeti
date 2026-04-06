@@ -34,7 +34,7 @@ class TrackingBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor  = AppTheme.getStatusColor(request.status, isDark);
-    final serviceColor = AppTheme.getProfessionColor(request.serviceType, isDark);
+    final serviceColor = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final serviceIcon  = AppTheme.getProfessionIcon(request.serviceType);
 
     return Column(

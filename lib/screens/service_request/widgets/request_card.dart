@@ -60,7 +60,7 @@ class RequestCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color        = _statusColor(isDark);
-    final serviceColor = AppTheme.getProfessionColor(request.serviceType, isDark);
+    final serviceColor = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final serviceIcon  = AppTheme.getProfessionIcon(request.serviceType);
     // DateFormat created once per build — acceptable cost for a single card.
     final dateStr =

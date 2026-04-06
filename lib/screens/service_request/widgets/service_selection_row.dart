@@ -99,7 +99,7 @@ class _ServiceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppTheme.getProfessionColor(item.type, isDark);
+    final color = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Semantics(
       button:   true,
