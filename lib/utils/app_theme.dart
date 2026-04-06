@@ -55,8 +55,9 @@ class AppTheme {
   //     e.g. darkBgAppBar = darkBackground @ 80 % opacity.
   //
   // Alpha reference (opacity → hex):
-  //   10% → 0x1A  |  15% → 0x26  |  20% → 0x33  |  50% → 0x80
-  //   60% → 0x99  |  70% → 0xB3  |  80% → 0xCC  |  90% → 0xE6
+  //   10% → 0x1A  |  15% → 0x26  |  20% → 0x33  |  35% → 0x59
+  //   50% → 0x80  |  60% → 0x99  |  70% → 0xB3  |  80% → 0xCC
+  //   90% → 0xE6
   // ==========================================================
 
   // ── Dark — app bar background (darkBackground @ 80%) ─────────────────────
@@ -84,6 +85,10 @@ class AppTheme {
   // ── Dark — error icon background in SplashErrorIcon (darkError @ 10%) ────
   static const Color darkErrorSubtle = Color(0x1AF87171);
 
+  // ── Dark — muted error icon color (darkError @ 60%) ──────────────────────
+  // [C10]: used in SettingsErrorView icon color, dark branch.
+  static const Color darkErrorMuted = Color(0x99F87171);
+
   // ── Light — app bar background (lightBackground @ 90%) ───────────────────
   static const Color lightBgAppBar = Color(0xE6F8F7FF);
 
@@ -104,6 +109,61 @@ class AppTheme {
 
   // ── Light — error icon background in SplashErrorIcon (lightError @ 10%) ──
   static const Color lightErrorSubtle = Color(0x1ADC2626);
+
+  // ── Light — muted error icon color (lightError @ 60%) ────────────────────
+  // [C11]: used in SettingsErrorView icon color, light branch.
+  static const Color lightErrorMuted = Color(0x99DC2626);
+
+  // ==========================================================
+  // 🎨 OVERLAY TOKENS
+  // ==========================================================
+
+  // ── Full-screen loading overlay (black @ 35%) ─────────────────────────────
+  // [C1]: used in SettingsScreen._FullScreenOverlay during sign-out / delete.
+  // Replaces colorScheme.scrim.withOpacity(0.35) — pre-baked as a const token.
+  static const Color overlayScrim35 = Color(0x59000000); // black @35%
+
+  // ==========================================================
+  // 🎨 PROFILE CARD TOKENS
+  // ==========================================================
+
+  // ── Card border stroke (white @ 20%) ─────────────────────────────────────
+  // [C2]: used for the card Container border.all colour.
+  static const Color profileCardBorder = Color(0x33FFFFFF); // white @20%
+
+  // ── Badge fill (white @ 20%) ─────────────────────────────────────────────
+  // [W9]: semantically distinct from profileCardBorder even though the current
+  // value is identical (white @20%). Separate token prevents future divergence
+  // if the badge fill and card border colours are updated independently.
+  static const Color profileCardBadgeFill = Color(0x33FFFFFF); // white @20%
+
+  // ── Card drop-shadow colour (darkAccent @ 35%) ────────────────────────────
+  // [C3]: used in ProfileCard BoxShadow. Baked from darkAccent #4F46E5 @35%.
+  static const Color profileCardShadow = Color(0x594F46E5); // darkAccent @35%
+
+  // ── Avatar border ring (white @ 50%) ─────────────────────────────────────
+  // [C4]: passed to AppUserAvatar.borderColor.
+  static const Color profileCardAvatarBorder = Color(0x80FFFFFF); // white @50%
+
+  // ── Rating text colour (white @ 90%) ─────────────────────────────────────
+  // [C5]: used for the star-rating TextStyle colour.
+  static const Color profileCardRatingText = Color(0xE6FFFFFF); // white @90%
+
+  // ==========================================================
+  // 🎨 SETTINGS ICON COLOUR TOKENS
+  // ==========================================================
+
+  // [C6]: notifications tile icon — indigo-400 from the Tailwind palette.
+  static const Color iconIndigo = Color(0xFF6366F1);
+
+  // [C7]: theme tile icon — violet-500 from the Tailwind palette.
+  static const Color iconViolet = Color(0xFF8B5CF6);
+
+  // [C8]: edit-profile tile icon — emerald-500 from the Tailwind palette.
+  static const Color iconEmerald = Color(0xFF10B981);
+
+  // [C9]: help tile icon — pink-500 from the Tailwind palette.
+  static const Color iconPink = Color(0xFFEC4899);
 
   // ==========================================================
   // 🎨 TOKENS — misc
@@ -294,7 +354,6 @@ class AppTheme {
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
         labelStyle:         const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        // FIX [C3]: added fontFamily: 'Inter' — was missing, causing system font on Android.
         floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: darkHintText, fontFamily: 'Inter'),
         contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
@@ -306,11 +365,8 @@ class AppTheme {
           backgroundColor: darkAccent,
           foregroundColor: Colors.white,
           elevation:       0,
-          // FIX [S2]: was const Size(double.infinity, 54) — magic literal.
-          // AppConstants.buttonHeight = 54.0 is the canonical token.
           minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          // FIX [C1]: added fontFamily: 'Inter' — was missing, causing system font on Android.
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
@@ -351,8 +407,6 @@ class AppTheme {
         unselectedItemColor:  darkSecondaryText,
         type:                 BottomNavigationBarType.fixed,
         elevation:            0,
-        // FIX [C2]: added fontFamily: 'Inter' to both label styles — was missing,
-        // causing system font fallback on Android.
         selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'Inter'),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12, fontFamily: 'Inter'),
       ),
@@ -370,9 +424,6 @@ class AppTheme {
       dialogTheme: DialogTheme(
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(
-          // FIX [W5]: was BorderRadius.circular(28) — raw magic number.
-          // radiusCircle=28 is semantically named for circles, not dialogs.
-          // AppConstants.radiusXxl=24 is the correct dialog corner token.
           borderRadius: BorderRadius.circular(AppConstants.radiusXxl),
           side: const BorderSide(color: darkBorderSubtle, width: 0.5),
         ),
@@ -383,32 +434,16 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5),
-        // FIX [W1]: was 38sp — exceeded displayMedium (34sp), inverting the
-        // type hierarchy. Corrected to 30sp (Option A) which restores proper
-        // display > headline ordering: 40/34/28 > 30/26/20.
-        // FIX [W7]: removed height: 1.02 — sole explicit height in the
-        // display/headline scale. All other styles inherit Flutter's default
-        // (~1.2). Explicit height here was inconsistent and undocumented.
-        // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
-        // The SplashBranding widget was locally overriding this to -0.5 without
-        // annotation, creating a silent divergence between the theme token and
-        // the actual rendered value. -0.5 is the canonical value for the splash
-        // app-name headline — tighter than body text but softer than display.
-        // The local copyWith(letterSpacing: -0.5) in splash_branding.dart has
-        // been removed; this token is now the single source of truth.
         headlineLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: -0.5),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter', letterSpacing: -0.3),
         titleLarge:    TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
         titleMedium:   TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
-        // [W8] titleSmall 13sp → darkSecondaryTextWcag for WCAG AA compliance.
         titleSmall:    TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkSecondaryTextWcag, fontFamily: 'Inter'),
         bodyLarge:     TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: darkText, fontFamily: 'Inter', height: 1.6),
         bodyMedium:    TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: darkText, fontFamily: 'Inter', height: 1.6),
-        // [W8] bodySmall 12sp → darkSecondaryTextWcag for WCAG AA compliance.
         bodySmall:     TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: darkSecondaryTextWcag, fontFamily: 'Inter', height: 1.5),
         labelLarge:    TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkText, fontFamily: 'Inter'),
-        // [W8] labelMedium 12sp → darkSecondaryTextWcag for WCAG AA compliance.
         labelMedium:   TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkSecondaryTextWcag, fontFamily: 'Inter'),
         labelSmall:    TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: darkText, fontFamily: 'Inter', letterSpacing: 0.10),
       ),
@@ -423,11 +458,8 @@ class AppTheme {
         selectedColor:       darkAccentOverlay,
         labelStyle:          const TextStyle(color: darkText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: darkAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        // FIX [W2]: was horizontal: 12, vertical: 8 — mismatched AppConstants.
-        // chipPaddingH=10.0, chipPaddingV=4.0 are the canonical tokens.
         padding: const EdgeInsets.symmetric(horizontal: AppConstants.chipPaddingH, vertical: AppConstants.chipPaddingV),
         shape: RoundedRectangleBorder(
-          // FIX [W6]: was BorderRadius.circular(8) — bypassed AppConstants.chipRadius.
           borderRadius: BorderRadius.circular(AppConstants.chipRadius),
           side: const BorderSide(color: darkBorderSubtle),
         ),
@@ -472,8 +504,6 @@ class AppTheme {
         onSecondary:             Colors.white,
         surface:                 lightSurface,
         onSurface:               lightText,
-        // FIX [W4]: added surfaceContainerLowest: lightBackground — was missing
-        // from the light colorScheme while dark had it. Symmetry restored.
         surfaceContainerLowest:  lightBackground,
         error:                   lightError,
         onError:                 Colors.white,
@@ -515,7 +545,6 @@ class AppTheme {
           borderSide: const BorderSide(color: lightError, width: 1.5),
         ),
         labelStyle:         const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        // FIX [C3]: added fontFamily: 'Inter' — was missing, causing system font on Android.
         floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: lightHintText, fontFamily: 'Inter'),
         contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
@@ -527,11 +556,8 @@ class AppTheme {
           backgroundColor: lightAccent,
           foregroundColor: Colors.white,
           elevation:       0,
-          // FIX [S2]: was const Size(double.infinity, 54) — magic literal.
-          // AppConstants.buttonHeight = 54.0 is the canonical token.
           minimumSize:     const Size(double.infinity, AppConstants.buttonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
-          // FIX [C1]: added fontFamily: 'Inter' — was missing, causing system font on Android.
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, fontFamily: 'Inter'),
         ),
       ),
@@ -572,16 +598,12 @@ class AppTheme {
         unselectedItemColor:  lightSecondaryText,
         type:                 BottomNavigationBarType.fixed,
         elevation:            0,
-        // FIX [C2]: added fontFamily: 'Inter' to both label styles — was missing,
-        // causing system font fallback on Android.
         selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'Inter'),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12, fontFamily: 'Inter'),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: lightText,
         contentTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-        // FIX [W3]: added side: const BorderSide(color: lightBorder) to match
-        // dark snackBarTheme which already had a border side. Parity restored.
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.radiusLg),
           side: const BorderSide(color: lightBorder),
@@ -593,9 +615,6 @@ class AppTheme {
       dialogTheme: DialogTheme(
         backgroundColor: lightSurface,
         shape: RoundedRectangleBorder(
-          // FIX [W5]: was BorderRadius.circular(28) — raw magic number.
-          // radiusCircle=28 is semantically named for circles, not dialogs.
-          // AppConstants.radiusXxl=24 is the correct dialog corner token.
           borderRadius: BorderRadius.circular(AppConstants.radiusXxl),
           side: const BorderSide(color: lightBorder, width: 0.5),
         ),
@@ -606,14 +625,6 @@ class AppTheme {
         displayLarge:  TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1.5),
         displayMedium: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -1),
         displaySmall:  TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5),
-        // FIX [W1]: was 38sp — exceeded displayMedium (34sp), inverting the
-        // type hierarchy. Corrected to 30sp (Option A) which restores proper
-        // display > headline ordering: 40/34/28 > 30/26/20.
-        // FIX [W7]: removed height: 1.02 — sole explicit height in the
-        // display/headline scale. Inconsistent with all other styles inheriting
-        // Flutter's default (~1.2). Removed for consistency.
-        // FIX [MANUAL / W2]: letterSpacing updated from -1.2 → -0.5.
-        // Matches the dark theme token update above. See dark theme comment for rationale.
         headlineLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: lightText, fontFamily: 'Inter', letterSpacing: -0.5),
         headlineMedium:TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.6),
         headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: lightText, fontFamily: 'Inter', letterSpacing: -0.3),
@@ -638,11 +649,8 @@ class AppTheme {
         selectedColor:       lightAccentChipOverlay,
         labelStyle:          const TextStyle(color: lightText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         secondaryLabelStyle: const TextStyle(color: lightAccent, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-        // FIX [W2]: was horizontal: 12, vertical: 8 — mismatched AppConstants.
-        // chipPaddingH=10.0, chipPaddingV=4.0 are the canonical tokens.
         padding: const EdgeInsets.symmetric(horizontal: AppConstants.chipPaddingH, vertical: AppConstants.chipPaddingV),
         shape: RoundedRectangleBorder(
-          // FIX [W6]: was BorderRadius.circular(8) — bypassed AppConstants.chipRadius.
           borderRadius: BorderRadius.circular(AppConstants.chipRadius),
           side: const BorderSide(color: lightBorder, width: 0.5),
         ),
@@ -673,46 +681,21 @@ class AppTheme {
   // 🎨 HELPER METHODS
   // ==========================================================
 
-  // getProfessionColor() removed — unified accent color is used globally.
-  // Call sites: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
-
   /// Returns the semantic colour for a given [ServiceStatus].
-  ///
-  /// Contract:
-  /// • References only the status token pairs defined in this file.
-  /// • No inline .withOpacity() — opacity is pre-baked into tokens.
-  /// • Dart's exhaustive switch enforces coverage: the compiler will flag
-  ///   any new ServiceStatus value that lacks a case here.
-  /// • Grouping two statuses under one token is intentional when they
-  ///   share user-facing meaning; the grouping is documented per case.
   static Color getStatusColor(ServiceStatus status, bool isDark) {
     switch (status) {
-      // Waiting — no worker engaged yet. Dimmed accent.
       case ServiceStatus.open:
       case ServiceStatus.pending:
         return isDark ? statusOpenDark : statusOpenLight;
-
-      // Client action required — choose a bid. Warning amber.
       case ServiceStatus.awaitingSelection:
         return isDark ? darkWarning : lightWarning;
-
-      // Worker confirmed. bidSelected ≈ accepted: same semantic,
-      // same colour. Calm blue.
       case ServiceStatus.bidSelected:
       case ServiceStatus.accepted:
         return isDark ? statusAcceptedDark : statusAcceptedLight;
-
-      // Active work underway. Violet — distinct from "confirmed".
       case ServiceStatus.inProgress:
         return isDark ? statusInProgressDark : statusInProgressLight;
-
-      // Job finished successfully. Success green.
       case ServiceStatus.completed:
         return isDark ? darkSuccess : lightSuccess;
-
-      // Terminal negative outcome. Muted red.
-      // cancelled / declined / expired share a colour; the distinction
-      // between them is communicated via labels and icons, not hue.
       case ServiceStatus.cancelled:
       case ServiceStatus.declined:
       case ServiceStatus.expired:

@@ -17,29 +17,34 @@
 //     promoted from off-grid 14dp to the nearest on-grid value 16dp.
 //
 // CHANGES (UI-APPLY pass — manual items):
-//   • splashLogoSize (248.0) added — on-grid replacement for _kLogoSize 250.0.
-//   • splashStatusAreaHeight (64.0) added — replaces hardcoded SizedBox(height:64)
-//     in SplashScreen and the dead _kStatusAreaHeight in SplashBottomStatus.
-//   • iconSizeHero (80.0) added — backs SplashErrorIcon Icon size, previously
-//     undeclared (max defined was iconSizeXl=48).
-//   • splashErrorCircleSize (200.0) added — backs SplashErrorIcon Container
-//     width/height; BorderRadius.circular(splashErrorCircleSize / 2) replaces
-//     the bare BorderRadius.circular(100).
+//   • splashLogoSize (248.0) added.
+//   • splashStatusAreaHeight (64.0) added.
+//   • iconSizeHero (80.0) added.
+//   • splashErrorCircleSize (200.0) added.
 //
 // CHANGES (ui-apply W9 / W10):
-//   • cardRadius = 20.0 REMOVED — was a duplicate of radiusCard (20.0).
-//     All usages should reference radiusCard directly.
-//   • sectionMT: 22.0 → 24.0 (snapped to 8dp grid; nearest on-grid = spacingLg).
-//   • navPillPaddingV: 7.0 → 8.0 (snapped to 4dp grid; nearest = spacingSm).
-//   • chipPaddingV: 5.0 → 4.0 (snapped to 4dp grid; nearest = spacingXs).
-//   • locationDotMarker: 38.0 → 40.0 (snapped to 8dp grid; nearest = iconContainerXl).
+//   • cardRadius = 20.0 REMOVED — duplicate of radiusCard (20.0).
+//   • sectionMT: 22.0 → 24.0 (snapped to 8dp grid).
+//   • navPillPaddingV: 7.0 → 8.0 (snapped to 4dp grid).
+//   • chipPaddingV: 5.0 → 4.0 (snapped to 4dp grid).
+//   • locationDotMarker: 38.0 → 40.0 (snapped to 8dp grid).
 //
 // CHANGES (ui-apply AUTO W3 / MANUAL):
-//   • splashRetryButtonMinWidth (120.0) added — promotes the local
-//     _kRetryButtonMinWidth literal from SplashBottomStatus to a canonical
-//     AppConstants token, consistent with all other splash-screen constants.
-//   • AppAssets.splashStatic added — centralises 'assets/splash_static.png'
-//     in AppAssets alongside every other asset path in the codebase.
+//   • splashRetryButtonMinWidth (120.0) added.
+//   • AppAssets.splashStatic added.
+//
+// CHANGES (settings ui-apply):
+//   [C12] iconSizeLg2 = 64.0 — mid-scale icon between iconSizeXl (48) and
+//         iconSizeHero (80); used for in-content error state icons.
+//   [W5]  emojiIconSize = 22.0 — flag/icon size in SheetOption rows.
+//   [W6]  tileHeight = 64.0 — canonical height for SettingsTile,
+//         SignOutTile, and _DeleteAccountTile rows.
+//   [W8]  settingsRetryButtonWidth = 180.0 — replaces the arithmetic
+//         splashRetryButtonMinWidth * 1.5 in SettingsErrorView.
+//   [W2/W3] Opacity tokens for state-conditional destructive tiles.
+//         These are runtime .withValues() calls — they cannot be const-baked
+//         because the base color is caller-resolved (signOutRed, error scheme).
+//         Named constants replace magic literals and document each level's intent.
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -95,8 +100,6 @@ class AppConstants {
   static const double radiusCircle = 28.0;
   static const double radiusCard   = 20.0;
   static const double radiusTile   = 18.0;
-  // NOTE [W9]: cardRadius was removed — it was an exact duplicate of radiusCard (20.0).
-  //            All usages must reference radiusCard directly.
 
   // Buttons
   static const double buttonHeight   = 54.0;
@@ -104,14 +107,11 @@ class AppConstants {
   static const double buttonHeightSm = 44.0;
 
   // Cards
-  // NOTE: cardRadius removed (duplicate of radiusCard). Use radiusCard everywhere.
   static const double cardPadding     = 18.0;
   static const double cardBorderWidth = 0.5;
   static const double accentBarWidth  = 3.0;
 
-  // [MANUAL FIX]: gap between a circular icon and its label in grid chips
-  // (HomeServiceGrid, HomeCategoriesSheet). Replaces bare `7` and
-  // `spacingXs + 3` expressions throughout. On-grid at 8dp (= spacingSm).
+  // [MANUAL FIX]: gap between a circular icon and its label in grid chips.
   static const double cardIconLabelGap = 8.0;
 
   // Inputs
@@ -125,7 +125,6 @@ class AppConstants {
   static const double navBarMarginH   = 16.0;
   static const double navBarMarginB   = 10.0;
   static const double navPillPaddingH = 14.0;
-  // [W10]: was 7.0 (off 4dp grid) → snapped to 8.0 (spacingSm).
   static const double navPillPaddingV = 8.0;
   static const double navDotSize      = 4.0;
 
@@ -136,7 +135,6 @@ class AppConstants {
 
   // Sections
   static const double sectionLabelMB = 12.0;
-  // [W10]: was 22.0 (off 8dp grid) → snapped to 24.0 (spacingLg).
   static const double sectionMT      = 24.0;
   static const double sectionCardGap = 10.0;
 
@@ -146,7 +144,6 @@ class AppConstants {
   static const double badgePaddingV    = 3.0;
   static const double chipRadius       = 8.0;
   static const double chipPaddingH     = 10.0;
-  // [W10]: was 5.0 (off 4dp grid) → snapped to 4.0 (spacingXs).
   static const double chipPaddingV     = 4.0;
 
   // Wordmark
@@ -155,7 +152,7 @@ class AppConstants {
   static const double wordmarkFontSize = 13.0;
 
   // Font sizes
-  static const double heroFontSize    = 32.0; // intentional display-size breakout from textTheme (home hero headline)
+  static const double heroFontSize    = 32.0;
   static const double fontSizeTileLg  = 15.0;
   static const double fontSizeXxs     = 11.0;
   static const double fontSizeXs      = 10.0;
@@ -173,22 +170,32 @@ class AppConstants {
   static const double iconSizeMd = 24.0;
   static const double iconSizeLg = 32.0;
   static const double iconSizeXl = 48.0;
+
+  /// Mid-scale icon token between iconSizeXl (48) and iconSizeHero (80).
+  /// [C12]: used for in-content error state icons (e.g. SettingsErrorView).
+  /// 64dp is appropriate for content-area illustrations — larger than a
+  /// standard action icon but smaller than full-screen hero art.
+  static const double iconSizeLg2 = 64.0;
+
   /// Hero-scale icon used in full-screen state illustrations (e.g. SplashErrorIcon).
   /// Intentionally outside the standard icon scale — it is a decorative display
-  /// element, not a UI control icon. Next defined size above iconSizeXl (48).
+  /// element, not a UI control icon.
   static const double iconSizeHero = 80.0;
 
   // Container sizes
   static const double iconContainerSm  = 28.0;
   static const double iconContainerMd  = 32.0;
   static const double iconContainerLg  = 36.0;
-  // [W8 FIX]: 40dp icon container token — sits between iconContainerLg (36)
-  // and iconSizeXl (48). Used in HomeCtaButton square icon container.
   static const double iconContainerXl  = 40.0;
   static const double buttonIconSize   = 20.0;
+
+  /// Emoji / flag icon size used in SheetOption rows.
+  /// [W5]: promotes the raw 22dp literal from sheet_option.dart to a
+  /// named token. Applied to Text(flag, fontSize) and Icon(icon, size).
+  static const double emojiIconSize = 22.0;
+
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
-  // [W10]: was 38.0 (off 8dp grid) → snapped to 40.0 (= iconContainerXl).
   static const double locationDotMarker  = 40.0;
   static const int    maxEmailLength     = 254;
 
@@ -200,45 +207,97 @@ class AppConstants {
   static const double searchBarHeight      = 44.0;
   static const double categoryTileIconSize = 48.0;
 
-  // ── Toggle switch ────────────────────────────────────────────────────────
-  // Used by HomeWorkerSection._ToggleSwitch and _AvailabilityToggle.
-  // Track dimensions match Material switch proportions (40×20) on an 8dp grid.
-  // Thumb is 16dp — fits inside the 20dp track with 2dp margin each side.
-  /// Width of the toggle track.
+  // ── Settings tile height ─────────────────────────────────────────────────
+  /// Canonical row height for SettingsTile, SignOutTile, _DeleteAccountTile.
+  /// [W6]: promotes the magic literal 64 (repeated 3×) to a named token.
+  /// Note: 64dp sits between the M3 one-line (56dp) and two-line (72dp)
+  /// standard heights — this is an explicit product design decision.
+  static const double tileHeight = 64.0;
+
+  // ── Settings error view ──────────────────────────────────────────────────
+  /// Width of the retry button in SettingsErrorView.
+  /// [W8]: replaces the arithmetic `splashRetryButtonMinWidth * 1.5`
+  /// (120.0 × 1.5 = 180.0) with a named token — arithmetic in layout
+  /// code is a code smell.
+  static const double settingsRetryButtonWidth = 180.0;
+
+  // ── Toggle switch ─────────────────────────────────────────────────────────
   static const double toggleTrackW    = 40.0;
-  /// Height of the toggle track.
   static const double toggleTrackH    = 20.0;
-  /// Diameter of the toggle thumb circle.
   static const double toggleThumbSize = 16.0;
-  /// Diameter of the online/offline status indicator dot.
   static const double statusDotSize   =  8.0;
 
-  // ── Map / location ───────────────────────────────────────────────────────
-  /// Core diameter of PulsingLocationDot's solid inner circle.
-  /// Promoted from off-grid 14dp to the nearest on-grid value (16dp = 2×spacingSm).
-  /// Outer ripple ring scales from this value via the animation controller.
+  // ── Map / location ────────────────────────────────────────────────────────
   static const double locationDotSize = 16.0;
 
-  // ── Splash screen ────────────────────────────────────────────────────────
-  /// Logo image size on the splash screen.
-  /// 248dp is the nearest on-grid value (8dp grid) to the original 250dp.
-  /// Exported here so SplashScreen and tests share a single source of truth.
-  static const double splashLogoSize = 248.0;
-
-  /// Height reserved for the bottom status area (loading pulse / retry button).
-  /// Matches the SizedBox wrapper in SplashScreen and eliminates the dead
-  /// _kStatusAreaHeight constant that was declared but never read in
-  /// SplashBottomStatus.
-  static const double splashStatusAreaHeight = 64.0;
-
-  /// Diameter of the circular background container in SplashErrorIcon.
-  /// BorderRadius = splashErrorCircleSize / 2 keeps it a perfect circle.
-  static const double splashErrorCircleSize = 200.0;
-
-  /// Minimum width of the retry button on the splash error state.
-  /// Promoted from local _kRetryButtonMinWidth = 120.0 in SplashBottomStatus
-  /// to a canonical token alongside the other splash-screen constants.
+  // ── Splash screen ─────────────────────────────────────────────────────────
+  static const double splashLogoSize            = 248.0;
+  static const double splashStatusAreaHeight    = 64.0;
+  static const double splashErrorCircleSize     = 200.0;
   static const double splashRetryButtonMinWidth = 120.0;
+
+  // ── Opacity tokens — state-conditional destructive tiles ─────────────────
+  // Applied at runtime via .withValues(alpha: x) to caller-resolved colors
+  // (AppTheme.signOutRed, colorScheme.error, iconColor). Cannot be baked as
+  // const Colors because the base color is dynamic. Named constants replace
+  // magic literals and make each opacity level's intent explicit.
+  //
+  // Usage map:
+  //   opacityDisabledColor    → disabled text/icon dimming (sign-out, delete)
+  //   opacityChevron          → chevron / muted icon alpha (both tiles)
+  //   opacityTileFillDisabled → sign-out tile bg, disabled state
+  //   opacityTileFillDarkEn   → sign-out tile bg, dark theme, enabled
+  //   opacityTileFillLightEn  → sign-out tile bg, light theme, enabled
+  //                             ↳ also: delete tile bg, dark theme, enabled
+  //   opacityDeleteFillLightEn→ delete tile bg, light theme, enabled
+  //   opacityDeleteFillDis    → delete tile bg, disabled state
+  //   opacityIconBg           → delete tile icon container background
+  //   opacityIconBgAlt        → sign-out tile icon container background
+  //                             ↳ also: delete tile border, enabled state
+  //   opacityBorderEnabled    → sign-out tile border, enabled state
+  //   opacityBorderDisabled   → sign-out tile border, disabled state
+  //                             ↳ also: delete tile border alternative
+  //   opacityDeleteBorderDis  → delete tile border, disabled state
+
+  /// Disabled text/icon alpha — applied to signOutRed / error color
+  /// to produce the muted disabled variant. Used in both destructive tiles.
+  static const double opacityDisabledColor    = 0.40;
+
+  /// Chevron and secondary icon mute alpha. Applied to the trailing icon
+  /// in SignOutTile and _DeleteAccountTile.
+  static const double opacityChevron          = 0.50;
+
+  /// Sign-out tile background, disabled state.
+  static const double opacityTileFillDisabled = 0.04;
+
+  /// Sign-out tile background, enabled, dark theme.
+  static const double opacityTileFillDarkEn   = 0.12;
+
+  /// Sign-out tile background, enabled, light theme.
+  /// Also: delete tile background, enabled, dark theme (same design value).
+  static const double opacityTileFillLightEn  = 0.08;
+
+  /// Delete tile background, enabled, light theme (tighter fill than sign-out).
+  static const double opacityDeleteFillLightEn = 0.05;
+
+  /// Delete tile background, disabled state (tighter than sign-out).
+  static const double opacityDeleteFillDis     = 0.03;
+
+  /// Icon container background — delete tile (slightly darker than sign-out).
+  static const double opacityIconBg            = 0.12;
+
+  /// Icon container background — sign-out tile.
+  /// Also: delete tile border colour, enabled state (same design value).
+  static const double opacityIconBgAlt         = 0.15;
+
+  /// Tile border colour, enabled — sign-out tile.
+  static const double opacityBorderEnabled     = 0.20;
+
+  /// Tile border colour, disabled — sign-out tile.
+  static const double opacityBorderDisabled    = 0.08;
+
+  /// Delete tile border colour, disabled state (tighter than sign-out).
+  static const double opacityDeleteBorderDis   = 0.06;
 
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;
@@ -303,10 +362,6 @@ class AppAssets {
   static const String errorAnimation      = '$_animations/error.json';
   static const String locationAnimation   = '$_animations/location.json';
   static const String homeBoilerCare      = '$_animations/home_boiler_care.json';
-  // FIX [AUTO / W3]: centralises the splash static image path in AppAssets,
-  // consistent with every other asset reference in the codebase.
-  // Previously a raw string literal in SplashScreen — now a single source
-  // of truth that refactoring and asset-path changes will propagate correctly.
   static const String splashStatic        = 'assets/splash_static.png';
 }
 
@@ -393,7 +448,6 @@ class AppIcons {
   static const IconData notificationsActive = Icons.notifications_active_rounded;
   static const IconData help                = Icons.help_outline_rounded;
   static const IconData info                = Icons.info_outline_rounded;
-  // REMOVED: info2 — identical to info (dead duplicate)
   static const IconData logout              = Icons.logout_rounded;
   static const IconData deleteAccount       = Icons.no_accounts_outlined;
 
