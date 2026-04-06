@@ -6,6 +6,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../widgets/sheet_handle.dart';
+import 'auth_submit_button.dart';
 import 'register_service_picker.dart';
 
 class ProfessionPickerSheet extends StatefulWidget {
@@ -48,8 +49,6 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // FIX [Dim-RAW]: was EdgeInsets.only(top: 12, bottom: 4) — replaced
-            // with token-backed values: spacingChipGap (12dp) and spacingXs (4dp).
             Padding(
               padding: const EdgeInsets.only(
                 top:    AppConstants.spacingChipGap,
@@ -57,8 +56,6 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
               ),
               child: SheetHandle(isDark: isDark),
             ),
-            // FIX [Dim-RAW]: was EdgeInsets.fromLTRB(paddingLg, 12, paddingLg, 8) —
-            // the inner 12 → spacingChipGap; 8 → spacingSm (already a token).
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppConstants.paddingLg,
@@ -119,19 +116,19 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                         duration:  AppConstants.animDurationMicro,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          // FIX [Col-OPAC]: was accent.withOpacity(0.15) —
-                          // replaced with pre-baked AppTheme.accentSelectedFill
-                          // (accent #4F46E5 @ 15%, alpha 0x26).
                           color: isSelected
                               ? AppTheme.accentSelectedFill
                               : Colors.transparent,
                           borderRadius:
                               BorderRadius.circular(AppConstants.radiusMd),
                           border: Border.all(
+                            // FIX [Col-SEM]: was AppTheme.sheetHandleDark (a
+                            // drag-handle token, semantic mismatch) — replaced
+                            // with AppTheme.darkBorder, the correct divider token.
                             color: isSelected
                                 ? accent
                                 : (isDark
-                                    ? AppTheme.sheetHandleDark
+                                    ? AppTheme.darkBorder
                                     : AppTheme.lightBorder),
                           ),
                         ),
@@ -153,19 +150,19 @@ class _ProfessionPickerSheetState extends State<ProfessionPickerSheet> {
                 },
               ),
             ),
+            // FIX [BTN-SPLIT]: ElevatedButton confirm CTA → AuthSubmitButton
             Padding(
               padding: const EdgeInsets.all(AppConstants.paddingLg),
-              child: SizedBox(
-                height: AppConstants.buttonHeight,
-                child: ElevatedButton(
-                  onPressed: _selected == null
-                      ? null
-                      : () {
-                          if (!mounted) return;
-                          Navigator.of(context).pop(_selected);
-                        },
-                  child: Text(context.tr('common.confirm')),
-                ),
+              child: AuthSubmitButton(
+                isLoading: false,
+                isDark:    isDark,
+                onPressed: _selected == null
+                    ? null
+                    : () {
+                        if (!mounted) return;
+                        Navigator.of(context).pop(_selected);
+                      },
+                labelKey: 'common.confirm',
               ),
             ),
           ],

@@ -8,6 +8,7 @@ import '../../../utils/localization.dart';
 import '../../../utils/validation_form.dart';
 import '../../../widgets/sheet_handle.dart';
 import '../../../widgets/text_field.dart';
+import 'auth_submit_button.dart';
 
 // ============================================================================
 // FORGOT PASSWORD BOTTOM SHEET
@@ -56,7 +57,7 @@ class _LoginForgotPasswordSheetState
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.radiusXxl), // 24.0
+          top: Radius.circular(AppConstants.radiusXxl),
         ),
         border: Border(
           top: BorderSide(
@@ -71,9 +72,6 @@ class _LoginForgotPasswordSheetState
           mainAxisSize:       MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // FIX [H3/W1]: was raw width:40/height:4 with
-            // Colors.white.withOpacity(0.15)/Colors.black.withOpacity(0.12).
-            // Replaced with SheetHandle widget (uses pre-baked tokens).
             const SheetHandle(),
 
             const SizedBox(height: AppConstants.spacingLg),
@@ -113,27 +111,12 @@ class _LoginForgotPasswordSheetState
 
             const SizedBox(height: AppConstants.spacingLg),
 
-            // FIX [H3/W1]: was height:52 (off-grid) — replaced with
-            // AppConstants.buttonHeight (54dp, the canonical button height).
-            SizedBox(
-              height: AppConstants.buttonHeight,
-              child: ElevatedButton(
-                onPressed: _sending ? null : _send,
-                child: _sending
-                    ? SizedBox(
-                        width:  AppConstants.spinnerSizeLg,
-                        height: AppConstants.spinnerSizeLg,
-                        // FIX [C1]: was Colors.white (hardcoded) — replaced
-                        // with Theme.of(context).colorScheme.onPrimary so the
-                        // spinner colour adapts correctly if the accent colour
-                        // ever changes.
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : Text(context.tr('login.reset_send')),
-              ),
+            // FIX [BTN-SPLIT]: ElevatedButton primary CTA → AuthSubmitButton
+            AuthSubmitButton(
+              isLoading: _sending,
+              isDark:    isDark,
+              onPressed: _sending ? null : _send,
+              labelKey:  'login.reset_send',
             ),
           ],
         ),

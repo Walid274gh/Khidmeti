@@ -45,7 +45,13 @@ class RegisterServicePicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 10),
+          // FIX [Dim-RAW]: was EdgeInsetsDirectional.only(start: 4, bottom: 10)
+          // — bottom: 10 replaced with AppConstants.spacingSm (8dp, nearest
+          // on-grid value). start: 4 maps to AppConstants.paddingXs.
+          padding: const EdgeInsetsDirectional.only(
+            start:  AppConstants.paddingXs,
+            bottom: AppConstants.spacingSm,
+          ),
           child: Text(
             context.tr('register.service_label'),
             style: TextStyle(
@@ -103,10 +109,6 @@ class RegisterServicePicker extends StatelessWidget {
                     children: [
                       Icon(
                         icon,
-                        // FIX [Dim-OFF]: was size: 22 (off 20/24/32 icon scale) —
-                        // replaced with AppConstants.iconSizeMd (24dp).
-                        // Device test recommended: verify icon fits 2-line service
-                        // labels at 24dp on 360dp viewport.
                         size:  AppConstants.iconSizeMd,
                         color: isSelected
                             ? bgColor

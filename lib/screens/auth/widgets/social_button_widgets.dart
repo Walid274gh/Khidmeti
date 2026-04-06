@@ -22,9 +22,6 @@ class SocialDivider extends StatelessWidget {
       children: [
         Expanded(
           child: Divider(
-            // FIX [Col-SEM]: was AppTheme.sheetHandleDark (a drag-handle token)
-            // in the dark branch — replaced with AppTheme.darkBorder, which is
-            // the correct semantic token for divider lines.
             color:  isDark
                 ? AppTheme.darkBorder
                 : AppTheme.lightBorder,
@@ -59,10 +56,7 @@ class SocialDivider extends StatelessWidget {
 
 // ============================================================================
 // CIRCULAR SOCIAL BUTTON
-// FIX [Dim-RAW]: width/height 52×52 → AppConstants.socialButtonSize (52.0).
-// FIX [Dim-RAW]: spinner 18×18 → AppConstants.socialSpinnerSize (18.0).
-// FIX [SVG]: border colour was Colors.white.withOpacity(0.18) — replaced
-// with pre-baked AppTheme.darkSocialBorder token (white @ 18%).
+// FIX [Col-OPAC]: darkSurface.withOpacity(0.5) → AppTheme.darkSurfaceHalf
 // ============================================================================
 
 class CircularSocialButton extends StatelessWidget {
@@ -95,12 +89,13 @@ class CircularSocialButton extends StatelessWidget {
       button: true,
       label:  semanticLabel,
       child: SizedBox(
-        // FIX [Dim-RAW]: was raw 52 literals — now AppConstants.socialButtonSize.
         width:  AppConstants.socialButtonSize,
         height: AppConstants.socialButtonSize,
         child: Material(
+          // FIX [Col-OPAC]: was darkSurface.withOpacity(0.5) — replaced with
+          // pre-baked AppTheme.darkSurfaceHalf token (Color(0x80141028)).
           color: isDark
-              ? AppTheme.darkSurface.withOpacity(0.5)
+              ? AppTheme.darkSurfaceHalf
               : AppTheme.lightSurface,
           shape: CircleBorder(
             side: BorderSide(color: borderColor, width: 1),
@@ -111,8 +106,6 @@ class CircularSocialButton extends StatelessWidget {
             child: Center(
               child: isLoading
                   ? SizedBox(
-                      // FIX [Dim-RAW]: was raw 18 literals — now
-                      // AppConstants.socialSpinnerSize.
                       width:  AppConstants.socialSpinnerSize,
                       height: AppConstants.socialSpinnerSize,
                       child: CircularProgressIndicator(

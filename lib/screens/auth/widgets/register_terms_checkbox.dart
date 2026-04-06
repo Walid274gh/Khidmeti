@@ -32,33 +32,24 @@ class RegisterTermsCheckbox extends StatelessWidget {
         onTap:        enabled ? () => onChanged(!accepted) : null,
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         child: Padding(
-          // Small padding so the ripple doesn't clip at the row edge
           padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingXs),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               AnimatedContainer(
-                // FIX [Anim-DUR]: was Duration(milliseconds: 200) — unified to
-                // AppConstants.animDurationMicro.
                 duration: AppConstants.animDurationMicro,
-                // FIX [Dim-OFF]: was 22×22 (off 4dp grid) — kept as logoOrbIconSize
-                // is 30dp (also off-grid). Both pending designer sign-off; these
-                // are intentional micro-UI sizes that sit between grid steps.
-                // Tokenised as socialSpinnerSize is not the right semantic —
-                // using raw 22 literal retained pending its own token addition.
-                // TODO: add checkboxSize token once designer confirms 20dp or 24dp.
-                width:  22,
-                height: 22,
+                // FIX [Dim-RAW]: was width: 22, height: 22 (raw literals) —
+                // replaced with AppConstants.checkboxSize token (22.0).
+                // TODO: designer sign-off pending — confirm 20dp or 24dp
+                // (current 22dp is off the 4dp grid).
+                width:  AppConstants.checkboxSize,
+                height: AppConstants.checkboxSize,
                 decoration: BoxDecoration(
-                  // FIX (Designer): BorderRadius.circular(6) → AppConstants.radiusXs + 2
-                  // aligns with the nearest existing token.
-                  borderRadius: BorderRadius.circular(AppConstants.radiusXs + 2),
+                  // FIX [Dim-RAW]: was BorderRadius.circular(AppConstants.radiusXs + 2)
+                  // — replaced with AppConstants.checkboxRadius token (6.0).
+                  borderRadius: BorderRadius.circular(AppConstants.checkboxRadius),
                   color: accepted ? accent : Colors.transparent,
                   border: Border.all(
-                    // FIX [Col-TOKEN-MISS]: was Colors.white.withOpacity(0.25) /
-                    // Colors.black.withOpacity(0.20) — wired to the pre-baked tokens
-                    // darkCheckboxBorder / lightCheckboxBorder that already existed
-                    // in AppTheme but were never used here.
                     color: accepted
                         ? accent
                         : (isDark
@@ -67,18 +58,16 @@ class RegisterTermsCheckbox extends StatelessWidget {
                     width: 1.5,
                   ),
                 ),
-                // FIX [Col-HARD]: was color: Colors.white (hardcoded) — replaced
-                // with colorScheme.onPrimary so the icon adapts with the theme.
                 child: accepted
                     ? Icon(
                         Icons.check_rounded,
-                        size:  14,
+                        // FIX [Dim-RAW]: was size: 14 (raw literal) — replaced
+                        // with AppConstants.checkboxIconSize token (14.0).
+                        size:  AppConstants.checkboxIconSize,
                         color: Theme.of(context).colorScheme.onPrimary,
                       )
                     : null,
               ),
-              // FIX [Dim-OFF]: was SizedBox(width: 10) — replaced with
-              // AppConstants.spacingSm (8dp, nearest on-grid value).
               const SizedBox(width: AppConstants.spacingSm),
               Expanded(
                 child: Text.rich(

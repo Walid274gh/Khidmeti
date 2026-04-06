@@ -30,9 +30,6 @@ class RegisterRoleSelector extends StatelessWidget {
       children: [
         // ── Toggle ────────────────────────────────────────────────────────────
         Container(
-          // FIX [Dim-RAW]: was height: 56 (magic literal) — replaced with
-          // AppConstants.roleToggleHeight (56.0). Distinct from buttonHeight
-          // (54dp); separate token prevents silent divergence.
           height: AppConstants.roleToggleHeight,
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
@@ -143,14 +140,17 @@ class _RoleTab extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    size: 18,
+                    // FIX [Dim-RAW]: was size: 18 (raw literal) — replaced
+                    // with AppConstants.roleTabIconSize token (18.0).
+                    // Designer sign-off pending: 18dp sits between iconSizeXs
+                    // (16) and iconSizeSm (20).
+                    size: AppConstants.roleTabIconSize,
                     color: isSelected
                         ? bgColor
                         : (isDark
                             ? AppTheme.darkSecondaryText
                             : AppTheme.lightSecondaryText),
                   ),
-                  // Designer sign-off pending: 4dp or 8dp gap?
                   const SizedBox(width: AppConstants.spacingXs),
                   Text(
                     label,
