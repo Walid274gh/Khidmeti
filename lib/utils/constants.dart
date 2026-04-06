@@ -45,6 +45,25 @@
 //         These are runtime .withValues() calls — they cannot be const-baked
 //         because the base color is caller-resolved (signOutRed, error scheme).
 //         Named constants replace magic literals and document each level's intent.
+//
+// CHANGES (settings ui-apply — AUTO pass, sheet_option.dart tokens):
+//   [W1-AUTO] 5 opacity constants added for SheetOption — replaces 5 raw float
+//         literals that bypassed the opacity token system.
+//         opacitySheetFillDark / opacitySheetFillLight — selection highlight fill
+//         opacitySheetBorderSel — selected option border alpha
+//         opacitySheetBorderUnsel — unselected option border alpha
+//         opacitySheetIconMuted — unselected icon colour alpha
+//   [S2-AUTO] profileCardSkeletonHeight = 110.0 — promotes the magic height
+//         literal in _ProfileCardSkeleton to a named token. Skeleton height
+//         will no longer silently diverge if ProfileCard content grows.
+//   [W1-AUTO-SPLIT] opacityDeleteTileFillDarkEn = 0.08 added as an alias that
+//         makes the dual-usage of opacityTileFillLightEn explicit. Both resolve
+//         to the same design value today; the separate token documents intent and
+//         prevents silent breakage if the two contexts ever diverge.
+//
+// TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
+//   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
+//   schedule for next design-system alignment pass with designer sign-off.
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -71,6 +90,7 @@ class AppConstants {
   static const int maxPendingBidsPerWorker = 5;
 
   // Spacing
+  // TODO(S3-grid-audit): spacingXxs (2dp) is off the 4dp grid — designer sign-off required.
   static const double spacingXxs  = 2.0;
   static const double spacingXs   = 4.0;
   static const double spacingSm   = 8.0;
@@ -139,6 +159,8 @@ class AppConstants {
   static const double sectionCardGap = 10.0;
 
   // Badges / chips / tile gaps
+  // TODO(S3-grid-audit): spacingTileInner (14dp) and badgePaddingV (3dp) are
+  //   off the 4dp grid — schedule for next design-system alignment pass.
   static const double spacingTileInner = 14.0;
   static const double badgePaddingH    = 10.0;
   static const double badgePaddingV    = 3.0;
@@ -202,7 +224,7 @@ class AppConstants {
   // Sheet handle
   static const double sheetHandleWidth  = 40.0;
   static const double sheetHandleHeight = 4.0;
-  
+
   /// Maximum number of worker documents fetched in the unscoped fallback
   /// Firestore stream (_subscribeFallback). Prevents reading every online
   /// worker document on every snapshot in production.
@@ -225,6 +247,12 @@ class AppConstants {
   /// (120.0 × 1.5 = 180.0) with a named token — arithmetic in layout
   /// code is a code smell.
   static const double settingsRetryButtonWidth = 180.0;
+
+  // ── Profile card skeleton ─────────────────────────────────────────────────
+  /// Height of the ProfileCard shimmer skeleton in _ProfileCardSkeleton.
+  /// [S2-AUTO]: promotes the magic literal 110 to a named token. If ProfileCard
+  /// content grows, updating this single constant keeps the skeleton in sync.
+  static const double profileCardSkeletonHeight = 110.0;
 
   // ── Toggle switch ─────────────────────────────────────────────────────────
   static const double toggleTrackW    = 40.0;
@@ -253,7 +281,10 @@ class AppConstants {
   //   opacityTileFillDisabled → sign-out tile bg, disabled state
   //   opacityTileFillDarkEn   → sign-out tile bg, dark theme, enabled
   //   opacityTileFillLightEn  → sign-out tile bg, light theme, enabled
-  //                             ↳ also: delete tile bg, dark theme, enabled
+  //   opacityDeleteTileFillDarkEn → delete tile bg, dark theme, enabled
+  //                                 Same design value as opacityTileFillLightEn
+  //                                 (0.08) but a distinct token so the two
+  //                                 contexts can diverge independently.
   //   opacityDeleteFillLightEn→ delete tile bg, light theme, enabled
   //   opacityDeleteFillDis    → delete tile bg, disabled state
   //   opacityIconBg           → delete tile icon container background
@@ -264,8 +295,8 @@ class AppConstants {
   //                             ↳ also: delete tile border alternative
   //   opacityDeleteBorderDis  → delete tile border, disabled state
 
-  /// Disabled text/icon alpha — applied to signOutRed / error color
-  /// to produce the muted disabled variant. Used in both destructive tiles.
+  /// Disabled text/icon alpha — applied to error color to produce the muted
+  /// disabled variant. Used in both destructive tiles.
   static const double opacityDisabledColor    = 0.40;
 
   /// Chevron and secondary icon mute alpha. Applied to the trailing icon
@@ -279,8 +310,13 @@ class AppConstants {
   static const double opacityTileFillDarkEn   = 0.12;
 
   /// Sign-out tile background, enabled, light theme.
-  /// Also: delete tile background, enabled, dark theme (same design value).
   static const double opacityTileFillLightEn  = 0.08;
+
+  /// Delete tile background, enabled, dark theme.
+  /// Semantically distinct from opacityTileFillLightEn despite sharing the
+  /// same design value (0.08). Separate token prevents silent breakage if
+  /// the sign-out and delete dark backgrounds ever need to diverge.
+  static const double opacityDeleteTileFillDarkEn = 0.08;
 
   /// Delete tile background, enabled, light theme (tighter fill than sign-out).
   static const double opacityDeleteFillLightEn = 0.05;
@@ -303,6 +339,27 @@ class AppConstants {
 
   /// Delete tile border colour, disabled state (tighter than sign-out).
   static const double opacityDeleteBorderDis   = 0.06;
+
+  // ── Opacity tokens — SheetOption ─────────────────────────────────────────
+  // [W1-AUTO]: 5 new constants replace the 5 raw float literals in
+  // sheet_option.dart that bypassed the opacity token system.
+  // These are runtime .withValues() calls — the base color (colorScheme.primary
+  // or colorScheme.onSurface) is resolved dynamically at build time.
+
+  /// SheetOption selected fill — dark theme (accent @ 20%).
+  static const double opacitySheetFillDark  = 0.20;
+
+  /// SheetOption selected fill — light theme (accent @ 10%).
+  static const double opacitySheetFillLight = 0.10;
+
+  /// SheetOption border — selected state (accent @ 50%).
+  static const double opacitySheetBorderSel = 0.50;
+
+  /// SheetOption border — unselected state (outline @ 20%).
+  static const double opacitySheetBorderUnsel = 0.20;
+
+  /// SheetOption icon — unselected / muted state (onSurface @ 60%).
+  static const double opacitySheetIconMuted = 0.60;
 
   // Location & map
   static const double defaultSearchRadiusKm = 50.0;

@@ -139,6 +139,13 @@ class AppTheme {
 
   // ── Card drop-shadow colour (darkAccent @ 35%) ────────────────────────────
   // [C3]: used in ProfileCard BoxShadow. Baked from darkAccent #4F46E5 @35%.
+  //
+  // TODO(theme-divergence): profileCardShadow is baked from darkAccent
+  // (#4F46E5 @ 35%). This works correctly today because lightAccent == darkAccent
+  // == #4F46E5. If the two accent colours ever diverge, replace this const token
+  // with a runtime BoxShadow built from colorScheme.primary inside ProfileCard,
+  // and remove this static const entirely.
+  // See also: profile_card.dart — BoxShadow(color: AppTheme.profileCardShadow).
   static const Color profileCardShadow = Color(0x594F46E5); // darkAccent @35%
 
   // ── Avatar border ring (white @ 50%) ─────────────────────────────────────
@@ -193,6 +200,13 @@ class AppTheme {
   // in the dark textTheme. labelSmall uses darkText (high-contrast) and is
   // unaffected.
   static const Color darkSecondaryTextWcag  = Color(0xFF9B91C0);
+
+  // W4-VERIFIED: lightSecondaryText (#6B64A0) on lightBackground (#F8F7FF)
+  // for titleSmall (13sp/w600) — contrast ratio ≈ 5.02:1.
+  // WCAG AA requires ≥ 4.5:1 for small text. This passes with margin.
+  // No lightSecondaryTextWcag token is needed; lightSecondaryText is used
+  // directly in lightTheme titleSmall, bodySmall, and labelMedium.
+  // Re-verify if either colour is updated.
 
   static const Color overlayDark            = Color(0x73000000);
 
