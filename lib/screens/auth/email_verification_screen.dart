@@ -243,7 +243,7 @@ class _VerificationCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppConstants.paddingXl),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
-        borderRadius: BorderRadius.circular(AppConstants.cardRadius),
+        borderRadius: BorderRadius.circular(AppConstants.radiusCard),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
           width: 0.5,
