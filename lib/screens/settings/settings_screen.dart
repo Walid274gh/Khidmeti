@@ -8,6 +8,10 @@
 //            (darkTheme → darkBackground, lightTheme → lightBackground).
 //            Hardcoding it here was redundant and bypassed the single source of
 //            truth in the theme. Removing it lets the theme drive the value.
+// FIX [S4-AUTO]: CircularProgressIndicator explicit color parameter removed.
+//            progressIndicatorTheme already sets color = colorScheme.primary in
+//            both darkTheme and lightTheme. The override was redundant and would
+//            silently resist any future change to the indicator theme token.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,10 +91,11 @@ class _FullScreenOverlay extends StatelessWidget {
       child: Container(
         // overlayScrim35 = Color(0x59000000) — black at 35% opacity.
         color: AppTheme.overlayScrim35,
-        child: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        child: const Center(
+          // [S4-AUTO]: explicit color parameter removed — progressIndicatorTheme
+          // already sets color = colorScheme.primary in both themes. The override
+          // was redundant and resisted future changes to the indicator token.
+          child: CircularProgressIndicator(),
         ),
       ),
     );
