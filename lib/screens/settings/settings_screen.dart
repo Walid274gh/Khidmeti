@@ -3,6 +3,11 @@
 // CHANGE: settings_provider.dart import updated from local path to lib/providers/.
 // FIX [W11]: replaced colorScheme.scrim.withOpacity(0.35) with AppTheme.overlayScrim35
 //            — the pre-baked 35% black overlay token added to app_theme.dart.
+// FIX [W7]:  removed explicit Scaffold.backgroundColor isDark ternary.
+//            The active ThemeData already sets scaffoldBackgroundColor correctly
+//            (darkTheme → darkBackground, lightTheme → lightBackground).
+//            Hardcoding it here was redundant and bypassed the single source of
+//            truth in the theme. Removing it lets the theme drive the value.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +33,9 @@ class SettingsScreen extends ConsumerWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemOverlayStyle(isDark),
       child: Scaffold(
-        backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+        // FIX [W7]: backgroundColor removed — the active ThemeData already
+        // provides the correct scaffoldBackgroundColor for each brightness.
+        // Hardcoding the ternary here was redundant and bypassed the theme.
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor:        Colors.transparent,
@@ -78,7 +85,6 @@ class _FullScreenOverlay extends StatelessWidget {
       label:      context.tr('common.loading'),
       liveRegion: true,
       child: Container(
-        // FIX [W11]: replaced scrim.withOpacity(0.35) with pre-baked token.
         // overlayScrim35 = Color(0x59000000) — black at 35% opacity.
         color: AppTheme.overlayScrim35,
         child: Center(
