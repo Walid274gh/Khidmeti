@@ -253,7 +253,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                     JobSectionCard(
                       title:     context.tr('worker_jobs.service_details'),
                       icon:      AppTheme.getProfessionIcon(job.serviceType),
-                      iconColor: AppTheme.getProfessionColor(job.serviceType, isDark),
+                      iconColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
                       isDark:    isDark,
                       child: JobServiceDetailsContent(job: job, isDark: isDark),
                     ),
