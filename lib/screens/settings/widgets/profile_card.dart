@@ -19,6 +19,11 @@
 //            and override textTheme intentionally; Colors.white is the correct
 //            on-surface colour for this context. The real violation was the withOpacity
 //            calls (now fixed above), not the TextStyle overrides.
+// NOTE [W3-MANUAL]: AppTheme.profileCardShadow is baked from darkAccent (#4F46E5 @ 35%).
+//            This is safe today because lightAccent == darkAccent. A TODO has been added
+//            to app_theme.dart. If the two accents ever diverge, replace this token with
+//            a runtime BoxShadow built from colorScheme.primary below.
+//            See: AppTheme.profileCardShadow — TODO(theme-divergence).
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -51,7 +56,11 @@ class ProfileCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              // profileCardShadow = darkAccent (#4F46E5) at 35% — pre-baked const.
+              // TODO(theme-divergence): profileCardShadow is baked from darkAccent
+              // (#4F46E5 @ 35%). Safe today because lightAccent == darkAccent.
+              // If themes diverge, replace with:
+              //   color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35)
+              // and remove the const token from app_theme.dart.
               color:      AppTheme.profileCardShadow,
               blurRadius: 20,
               offset:     const Offset(0, 6),

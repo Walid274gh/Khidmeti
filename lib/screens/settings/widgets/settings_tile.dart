@@ -14,6 +14,12 @@
 //           withValues() is the modern Flutter API (replaces deprecated withOpacity).
 //           The alpha value is also promoted to AppConstants.opacityIconBgAlt (0.15)
 //           to align with the opacity token system used in SignOutTile.
+// FIX [S1-AUTO]: Removed redundant copyWith on titleMedium title style.
+//           titleMedium is already defined as 15sp/w600 in both darkTheme and
+//           lightTheme. The copyWith(fontSize: fontSizeTileLg, fontWeight: w600)
+//           was a no-op that added noise and would silently resist future theme
+//           changes. Using theme.textTheme.titleMedium directly is now the
+//           single source of truth.
 
 import 'package:flutter/material.dart';
 
@@ -98,12 +104,13 @@ class SettingsTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment:  MainAxisAlignment.center,
                       children: [
+                        // [S1-AUTO]: titleMedium used directly — the theme already
+                        // defines 15sp/w600 so copyWith was a no-op and has been
+                        // removed. Any future change to titleMedium in the theme
+                        // will now propagate here automatically.
                         Text(
                           title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontSize:   AppConstants.fontSizeTileLg,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.titleMedium,
                         ),
                         if (subtitle != null) ...[
                           // spacingXxs = 2.0 — nearest on-grid value.

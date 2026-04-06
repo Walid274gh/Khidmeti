@@ -7,6 +7,17 @@
 // FIX [W3]: all inline .withOpacity() calls in _DeleteAccountTile replaced with
 //           named opacity tokens from AppConstants. withValues(alpha:) is used
 //           throughout — the modern Flutter API replacing deprecated withOpacity().
+// FIX [S1-AUTO]: _DeleteAccountTile copyWith now omits the redundant fontSize and
+//           fontWeight overrides (titleMedium is already 15sp/w600 in both themes).
+//           Only the semantic color override is kept — matching the same fix applied
+//           to settings_tile.dart. This makes titleMedium the single source of truth
+//           for size/weight; color customisation is still explicit and intentional.
+// FIX [S2-AUTO]: ShimmerBox height: 110 → AppConstants.profileCardSkeletonHeight.
+//           The magic literal is now a named token, preventing silent divergence
+//           if ProfileCard content grows.
+// FIX [W2-AUTO]: _DeleteAccountTile dark-theme fill now uses the semantically
+//           distinct opacityDeleteTileFillDarkEn (0.08) instead of the shared
+//           opacityTileFillLightEn. Same value today but decoupled for safety.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -295,6 +306,11 @@ class SettingsContent extends ConsumerWidget {
 //           height: 64 → AppConstants.tileHeight
 // FIX [W3]: all inline .withOpacity() replaced with named opacity tokens.
 //           withValues(alpha:) used throughout (modern API).
+// FIX [S1-AUTO]: copyWith now only overrides color — fontSize and fontWeight
+//           are dropped because titleMedium is already 15sp/w600 in both themes.
+// FIX [W2-AUTO]: dark-theme fill uses opacityDeleteTileFillDarkEn (0.08) —
+//           a semantically distinct token from opacityTileFillLightEn even
+//           though both resolve to the same value today.
 // ============================================================================
 
 class _DeleteAccountTile extends StatelessWidget {
@@ -308,8 +324,8 @@ class _DeleteAccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme      = Theme.of(context);
-    final isDark     = theme.brightness == Brightness.dark;
+    final theme  = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     // [W3]: opacityDisabledColor (0.40) replaces magic 0.4 literal.
     final errorColor = isEnabled
@@ -337,12 +353,13 @@ class _DeleteAccountTile extends StatelessWidget {
             decoration: BoxDecoration(
               // [W3]: named opacity tokens replace magic literals.
               // disabled → opacityDeleteFillDis (0.03)
-              // enabled dark → opacityTileFillLightEn (0.08) — shared value
+              // enabled dark → opacityDeleteTileFillDarkEn (0.08) — semantically
+              //                distinct from opacityTileFillLightEn [W2-AUTO fix]
               // enabled light → opacityDeleteFillLightEn (0.05)
               color: theme.colorScheme.error.withValues(
                 alpha: isEnabled
                     ? (isDark
-                        ? AppConstants.opacityTileFillLightEn
+                        ? AppConstants.opacityDeleteTileFillDarkEn
                         : AppConstants.opacityDeleteFillLightEn)
                     : AppConstants.opacityDeleteFillDis,
               ),
@@ -376,10 +393,11 @@ class _DeleteAccountTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     context.tr('settings.delete_account'),
+                    // [S1-AUTO]: copyWith retains only the color override.
+                    // fontSize and fontWeight dropped — titleMedium is already
+                    // 15sp/w600 in both themes; the override was a no-op.
                     style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize:   AppConstants.fontSizeTileLg,
-                      fontWeight: FontWeight.w600,
-                      color:      errorColor,
+                      color: errorColor,
                     ),
                   ),
                 ),
@@ -399,7 +417,10 @@ class _DeleteAccountTile extends StatelessWidget {
 }
 
 // ============================================================================
-// PRIVATE — PROFILE CARD SKELETON (unchanged)
+// PRIVATE — PROFILE CARD SKELETON
+// FIX [S2-AUTO]: height: 110 → AppConstants.profileCardSkeletonHeight (110.0)
+//   The magic literal is now a named token. If ProfileCard content grows,
+//   updating AppConstants.profileCardSkeletonHeight keeps the skeleton in sync.
 // ============================================================================
 
 class _ProfileCardSkeleton extends StatefulWidget {
@@ -436,7 +457,8 @@ class _ProfileCardSkeletonState extends State<_ProfileCardSkeleton>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => ShimmerBox(
-        height:       110,
+        // [S2-AUTO]: profileCardSkeletonHeight = 110.0 replaces magic literal.
+        height:       AppConstants.profileCardSkeletonHeight,
         borderRadius: AppConstants.radiusCircle,
         opacity:      _anim.value,
       ),
