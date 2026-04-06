@@ -7,8 +7,11 @@
 //   • Colors.white.withOpacity(0.20) [border]        → AppTheme.profileCardBorder
 //   • accent.withOpacity(0.35)       [shadow]         → AppTheme.profileCardShadow
 //   • Colors.white.withOpacity(0.5)  [avatar border]  → AppTheme.profileCardAvatarBorder
-//   • Colors.white.withOpacity(0.20) [badge bg]       → AppTheme.profileCardBorder
+//   • Colors.white.withOpacity(0.20) [badge bg]       → AppTheme.profileCardBadgeFill  ← [W9]
 //   • Colors.white.withOpacity(0.9)  [rating text]    → AppTheme.profileCardRatingText
+// FIX [W9]: badge Container fill now uses AppTheme.profileCardBadgeFill — a distinct
+//           token from profileCardBorder. Both currently resolve to white @20% but
+//           having separate tokens prevents silent divergence if either value changes.
 // FIX [W9]: avatar radius: 32 → 24 (48dp diameter — standard large avatar).
 //           64dp diameter was oversized per design benchmark. Designer sign-off required.
 // FIX [W10]: inline TextStyle for name, badge text, and rating text retained as-is
@@ -43,15 +46,12 @@ class ProfileCard extends StatelessWidget {
           color:        accent,
           borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
           border: Border.all(
-            // FIX [W8]: was Colors.white.withOpacity(0.20) — inline opacity.
             color: AppTheme.profileCardBorder,
             width: 0.5,
           ),
           boxShadow: [
             BoxShadow(
-              // FIX [W8]: was accent.withOpacity(0.35) — inline opacity.
-              // profileCardShadow = darkAccent (#4F46E5) at 35% — same hue,
-              // pre-baked as a const Color.
+              // profileCardShadow = darkAccent (#4F46E5) at 35% — pre-baked const.
               color:      AppTheme.profileCardShadow,
               blurRadius: 20,
               offset:     const Offset(0, 6),
@@ -67,10 +67,8 @@ class ProfileCard extends StatelessWidget {
             AppUserAvatar(
               imageUrl: state.profileImageUrl,
               name:     state.userName ?? '',
-              // FIX [W9]: was radius: 32 (64dp diameter — oversized).
-              // radius: 24 = 48dp diameter = standard large avatar benchmark.
+              // radius: 24 = 48dp diameter = standard large avatar.
               radius:      24,
-              // FIX [W8]: was Colors.white.withOpacity(0.5) — inline opacity.
               borderColor: AppTheme.profileCardAvatarBorder,
               borderWidth: 2.5,
             ),
@@ -104,8 +102,10 @@ class ProfileCard extends StatelessWidget {
                         vertical:   AppConstants.badgePaddingV,
                       ),
                       decoration: BoxDecoration(
-                        // FIX [W8]: was Colors.white.withOpacity(0.20) — inline opacity.
-                        color:        AppTheme.profileCardBorder,
+                        // [W9]: profileCardBadgeFill — semantically distinct from
+                        // profileCardBorder. Same value today (white @20%) but a
+                        // separate token prevents future silent divergence.
+                        color:        AppTheme.profileCardBadgeFill,
                         borderRadius: BorderRadius.circular(AppConstants.radiusXl),
                       ),
                       child: Text(
@@ -129,7 +129,6 @@ class ProfileCard extends StatelessWidget {
                       '★ ${state.workerAverageRating!.toStringAsFixed(1)}'
                       ' (${state.workerRatingCount})',
                       style: const TextStyle(
-                        // FIX [W8]: was Colors.white.withOpacity(0.9) — inline opacity.
                         color:      AppTheme.profileCardRatingText,
                         fontSize:   AppConstants.fontSizeXxs,
                         fontWeight: FontWeight.w600,

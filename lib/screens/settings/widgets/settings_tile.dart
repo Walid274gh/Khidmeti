@@ -8,6 +8,12 @@
 //           Both were off-grid (1dp and 2dp) and untokenized.
 // FIX [W6]: width: 40, height: 40 → AppConstants.iconContainerXl (40.0)
 //           size: 20 (icon) → AppConstants.buttonIconSize (20.0)
+// FIX [W6]: height: 64 → AppConstants.tileHeight (64.0) — magic literal promoted.
+// FIX [W1]: iconColor.withOpacity(0.15) → iconColor.withValues(alpha: 0.15)
+//           iconColor is caller-supplied at runtime so it cannot be const-baked.
+//           withValues() is the modern Flutter API (replaces deprecated withOpacity).
+//           The alpha value is also promoted to AppConstants.opacityIconBgAlt (0.15)
+//           to align with the opacity token system used in SignOutTile.
 
 import 'package:flutter/material.dart';
 
@@ -41,8 +47,7 @@ class SettingsTile extends StatelessWidget {
       label:  semanticsLabel,
       button: true,
       child: Padding(
-        // FIX [W5]: was EdgeInsets.only(bottom: 2) — bare 2dp, off-grid.
-        // spacingXxs = 2.0 is the on-grid token for this value.
+        // spacingXxs = 2.0 is the on-grid token for the inter-tile gap.
         padding: const EdgeInsets.only(bottom: AppConstants.spacingXxs),
         child: Material(
           color:        Colors.transparent,
@@ -51,18 +56,17 @@ class SettingsTile extends StatelessWidget {
             onTap:        onTap,
             borderRadius: BorderRadius.circular(AppConstants.radiusTile),
             child: Container(
-              height: 64,
+              // [W6]: tileHeight = 64.0 — canonical settings row height token.
+              height: AppConstants.tileHeight,
               padding: const EdgeInsetsDirectional.symmetric(
                 horizontal: AppConstants.paddingMd,
               ),
               decoration: BoxDecoration(
-                // FIX [W4]: was isDark ? AppTheme.darkSurface : AppTheme.lightSurface
-                // — bypassed colorScheme. Now resolves from theme automatically.
+                // Resolves from theme automatically — responds to brightness changes.
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppConstants.radiusTile),
                 border: Border.all(
-                  // FIX [W4]: was isDark ? AppTheme.darkBorder : AppTheme.lightBorder
-                  // — bypassed colorScheme.outline. Now resolves from theme.
+                  // Resolves from colorScheme.outline — responds to theme changes.
                   color: theme.colorScheme.outline,
                   width: 0.5,
                 ),
@@ -70,16 +74,23 @@ class SettingsTile extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    // FIX [W6]: was width: 40, height: 40 — magic literals.
-                    // iconContainerXl = 40.0 is the canonical token.
                     width:  AppConstants.iconContainerXl,
                     height: AppConstants.iconContainerXl,
                     decoration: BoxDecoration(
-                      color:        iconColor.withOpacity(0.15),
+                      // [W1]: withValues(alpha:) is the modern API replacing
+                      // deprecated withOpacity(). The opacity value is named
+                      // via opacityIconBgAlt (0.15) — consistent with the
+                      // token used for the sign-out tile icon container.
+                      color: iconColor.withValues(
+                        alpha: AppConstants.opacityIconBgAlt,
+                      ),
                       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                     ),
-                    // FIX [W6]: was size: 20 — replaced with buttonIconSize token.
-                    child: Icon(icon, color: iconColor, size: AppConstants.buttonIconSize),
+                    child: Icon(
+                      icon,
+                      color: iconColor,
+                      size:  AppConstants.buttonIconSize,
+                    ),
                   ),
                   const SizedBox(width: AppConstants.spacingTileInner),
                   Expanded(
@@ -95,8 +106,7 @@ class SettingsTile extends StatelessWidget {
                           ),
                         ),
                         if (subtitle != null) ...[
-                          // FIX [W5]: was SizedBox(height: 1) — off-grid, untokenized.
-                          // spacingXxs = 2.0 is the nearest on-grid value.
+                          // spacingXxs = 2.0 — nearest on-grid value.
                           const SizedBox(height: AppConstants.spacingXxs),
                           Text(subtitle!, style: theme.textTheme.bodySmall),
                         ],

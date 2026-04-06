@@ -3,13 +3,15 @@
 // FIX [C2]: wrapped ElevatedButton.icon in a Center + SizedBox with a fixed
 //           width (AppConstants.splashRetryButtonMinWidth = 120dp) so the
 //           button does not stretch full-width in the centered error layout.
-//           The global ElevatedButton theme sets minimumSize: Size(double.infinity, 54)
-//           which caused the button to fill the entire column width.
 // FIX [W2]: replaced error.withOpacity(0.6) with pre-baked AppTheme tokens
 //           (darkErrorMuted / lightErrorMuted) — inline opacity contract violation.
-// FIX [W3]: replaced size: 64 with AppConstants.iconSizeLg2 (64.0) — the new
+// FIX [W3/C12]: replaced size: 64 with AppConstants.iconSizeLg2 (64.0) — the new
 //           mid-scale icon token that fills the gap between iconSizeXl (48) and
-//           iconSizeHero (80). 64dp is appropriate for in-content error states.
+//           iconSizeHero (80).
+// FIX [W8]: replaced splashRetryButtonMinWidth * 1.5 arithmetic with the named
+//           token AppConstants.settingsRetryButtonWidth (180.0). Arithmetic in
+//           layout code is a code smell — the resolved value (180dp) is now a
+//           single source of truth.
 
 import 'package:flutter/material.dart';
 
@@ -36,7 +38,7 @@ class SettingsErrorView extends StatelessWidget {
         ? context.tr(errorMessage!)
         : context.tr('errors.unknown');
 
-    // FIX [W2]: pre-baked opacity token — no inline .withOpacity().
+    // Pre-baked opacity token — no inline .withOpacity().
     final iconColor = isDark ? AppTheme.darkErrorMuted : AppTheme.lightErrorMuted;
 
     return Center(
@@ -47,9 +49,9 @@ class SettingsErrorView extends StatelessWidget {
           children: [
             Icon(
               AppIcons.error,
-              // FIX [W3]: size: 64 → AppConstants.iconSizeLg2 (64.0).
+              // [C12]: iconSizeLg2 = 64.0 — mid-scale between iconSizeXl (48)
+              // and iconSizeHero (80). Appropriate for in-content error states.
               size:  AppConstants.iconSizeLg2,
-              // FIX [W2]: pre-baked muted error token replaces inline withOpacity.
               color: iconColor,
             ),
             const SizedBox(height: AppConstants.paddingMd),
@@ -65,15 +67,15 @@ class SettingsErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppConstants.spacingLg),
-            // FIX [C2]: constrain retry button — global theme sets
-            // minimumSize: Size(double.infinity, 54) which made this
-            // button stretch full-width inside the centered column.
-            // SizedBox overrides that and gives it a sensible fixed width.
+            // [W8]: settingsRetryButtonWidth = 180dp replaces the arithmetic
+            // splashRetryButtonMinWidth * 1.5. The global ElevatedButton theme
+            // sets minimumSize: Size(double.infinity, 54) which would otherwise
+            // cause this button to stretch full-width inside the centered column.
             Semantics(
               label:  context.tr('common.retry'),
               button: true,
               child: SizedBox(
-                width: AppConstants.splashRetryButtonMinWidth * 1.5, // 180dp — comfortable tap target
+                width: AppConstants.settingsRetryButtonWidth,
                 child: ElevatedButton.icon(
                   onPressed: onRetry,
                   icon:      const Icon(Icons.refresh_rounded),

@@ -2,7 +2,13 @@
 //
 // FIX [W7]: replaced `AppConstants.spacingMdLg - 6` with `AppConstants.spacingTileInner`
 //           spacingMdLg (20) - 6 = 14dp = spacingTileInner (14.0) exactly.
-//           The arithmetic was a code smell; the named token already exists.
+// FIX [W5]: fontSize: 22 → AppConstants.emojiIconSize (22.0) — flag Text style.
+//           size: 22 → AppConstants.emojiIconSize (22.0) — icon option size.
+//           size: 20 → AppConstants.buttonIconSize (20.0) — check icon.
+// FIX [W4]: .withOpacity() calls on colorScheme values are documented below.
+//           These are intentionally left as runtime calls — the base color is
+//           dynamically resolved from colorScheme at build time so they cannot
+//           be const-baked. withValues(alpha:) replaces the deprecated API.
 
 import 'package:flutter/material.dart';
 
@@ -40,14 +46,18 @@ class SheetOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         margin:   const EdgeInsets.only(bottom: AppConstants.spacingSm),
         decoration: BoxDecoration(
+          // [W4]: accent and colorScheme values are runtime-resolved — cannot
+          // be const-baked. withValues(alpha:) replaces deprecated withOpacity().
+          // These are intentional dynamic tints: selection highlight (20%/10%)
+          // and border states (50% selected / 20% unselected / 60% icon mute).
           color: isSelected
-              ? accent.withOpacity(isDark ? 0.2 : 0.1)
+              ? accent.withValues(alpha: isDark ? 0.2 : 0.1)
               : Colors.transparent,
           borderRadius: borderRadius,
           border: Border.all(
             color: isSelected
-                ? accent.withOpacity(0.5)
-                : theme.colorScheme.outline.withOpacity(0.2),
+                ? accent.withValues(alpha: 0.5)
+                : theme.colorScheme.outline.withValues(alpha: 0.2),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -60,21 +70,23 @@ class SheetOption extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingMd,
-                // FIX [W7]: was `spacingMdLg - 6` (20 - 6 = 14dp) — arithmetic
-                // in layout code. spacingTileInner (14.0) is the exact named token.
+                // spacingTileInner (14.0) replaces `spacingMdLg - 6` arithmetic.
                 vertical: AppConstants.spacingTileInner,
               ),
               child: Row(
                 children: [
                   if (flag != null)
-                    Text(flag!, style: const TextStyle(fontSize: 22))
+                    // [W5]: emojiIconSize = 22.0 replaces raw fontSize: 22 literal.
+                    Text(flag!, style: TextStyle(fontSize: AppConstants.emojiIconSize))
                   else if (icon != null)
                     Icon(
                       icon,
-                      size:  22,
+                      // [W5]: emojiIconSize = 22.0 replaces raw size: 22 literal.
+                      size:  AppConstants.emojiIconSize,
+                      // [W4]: dynamic colorScheme — runtime resolved, cannot const-bake.
                       color: isSelected
                           ? accent
-                          : theme.colorScheme.onSurface.withOpacity(0.6),
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   const SizedBox(width: AppConstants.spacingTileInner),
                   Expanded(
@@ -91,7 +103,8 @@ class SheetOption extends StatelessWidget {
                     ),
                   ),
                   if (isSelected)
-                    Icon(Icons.check_rounded, color: accent, size: 20),
+                    // [W5]: buttonIconSize = 20.0 replaces raw size: 20 literal.
+                    Icon(Icons.check_rounded, color: accent, size: AppConstants.buttonIconSize),
                 ],
               ),
             ),

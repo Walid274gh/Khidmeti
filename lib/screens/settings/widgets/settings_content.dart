@@ -2,18 +2,11 @@
 //
 // TASK 1 FIX — LanguageService ref.watch update.
 //
-// WHAT CHANGED:
-//   • `ref.watch(languageServiceProvider)` → `ref.read(languageServiceProvider)`
-//     for method calls (changeToFrench(), etc.). languageServiceProvider is now
-//     a plain Provider<LanguageService>, so watching it no longer subscribes to
-//     ChangeNotifier notifications.
-//   • `currentLanguageName` subtitle now reads from `currentLanguageNameProvider`
-//     (a reactive Provider<String> that watches localeStateNotifierProvider).
-//     This ensures the subtitle updates when the locale changes without requiring
-//     languageService to be a ChangeNotifierProvider.
-//
 // FIX [W1]: replaced `kToolbarHeight + 12` with `kToolbarHeight + AppConstants.spacingChipGap`
-//           — bare 12 promoted to the named 12dp token.
+// FIX [W6]: height: 64 → AppConstants.tileHeight (64.0) in _DeleteAccountTile.
+// FIX [W3]: all inline .withOpacity() calls in _DeleteAccountTile replaced with
+//           named opacity tokens from AppConstants. withValues(alpha:) is used
+//           throughout — the modern Flutter API replacing deprecated withOpacity().
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,13 +34,13 @@ class SettingsContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final languageService    = ref.read(languageServiceProvider);
+    final languageService     = ref.read(languageServiceProvider);
     final currentLanguageName = ref.watch(currentLanguageNameProvider);
-    final isActionInProgress = state.isSigningOut || state.isDeletingAccount;
+    final isActionInProgress  = state.isSigningOut || state.isDeletingAccount;
 
     return ListView(
       padding: EdgeInsetsDirectional.only(
-        // FIX [W1]: replaced bare `+ 12` with named token spacingChipGap (12.0).
+        // spacingChipGap (12.0) replaces the bare `+ 12` literal.
         top:    MediaQuery.of(context).padding.top + kToolbarHeight + AppConstants.spacingChipGap,
         bottom: MediaQuery.of(context).padding.bottom +
             kBottomNavigationBarHeight +
@@ -299,6 +292,9 @@ class SettingsContent extends ConsumerWidget {
 // PRIVATE — DELETE ACCOUNT TILE
 // FIX [W6]: width/height: 40 → AppConstants.iconContainerXl
 //           size: 20 (icon) → AppConstants.buttonIconSize
+//           height: 64 → AppConstants.tileHeight
+// FIX [W3]: all inline .withOpacity() replaced with named opacity tokens.
+//           withValues(alpha:) used throughout (modern API).
 // ============================================================================
 
 class _DeleteAccountTile extends StatelessWidget {
@@ -314,9 +310,13 @@ class _DeleteAccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme      = Theme.of(context);
     final isDark     = theme.brightness == Brightness.dark;
+
+    // [W3]: opacityDisabledColor (0.40) replaces magic 0.4 literal.
     final errorColor = isEnabled
         ? theme.colorScheme.error
-        : theme.colorScheme.error.withOpacity(0.4);
+        : theme.colorScheme.error.withValues(
+            alpha: AppConstants.opacityDisabledColor,
+          );
 
     return Semantics(
       label:   context.tr('settings.delete_account'),
@@ -329,31 +329,48 @@ class _DeleteAccountTile extends StatelessWidget {
           onTap:        isEnabled ? onTap : null,
           borderRadius: BorderRadius.circular(AppConstants.radiusTile),
           child: Container(
-            height: 64,
+            // [W6]: tileHeight = 64.0 — canonical settings row height token.
+            height: AppConstants.tileHeight,
             padding: const EdgeInsetsDirectional.symmetric(
               horizontal: AppConstants.paddingMd,
             ),
             decoration: BoxDecoration(
-              color: theme.colorScheme.error
-                  .withOpacity(isEnabled ? (isDark ? 0.08 : 0.05) : 0.03),
+              // [W3]: named opacity tokens replace magic literals.
+              // disabled → opacityDeleteFillDis (0.03)
+              // enabled dark → opacityTileFillLightEn (0.08) — shared value
+              // enabled light → opacityDeleteFillLightEn (0.05)
+              color: theme.colorScheme.error.withValues(
+                alpha: isEnabled
+                    ? (isDark
+                        ? AppConstants.opacityTileFillLightEn
+                        : AppConstants.opacityDeleteFillLightEn)
+                    : AppConstants.opacityDeleteFillDis,
+              ),
               borderRadius: BorderRadius.circular(AppConstants.radiusTile),
               border: Border.all(
-                color: theme.colorScheme.error
-                    .withOpacity(isEnabled ? 0.15 : 0.06),
+                // [W3]: opacityIconBgAlt (0.15) enabled / opacityDeleteBorderDis (0.06) disabled.
+                color: theme.colorScheme.error.withValues(
+                  alpha: isEnabled
+                      ? AppConstants.opacityIconBgAlt
+                      : AppConstants.opacityDeleteBorderDis,
+                ),
               ),
             ),
             child: Row(
               children: [
-                // FIX [W6]: 40×40 → AppConstants.iconContainerXl (40.0) — token.
                 Container(
                   width:  AppConstants.iconContainerXl,
                   height: AppConstants.iconContainerXl,
                   decoration: BoxDecoration(
-                    color:        errorColor.withOpacity(0.12),
+                    // [W3]: opacityIconBg (0.12) replaces magic 0.12 literal.
+                    color: errorColor.withValues(alpha: AppConstants.opacityIconBg),
                     borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                   ),
-                  // FIX [W6]: size: 20 → AppConstants.buttonIconSize (20.0) — token.
-                  child: Icon(AppIcons.deleteAccount, color: errorColor, size: AppConstants.buttonIconSize),
+                  child: Icon(
+                    AppIcons.deleteAccount,
+                    color: errorColor,
+                    size:  AppConstants.buttonIconSize,
+                  ),
                 ),
                 const SizedBox(width: AppConstants.spacingTileInner),
                 Expanded(
@@ -368,7 +385,8 @@ class _DeleteAccountTile extends StatelessWidget {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: errorColor.withOpacity(0.5),
+                  // [W3]: opacityChevron (0.50) replaces magic 0.5 literal.
+                  color: errorColor.withValues(alpha: AppConstants.opacityChevron),
                   size:  AppConstants.buttonIconSize,
                 ),
               ],
