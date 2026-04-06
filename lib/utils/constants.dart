@@ -101,6 +101,15 @@
 //   lineHeightTight = 1.4 — tighter line-height used in dense inline text
 //       (e.g. _LockoutWidget body). Standard body uses 1.6 in the textTheme.
 //
+// CHANGES (ui-apply pass — checkbox / role tab tokens):
+//   roleTabIconSize = 18.0 — icon size in RegisterRoleSelector tabs.
+//       Pending designer sign-off: 18dp sits between iconSizeXs (16) and
+//       iconSizeSm (20).
+//   checkboxSize = 22.0 — RegisterTermsCheckbox container size.
+//       TODO: confirm 20dp or 24dp (22dp is off the 4dp grid).
+//   checkboxIconSize = 14.0 — check icon size inside checkbox container.
+//   checkboxRadius = 6.0 — border radius of checkbox container.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -316,6 +325,24 @@ class AppConstants {
   /// Border radius of password strength bar segments.
   /// Note: 2dp; nearest token is radiusXs (4dp) — designer sign-off pending.
   static const double strengthBarRadius = 2.0;
+
+  // ── Checkbox / role tab tokens ────────────────────────────────────────────
+
+  /// Icon size in RegisterRoleSelector tabs.
+  /// Pending designer sign-off: 18dp sits between iconSizeXs (16) and
+  /// iconSizeSm (20) — confirm intended value before token is published.
+  static const double roleTabIconSize = 18.0;
+
+  /// Checkbox container size (width = height).
+  /// TODO: designer sign-off — confirm 20dp or 24dp (current 22dp is off-grid).
+  static const double checkboxSize = 22.0;
+
+  /// Check icon size inside the checkbox container.
+  static const double checkboxIconSize = 14.0;
+
+  /// Border radius of the checkbox container.
+  /// Note: 6dp sits between radiusXs (4) and radiusSm (8).
+  static const double checkboxRadius = 6.0;
 
   /// Opacity applied to accent-coloured box shadows (e.g. logo orb, submit button).
   static const double accentShadowOpacity = 0.35;

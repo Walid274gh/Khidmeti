@@ -90,6 +90,11 @@ class AppTheme {
   // ── Dark — muted error icon color (darkError @ 60%) ──────────────────────
   static const Color darkErrorMuted = Color(0x99F87171);
 
+  // ── Dark — social button surface (darkSurface @ 50%) ─────────────────────
+  // FIX [Col-OPAC]: darkSurface.withOpacity(0.5) → pre-baked const token.
+  // darkSurface #141028 @ 50% → alpha 0x80
+  static const Color darkSurfaceHalf = Color(0x80141028);
+
   // ── Light — app bar background (lightBackground @ 90%) ───────────────────
   static const Color lightBgAppBar = Color(0xE6F8F7FF);
 
