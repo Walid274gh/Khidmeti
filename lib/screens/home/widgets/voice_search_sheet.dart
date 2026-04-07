@@ -27,11 +27,6 @@ const double _kOrbOuter  = 88.0;
 const double _kOrbMid    = 72.0;
 const double _kOrbInner  = 56.0;
 
-// [MANUAL FIX — CircularProgressIndicator size]:
-// The orb spinner (24dp) is intentionally larger than button-embedded spinners
-// (AppConstants.iconSizeSm = 20dp) because it sits inside the 56dp orb inner
-// circle as the primary loading affordance — not embedded in a button.
-// Named constant added for clarity and to prevent future drift.
 const double _kOrbSpinnerSize = 24.0;
 
 class VoiceSearchSheet extends StatelessWidget {
@@ -249,11 +244,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ),
                       child: Center(
                         child: isLoading
-                            // [MANUAL FIX — CircularProgressIndicator]:
-                            // Orb spinner size is intentionally _kOrbSpinnerSize (24dp),
-                            // larger than the button-embedded standard (iconSizeSm=20dp).
-                            // It is the primary loading affordance inside a 56dp orb —
-                            // different visual context, confirmed intentional.
                             ? SizedBox(
                                 width:  _kOrbSpinnerSize,
                                 height: _kOrbSpinnerSize,
@@ -288,9 +278,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
                       ? Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // [C2 FIX]: was raw TextStyle(fontSize: fontSizeXxl, ...).
-                            // Replaced with textTheme.headlineSmall?.copyWith(...)
-                            // which maps to 20dp w600 — matching fontSizeXxl (20dp).
                             Text(
                               _elapsedLabel,
                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -318,7 +305,7 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
               ),
               const SizedBox(height: AppConstants.spacingMd),
 
-              // ── Result confirm (merged SearchResultCard, inline style) ─────
+              // ── Result confirm ────────────────────────────────────────────
               if (hasResult && intent != null) ...[
                 SearchResultCard(
                   intent:       intent,
@@ -352,8 +339,6 @@ class _VoiceSheetBodyState extends ConsumerState<_VoiceSheetBody>
 
               // ── Error ──────────────────────────────────────────────────────
               else if (hasError) ...[
-                // [C2 FIX]: was raw TextStyle(fontSize: fontSizeSm, color: ...).
-                // Replaced with textTheme.bodySmall?.copyWith(...).
                 Text(
                   searchState.error == 'mic_unavailable'
                       ? context.tr('home.voice_mic_unavailable')
@@ -464,15 +449,15 @@ class _WaveformState extends State<_Waveform>
             return Container(
               width:  3,
               height: _heights[i] * factor,
-              // [AUTO FIX W5]: was margin: const EdgeInsets.symmetric(horizontal: 2)
-              // — raw literal. Replaced with AppConstants.spacingXxs (2dp),
-              // the named token for sub-4dp micro-spacing.
               margin: const EdgeInsets.symmetric(
                   horizontal: AppConstants.spacingXxs),
               decoration: BoxDecoration(
                 color:        widget.color
                     .withOpacity((0.7 + factor * 0.3).clamp(0.0, 1.0)),
-                borderRadius: BorderRadius.circular(2),
+                // [AUTO FIX S-TOKEN]: was BorderRadius.circular(2) — raw literal.
+                // AppConstants.strengthBarRadius (2.0) is the correct token for
+                // small decorative bar segments. Value unchanged, now token-backed.
+                borderRadius: BorderRadius.circular(AppConstants.strengthBarRadius),
               ),
             );
           }),

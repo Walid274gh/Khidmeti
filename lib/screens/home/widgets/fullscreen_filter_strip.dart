@@ -55,9 +55,6 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
         scrollDirection: Axis.horizontal,
         physics:         const BouncingScrollPhysics(),
         itemCount:       chips.length,
-        // [AUTO FIX S3]: was SizedBox(width: AppConstants.spacingXs) = 4dp.
-        // Replaced with spacingChipGap (12dp) to match HomeServiceGrid's
-        // chip separator — visual consistency across both filter strips.
         separatorBuilder: (_, __) =>
             const SizedBox(width: AppConstants.spacingChipGap),
         itemBuilder: (context, i) {
@@ -71,11 +68,13 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
             child: GestureDetector(
               onTap: () => widget.onFilterChanged(type),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                // [AUTO FIX]: was Duration(milliseconds: 200) — raw literal.
+                // animDurationMicro token (200ms) is the canonical micro-interaction
+                // duration. Value unchanged, now consistent with home_service_grid
+                // and worker_story_modal chip animations.
+                duration: AppConstants.animDurationMicro,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingSm,
-                  // [W2 FIX]: was vertical: 10 — off 4dp grid.
-                  // Replaced with AppConstants.spacingSm (8dp on-grid token).
                   vertical:   AppConstants.spacingSm,
                 ),
                 decoration: BoxDecoration(

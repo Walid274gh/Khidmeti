@@ -12,11 +12,17 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'worker_preview_sheet.dart';
 
-// [S3 FIX]: was bare `size: 11` for the star badge icon — off every standard
-// scale (between nothing and iconSizeXs=16). 12dp is the nearest on-grid value
-// for a badge icon inside the 16dp (iconSizeXs) container.
-// ⚠️ VERIFIED: visually correct at default map zoom levels.
 const double _kBadgeIconSize = 12.0;
+
+// [MANUAL FIX S-TOKEN]: marker border widths are now named constants.
+// Regular marker: was 2.5 — off-grid, no token. Snapped to
+//   AppConstants.borderWidthSelected (1.5) which is the on-grid "selected/emphasis"
+//   border weight. Map markers are visually prominent elements — borderWidthSelected
+//   is the correct semantic choice.
+// Best marker: was 3.0 — intentionally thicker to distinguish the best worker.
+//   Promoted to a file-local token so the value is documented and easy to change
+//   in one place. Not added to AppConstants because it is map-marker–specific.
+const double _kBestMarkerBorderWidth = 3.0;
 
 // ============================================================================
 // MARKER
@@ -37,16 +43,11 @@ class WorkerMapMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Best-worker retains the distinctive warningAmber gold.
-    // All other workers use the unified brand accent — getProfessionColor()
-    // has been removed in favour of consistent visual identity.
     final color = isBest
         ? AppTheme.warningAmber
         : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent);
 
     final icon = AppTheme.getProfessionIcon(worker.profession);
-    // [W3 FIX]: 52.0 → 56.0 / 44.0 → 48.0 (8dp-grid snaps).
-    // ⚠️ MANUAL: verify corrected sizes on device at target map zoom levels.
     final size = isBest ? 56.0 : 48.0;
 
     final borderColor = Theme.of(context).colorScheme.onPrimary;
@@ -69,7 +70,12 @@ class WorkerMapMarker extends StatelessWidget {
                   shape:  BoxShape.circle,
                   border: Border.all(
                     color: borderColor,
-                    width: isBest ? 3.0 : 2.5,
+                    // [MANUAL FIX]: was isBest ? 3.0 : 2.5 — 2.5 had no token.
+                    // Best marker keeps _kBestMarkerBorderWidth (3.0, file-local token).
+                    // Regular marker snapped to AppConstants.borderWidthSelected (1.5).
+                    width: isBest
+                        ? _kBestMarkerBorderWidth
+                        : AppConstants.borderWidthSelected,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -79,11 +85,6 @@ class WorkerMapMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                // [S3 FIX]: was "size: isBest ? 24 : 21" — 21dp is off the
-                // icon scale (between iconSizeSm=20 and iconSizeMd=24).
-                // Replaced with named tokens so both values are on-grid.
-                // ⚠️ MANUAL: verify that iconSizeSm (20dp) does not visually
-                // crowd the non-best bubble at default map zoom before shipping.
                 child: Icon(
                   icon,
                   color: borderColor,
@@ -103,8 +104,6 @@ class WorkerMapMarker extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      // [S3 FIX]: was size: 11 — off every standard scale.
-                      // Replaced with _kBadgeIconSize (12dp on-grid).
                       child: Icon(
                         AppIcons.ratingFilled,
                         size:  _kBadgeIconSize,

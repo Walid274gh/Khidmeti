@@ -12,11 +12,11 @@ import '../../../widgets/sheet_chrome.dart';
 import 'home_worker_section.dart';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
+// _kTopPeek: the visible top strip of the screen that shows through the barrier
+// when the modal is fully open. 72dp = status bar (~24dp) + a comfortable peek
+// gap. If this ever needs to match another modal, promote to AppConstants.modalTopPeek.
 const double _kTopPeek         = 72.0;
 const double _kTopRadius       = AppConstants.radiusXxl;
-// [S1-DUP FIX]: removed `const double _kStatusDotSize = 8.0` — verbatim clone
-// of AppConstants.statusDotSize. Defeats the token system and will drift.
-// All usages below replaced with AppConstants.statusDotSize.
 const double _kDismissVelocity = 400.0;
 
 // ============================================================================
@@ -28,11 +28,14 @@ class WorkerStoryModal {
     HapticFeedback.mediumImpact();
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        opaque:              false,
-        barrierColor:        AppTheme.overlayDark,
-        barrierDismissible:  true,
-        transitionDuration:         const Duration(milliseconds: 280),
-        reverseTransitionDuration:  const Duration(milliseconds: 280),
+        opaque:             false,
+        barrierColor:       AppTheme.overlayDark,
+        barrierDismissible: true,
+        // [AUTO FIX ANIM-WARN]: was 280ms — home_screen.dart _transitionCtrl
+        // uses 300ms for page-level transitions. Both are now 300ms so
+        // entering and leaving the modal matches the home-screen transition.
+        transitionDuration:        const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, __, ___) => const _WorkerStoryPage(),
         transitionsBuilder: (_, animation, __, child) {
           final slide = Tween<Offset>(
@@ -140,11 +143,8 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                           ),
                           child: Row(
                             children: [
-                              // [S1-DUP FIX]: was _kStatusDotSize — local
-                              // duplicate of AppConstants.statusDotSize.
-                              // Replaced with the canonical token.
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
+                                duration: AppConstants.animDurationMicro,
                                 width:  AppConstants.statusDotSize,
                                 height: AppConstants.statusDotSize,
                                 decoration: BoxDecoration(
@@ -161,9 +161,6 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                               ),
                               const SizedBox(width: AppConstants.spacingSm),
 
-                              // [W6 FIX]: was TextStyle(fontSize: fontSizeLg, ...) — bypasses textTheme.
-                              // Replaced with textTheme.titleLarge?.copyWith(...) so the
-                              // modal title participates in the design system type scale.
                               Text(
                                 context.tr('worker_home.story_title'),
                                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -175,7 +172,7 @@ class _WorkerStoryPageState extends ConsumerState<_WorkerStoryPage> {
                               const Spacer(),
 
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
+                                duration: AppConstants.animDurationMicro,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppConstants.spacingMd,
                                   vertical:   AppConstants.spacingXs,

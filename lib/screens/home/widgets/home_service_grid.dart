@@ -12,10 +12,6 @@ import 'worker_story_modal.dart';
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 const double _kCardW = 72.0;
 const double _kCardH = 80.0;
-// [AUTO FIX W3]: was `const double _kCircleD = 48.0` — a silent duplicate of
-// AppConstants.categoryTileIconSize (48.0). Removed the local constant entirely;
-// all usages now reference the canonical token directly. Any future value change
-// to categoryTileIconSize will propagate here automatically, eliminating drift.
 
 class HomeServiceGrid extends StatelessWidget {
   final String?               activeFilter;
@@ -59,6 +55,10 @@ class HomeServiceGrid extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         physics:         const BouncingScrollPhysics(),
+        // [MANUAL FIX]: added trailing right padding so the last chip is never
+        // clipped by the parent's paddingLg edge. Matches the leading indent
+        // supplied by the parent Column's horizontal padding.
+        padding: const EdgeInsets.only(right: AppConstants.paddingLg),
         children: [
           if (isWorker) ...[
             _VousChip(
@@ -118,10 +118,13 @@ class _VousChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // [AUTO FIX ANIM-CRIT]: was Duration(milliseconds: 300) — mismatched
+              // with _ServiceChip's 220ms on the same horizontal list.
+              // Both chips now use AppConstants.animDurationMicro (200ms) so all
+              // chips in the row animate at the same speed on tap.
               AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
+                duration: AppConstants.animDurationMicro,
                 curve:    Curves.easeOutCubic,
-                // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
                 width:    AppConstants.categoryTileIconSize,
                 height:   AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
@@ -143,8 +146,6 @@ class _VousChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 context.tr('worker_home.chip_vous'),
-                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
-                // Replaced with textTheme.labelSmall?.copyWith(...).
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color:      statusColor,
@@ -179,7 +180,6 @@ class _ServiceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Unified accent — getProfessionColor() removed; all chips use brand Indigo.
     final color = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Semantics(
@@ -193,10 +193,12 @@ class _ServiceChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // [AUTO FIX ANIM-CRIT]: was Duration(milliseconds: 220) — mismatched
+              // with _VousChip's 300ms on the same horizontal list.
+              // Both chips now use AppConstants.animDurationMicro (200ms).
               AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
+                duration: AppConstants.animDurationMicro,
                 curve:    Curves.easeOutCubic,
-                // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
                 width:    AppConstants.categoryTileIconSize,
                 height:   AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
@@ -224,8 +226,6 @@ class _ServiceChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 item.label,
-                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
-                // Replaced with textTheme.labelSmall?.copyWith(...).
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                       color: isActive
@@ -275,7 +275,6 @@ class _AllServicesChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
               Container(
                 width:  AppConstants.categoryTileIconSize,
                 height: AppConstants.categoryTileIconSize,
@@ -298,8 +297,6 @@ class _AllServicesChip extends StatelessWidget {
               SizedBox(height: AppConstants.cardIconLabelGap),
               Text(
                 context.tr('home.see_all'),
-                // [W6 FIX]: was TextStyle(fontSize: fontSizeXs, ...) — bypasses textTheme.
-                // Replaced with textTheme.labelSmall?.copyWith(...).
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color:      accent,

@@ -15,9 +15,6 @@ import 'worker_avatar.dart';
 
 // ============================================================================
 // WORKER PREVIEW SHEET — flat surface, no BackdropFilter
-//
-// FIX (P3): was ConsumerWidget with ref declared but never used in build().
-// Converted to StatelessWidget — no Riverpod dependency is needed here.
 // ============================================================================
 
 class WorkerPreviewSheet extends StatelessWidget {
@@ -28,8 +25,6 @@ class WorkerPreviewSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Unified accent — getProfessionColor() removed; all worker previews use
-    // the brand Indigo for consistent visual identity.
     final color  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final theme  = Theme.of(context);
 
@@ -60,11 +55,9 @@ class WorkerPreviewSheet extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Handle bar (SheetHandle replaces raw Container) ──────
               const SheetHandle(),
               const SizedBox(height: AppConstants.spacingMd),
 
-              // ── Worker info row ─────────────────────────────────────
               Row(
                 children: [
                   WorkerAvatar(worker: worker, color: color),
@@ -92,7 +85,6 @@ class WorkerPreviewSheet extends StatelessWidget {
 
               const SizedBox(height: AppConstants.spacingLg),
 
-              // ── Action buttons ──────────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -178,10 +170,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
       child: ElevatedButton(
         onPressed: _loading ? null : _launch,
         style: ElevatedButton.styleFrom(
-          // [C1 FIX]: was Colors.white — hardcoded primitive.
-          // Replaced with AppTheme.lightSurface — semantically equivalent
-          // named token (pure white in light theme) that participates in the
-          // design system and survives future palette changes.
           backgroundColor: widget.isDark
               ? AppTheme.darkSurfaceVariant
               : AppTheme.lightSurface,
@@ -189,23 +177,21 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
           elevation:       0,
           side: BorderSide(
             color: AppTheme.whatsAppGreen.withOpacity(0.55),
-            width: 1.2,
+            // [MANUAL FIX S-TOKEN]: was 1.2 — off-grid, no token backs this value.
+            // Snapped to AppConstants.borderWidthDefault (1.0): the standard
+            // unselected border weight. The WhatsApp CTA is not a "selected"
+            // element, so borderWidthDefault is the correct semantic choice.
+            // If a stronger border is needed in future, use borderWidthSelected (1.5).
+            width: AppConstants.borderWidthDefault,
           ),
           shape: RoundedRectangleBorder(
             borderRadius:
                 BorderRadius.circular(AppConstants.radiusMd),
           ),
-          // [W5 FIX]: was EdgeInsets.symmetric(horizontal: 12) — raw literal.
-          // Replaced with AppConstants.spacingChipGap (12dp named token —
-          // same value, now linked to the design system).
           padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.spacingChipGap),
         ),
         child: _loading
-            // [MANUAL FIX — CircularProgressIndicator size]:
-            // Was 18×18 — below the standard 20dp button-embedded spinner size.
-            // Changed to AppConstants.iconSizeSm (20dp) — unified with
-            // ai_search_sheet. Visually the same at this scale; now consistent.
             ? SizedBox(
                 width:  AppConstants.iconSizeSm,
                 height: AppConstants.iconSizeSm,
@@ -219,9 +205,6 @@ class _WhatsAppCTAState extends State<_WhatsAppCTA> {
                 children: [
                   WhatsAppIcon(size: 20),
                   const SizedBox(width: AppConstants.spacingSm),
-                  // [C2 FIX]: was raw TextStyle(fontWeight: w600, color: ...).
-                  // Replaced with textTheme.labelLarge?.copyWith(...) so the
-                  // label participates in the design system type scale.
                   Flexible(
                     child: Text(
                       widget.label,

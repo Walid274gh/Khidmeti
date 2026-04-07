@@ -52,18 +52,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
 
   void _onTextChanged(String value) => setState(() {});
 
-  // FIX (Bug — toggle semantics, Critical P0):
-  // The original code called toggleServiceFilter() which CLEARS the filter
-  // when the same profession is already active. Concrete bug: user types
-  // "blombi", opens the map, comes back, types "blombi" again →
-  // toggleServiceFilter('plumber') sees plumber == activeFilter → sets next=null
-  // → filter CLEARED → map shows all workers instead of plumbers.
-  // Fix: use setServiceFilter() which always SETS — never toggles.
-  //
-  // FIX (UX — silent failure, P1 Marketplace):
-  // When ProfessionResolver.resolve() returns null (e.g. "j'ai un problème
-  // avec ma porte"), the old code returned silently. User had no feedback.
-  // Fix: show a SnackBar directing to "Recherche IA" for unrecognised queries.
   void _onSubmitted(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
@@ -118,7 +106,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
       return;
     }
 
-    // FIX: setServiceFilter() — direct set, no toggle semantics.
     final homeNotifier = ref.read(homeControllerProvider.notifier);
     homeNotifier.setServiceFilter(profession);
     homeNotifier.enterMapFullscreen();
@@ -151,7 +138,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX (Rebuild scope): select() limits rebuilds to isMapFullscreen only.
     final isMapFullscreen = ref.watch(
       homeControllerProvider.select((s) => s.isMapFullscreen),
     );
@@ -162,8 +148,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
     final border  = isDark ? AppTheme.darkBorder         : AppTheme.lightBorder;
     final hasText = _ctrl.text.isNotEmpty;
 
-    // [C1 FIX]: resolved once in build so the mic/AI icons can reference it
-    // without being const — colorScheme.onPrimary is a runtime value.
     final onPrimary = Theme.of(context).colorScheme.onPrimary;
 
     if (isMapFullscreen) return const SizedBox.shrink();
@@ -191,16 +175,11 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   child: TextField(
                     controller: _ctrl,
                     focusNode:  _focus,
-                    // [C2 FIX]: was inline TextStyle(fontSize: fontSizeMd, ...) —
-                    // bypasses textTheme. Replaced with bodyMedium?.copyWith(...)
-                    // so the input text participates in the design-system type scale.
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isDark ? AppTheme.darkText : AppTheme.lightText,
                     ),
                     decoration: InputDecoration(
                       hintText: context.tr('home.search_placeholder'),
-                      // [C2 FIX]: was inline TextStyle(color: subtext, fontSize: fontSizeMd).
-                      // Replaced with bodyMedium?.copyWith(...).
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: subtext,
                       ),
@@ -217,8 +196,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                     onSubmitted: _onSubmitted,
                   ),
                 ),
-                // [T1 FIX]: clear button now uses the same 48×48 tap-zone
-                // pattern as camera/mic — SizedBox outer + Center inner.
                 if (hasText)
                   Semantics(
                     label:  context.tr('common.close'),
@@ -241,8 +218,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                   margin: const EdgeInsets.symmetric(
                       horizontal: AppConstants.spacingXs),
                 ),
-                // [UI-FIX TOUCH]: outer SizedBox sets 48×48 tap zone;
-                // inner SizedBox keeps the visual at _kActionSize (40dp).
                 Semantics(
                   label:  context.tr('home.search_by_image'),
                   button: true,
@@ -263,7 +238,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                     ),
                   ),
                 ),
-                // [UI-FIX TOUCH]: same pattern for mic/voice button.
                 Semantics(
                   label:  context.tr('home.search_by_voice'),
                   button: true,
@@ -280,11 +254,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                             color: accent,
                             shape: BoxShape.circle,
                           ),
-                          // [C1 FIX]: was const Icon(..., color: Colors.white) —
-                          // hardcoded primitive. Replaced with onPrimary from
-                          // colorScheme — semantically correct for icon on
-                          // accent-filled container. const removed because
-                          // onPrimary is a runtime value.
                           child: Center(
                             child: Icon(AppIcons.mic, size: 18, color: onPrimary),
                           ),
@@ -298,9 +267,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
             ),
           ),
           const SizedBox(height: AppConstants.spacingSm),
-          // [T1-CRITICAL FIX]: AI pill GestureDetector had a 32dp tap zone —
-          // violated 48dp minimum. Now wrapped in SizedBox(height: _kTapZoneSize,
-          // width: double.infinity) + Center, matching the camera/mic pattern.
           SizedBox(
             height: _kTapZoneSize,
             width:  double.infinity,
@@ -336,11 +302,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                               shape: BoxShape.circle,
                               color: accent,
                             ),
-                            // [C1 FIX]: was const Icon(..., color: Colors.white) —
-                            // hardcoded primitive. Replaced with onPrimary from
-                            // colorScheme. const removed (runtime value).
-                            // [S3 FIX]: was size: 11 — off every standard scale.
-                            // Replaced with _kAiIconBadgeSize (12dp on-grid).
                             child: Center(
                               child: Icon(
                                 AppIcons.ai,
@@ -350,12 +311,17 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                             ),
                           ),
                           const SizedBox(width: AppConstants.spacingSm),
+                          // [AUTO FIX C2]: was TextStyle(fontSize: AppConstants.fontSizeSm,
+                          // fontWeight: FontWeight.w500, color: accent) — inline TextStyle
+                          // that bypasses the textTheme, rendering at 12dp while
+                          // textTheme.labelSmall is 11dp. Now uses labelSmall?.copyWith(...)
+                          // for consistency with ai_example_chips.dart and every other
+                          // label in this file.
                           Text(
                             context.tr('home.ai_search_label'),
-                            style: TextStyle(
-                              fontSize:   AppConstants.fontSizeSm,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w500,
-                              color:      accent,
+                              color: accent,
                             ),
                           ),
                         ],

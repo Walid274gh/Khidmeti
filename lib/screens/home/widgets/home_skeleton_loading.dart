@@ -13,12 +13,9 @@ const double _kBarHeight   = 48.0;
 const double _kAiBtnHeight = 32.0;
 const double _kCardW       = 72.0;
 const double _kCardH       = 80.0;
-const double _kCtaH        = 54.0;
-// [MANUAL FIX — skeleton bone radius]: was `AppConstants.spacingXs + 2`
-// arithmetic (evaluates to 6.0dp) repeated 4× throughout the top bar skeleton.
-// Extracted to a named file-local constant for clarity.
-// Using 6.0dp rather than 8.0dp (radiusSm) because these are small pill/line
-// bones that look visually incorrect at 8dp — design intent preserved.
+// [AUTO FIX S-DUP]: removed `const double _kCtaH = 54.0` — exact duplicate of
+// AppConstants.buttonHeight (54.0). All usages replaced with the canonical token
+// so the skeleton stays in sync if buttonHeight ever changes.
 const double _kBoneRadius  = 6.0;
 
 // ============================================================================
@@ -52,9 +49,6 @@ class HomeSkeletonLoading extends StatelessWidget {
                 _SkeletonTopBar(),
                 _SkeletonSearchSection(),
                 _SkeletonServicesSection(),
-                // [AUTO FIX S1]: was SizedBox(height: 80) — raw literal.
-                // Replaced with AppConstants.fabClearance (80.0) — named token
-                // that documents why this space exists (clears the FAB).
                 const SizedBox(height: AppConstants.fabClearance),
               ],
             ),
@@ -93,8 +87,7 @@ class _SkeletonTopBar extends StatelessWidget {
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // Hero question lines — [MANUAL FIX]: was `AppConstants.spacingXs + 2`
-          // arithmetic. Replaced with named constant _kBoneRadius (6.0dp).
+          // Hero question lines
           _Bone(w: 260, h: 32, r: _kBoneRadius),
           const SizedBox(height: AppConstants.spacingXs),
           _Bone(w: 180, h: 32, r: _kBoneRadius),
@@ -111,7 +104,6 @@ class _SkeletonTopBar extends StatelessWidget {
           // Location row
           Row(
             children: [
-              // [MANUAL FIX]: was `AppConstants.spacingXs + 2` → _kBoneRadius
               _Bone(w: 13, h: 13, r: _kBoneRadius, circle: true),
               const SizedBox(width: AppConstants.spacingXs),
               _Bone(w: 160, h: 12, r: 4),
@@ -186,7 +178,9 @@ class _SkeletonServicesSection extends StatelessWidget {
             child: _Bone(w: double.infinity, h: 1, r: 1),
           ),
 
-          _Bone(w: double.infinity, h: _kCtaH, r: AppConstants.radiusLg),
+          // [AUTO FIX S-DUP]: was _kCtaH (54.0) — local duplicate of
+          // AppConstants.buttonHeight. Replaced with the canonical token.
+          _Bone(w: double.infinity, h: AppConstants.buttonHeight, r: AppConstants.radiusLg),
         ],
       ),
     );
