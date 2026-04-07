@@ -430,8 +430,12 @@ class _DemandBar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppConstants.spacingSm),
+            // [AUTO FIX W4]: was BorderRadius.circular(2) — raw literal with
+            // no token backing. Replaced with AppConstants.strengthBarRadius
+            // (2dp) — the same token used for password strength bar segments.
+            // Both are decorative progress bars with intentionally tight rounding.
             ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppConstants.strengthBarRadius),
               child: Stack(
                 children: [
                   Container(

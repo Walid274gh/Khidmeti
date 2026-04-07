@@ -140,12 +140,17 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
             const SizedBox(height: AppConstants.spacingMd),
 
             // ── Search bar ─────────────────────────────────────────────
+            // [C2-CRITICAL AUTO FIX]: was AppConstants.searchBarHeight (44dp).
+            // Now uses AppConstants.buttonHeightMd (48dp) — the canonical
+            // interactive-element height, matching advanced_search_bar.dart.
+            // searchBarHeight constant in constants.dart has also been updated
+            // to 48dp for backward-compatibility of any other call sites.
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg,
               ),
               child: Container(
-                height: AppConstants.searchBarHeight,
+                height: AppConstants.buttonHeightMd,
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppTheme.darkSurface.withOpacity(0.60)

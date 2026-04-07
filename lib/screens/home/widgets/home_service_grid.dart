@@ -10,9 +10,12 @@ import 'home_categories_sheet.dart';
 import 'worker_story_modal.dart';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
-const double _kCardW    = 72.0;
-const double _kCardH    = 80.0;
-const double _kCircleD  = 48.0;
+const double _kCardW = 72.0;
+const double _kCardH = 80.0;
+// [AUTO FIX W3]: was `const double _kCircleD = 48.0` — a silent duplicate of
+// AppConstants.categoryTileIconSize (48.0). Removed the local constant entirely;
+// all usages now reference the canonical token directly. Any future value change
+// to categoryTileIconSize will propagate here automatically, eliminating drift.
 
 class HomeServiceGrid extends StatelessWidget {
   final String?               activeFilter;
@@ -118,8 +121,9 @@ class _VousChip extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve:    Curves.easeOutCubic,
-                width:    _kCircleD,
-                height:   _kCircleD,
+                // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
+                width:    AppConstants.categoryTileIconSize,
+                height:   AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: statusColor.withOpacity(isDark ? 0.12 : 0.09),
@@ -192,8 +196,9 @@ class _ServiceChip extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve:    Curves.easeOutCubic,
-                width:    _kCircleD,
-                height:   _kCircleD,
+                // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
+                width:    AppConstants.categoryTileIconSize,
+                height:   AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isActive
@@ -270,9 +275,10 @@ class _AllServicesChip extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // [AUTO FIX W3]: replaced _kCircleD with AppConstants.categoryTileIconSize
               Container(
-                width:  _kCircleD,
-                height: _kCircleD,
+                width:  AppConstants.categoryTileIconSize,
+                height: AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color:  accent.withOpacity(isDark ? 0.12 : 0.08),

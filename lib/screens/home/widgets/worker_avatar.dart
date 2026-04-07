@@ -10,12 +10,15 @@ import '../../../utils/constants.dart';
 //
 // [UI-FIX SIZE]: was 62×62dp — off 8dp grid.
 // Updated to 64×64dp (8dp grid canonical size).
-// Icon size updated from 30 → 28dp to maintain visual proportion.
+//
+// [MANUAL FIX W6]: icon size was 28dp (_kIconSize = 28.0) — undocumented and
+// off the 8dp icon grid (between iconSizeMd=24 and iconSizeLg=32).
+// Aligned to AppConstants.iconSizeMd (24dp): on-grid, proportional at ~37%
+// of the 64dp avatar container, and consistent with icon scale system-wide.
 // ============================================================================
 
 // Canonical avatar size — on 8dp grid.
 const double _kAvatarSize = 64.0;
-const double _kIconSize   = 28.0;
 
 class WorkerAvatar extends StatelessWidget {
   final WorkerModel worker;
@@ -38,11 +41,14 @@ class WorkerAvatar extends StatelessWidget {
               child: Image.network(
                 worker.profileImageUrl!,
                 fit:          BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Icon(AppIcons.person, color: color, size: _kIconSize),
+                errorBuilder: (_, __, ___) => Icon(
+                  AppIcons.person,
+                  color: color,
+                  size:  AppConstants.iconSizeMd,
+                ),
               ),
             )
-          : Icon(AppIcons.person, color: color, size: _kIconSize),
+          : Icon(AppIcons.person, color: color, size: AppConstants.iconSizeMd),
     );
   }
 }

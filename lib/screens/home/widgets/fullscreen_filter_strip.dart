@@ -55,8 +55,11 @@ class _FullscreenFilterStripState extends State<FullscreenFilterStrip> {
         scrollDirection: Axis.horizontal,
         physics:         const BouncingScrollPhysics(),
         itemCount:       chips.length,
+        // [AUTO FIX S3]: was SizedBox(width: AppConstants.spacingXs) = 4dp.
+        // Replaced with spacingChipGap (12dp) to match HomeServiceGrid's
+        // chip separator — visual consistency across both filter strips.
         separatorBuilder: (_, __) =>
-            const SizedBox(width: AppConstants.spacingXs),
+            const SizedBox(width: AppConstants.spacingChipGap),
         itemBuilder: (context, i) {
           final (type, label, icon) = chips[i];
           final isActive = widget.activeFilter == type;

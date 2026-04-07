@@ -52,7 +52,10 @@ class HomeSkeletonLoading extends StatelessWidget {
                 _SkeletonTopBar(),
                 _SkeletonSearchSection(),
                 _SkeletonServicesSection(),
-                const SizedBox(height: 80),
+                // [AUTO FIX S1]: was SizedBox(height: 80) — raw literal.
+                // Replaced with AppConstants.fabClearance (80.0) — named token
+                // that documents why this space exists (clears the FAB).
+                const SizedBox(height: AppConstants.fabClearance),
               ],
             ),
           ),

@@ -107,14 +107,22 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
           ),
 
         // Worker markers (fullscreen only — safe coordinates guaranteed)
+        // [C1-CRITICAL AUTO FIX]:
+        //   best-worker  width: 58 → 64, height: 68 → 72
+        //     WorkerMapMarker isBest: 56dp bubble + 16dp badge at right:-4
+        //     produces ~60dp horizontal extent + pointer triangle (7dp).
+        //     64×72 gives 4dp clearance on each axis — badge no longer clips.
+        //   regular      width: 50 → 52, height: 58 → 60
+        //     48dp bubble + pointer (7dp) = 55dp; 60dp height gives 5dp pad.
+        //     Width snapped to 52dp (nearest 4dp grid above 48dp bubble).
         if (isFullscreen && validWorkers.isNotEmpty)
           MarkerLayer(
             markers: validWorkers
                 .map(
                   (w) => Marker(
                     point:  LatLng(w.latitude!, w.longitude!),
-                    width:  w.id == bestWorkerId ? 58 : 50,
-                    height: w.id == bestWorkerId ? 68 : 58,
+                    width:  w.id == bestWorkerId ? 64 : 52,
+                    height: w.id == bestWorkerId ? 72 : 60,
                     child:  WorkerMapMarker(
                       worker:   w,
                       isBest:   w.id == bestWorkerId,

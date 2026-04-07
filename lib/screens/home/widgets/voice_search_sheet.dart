@@ -464,7 +464,11 @@ class _WaveformState extends State<_Waveform>
             return Container(
               width:  3,
               height: _heights[i] * factor,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+              // [AUTO FIX W5]: was margin: const EdgeInsets.symmetric(horizontal: 2)
+              // — raw literal. Replaced with AppConstants.spacingXxs (2dp),
+              // the named token for sub-4dp micro-spacing.
+              margin: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacingXxs),
               decoration: BoxDecoration(
                 color:        widget.color
                     .withOpacity((0.7 + factor * 0.3).clamp(0.0, 1.0)),

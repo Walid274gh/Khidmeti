@@ -263,7 +263,10 @@ class _IconCircle extends StatelessWidget {
         shape:  BoxShape.circle,
       ),
       child: Center(
-        child: Icon(icon, size: 18, color: color),
+        // [AUTO FIX W2]: was size: 18 — off-grid between iconSizeXs=16 and
+        // iconSizeSm=20. Raised to AppConstants.iconSizeSm (20dp) — on-grid
+        // and proportional to the 36dp iconContainerLg container.
+        child: Icon(icon, size: AppConstants.iconSizeSm, color: color),
       ),
     );
   }

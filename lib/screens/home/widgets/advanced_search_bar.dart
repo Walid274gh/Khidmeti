@@ -14,13 +14,18 @@ import 'ai_search_sheet.dart';
 import 'image_search_sheet.dart';
 import 'voice_search_sheet.dart';
 
-const double _kBarHeight   = 48.0;
+// [AUTO FIX S2]: _kBarHeight and _kTapZoneSize were raw 48.0 literals.
+// Now both reference AppConstants.buttonHeightMd — the single source of truth
+// for the 48dp interactive-element height. This also resolves the 44dp vs 48dp
+// search-bar height split with home_categories_sheet (which now also uses
+// AppConstants.buttonHeightMd via the updated searchBarHeight token).
+const double _kBarHeight   = AppConstants.buttonHeightMd;
 // [W1 FIX]: _kActionSize 38.0 → 40.0 (8dp-grid snap).
 // [UI-FIX TOUCH]: Visual size of camera/mic icons kept at 40dp.
 // The GestureDetector tap zone is enlarged to 48×48 via an outer SizedBox
 // so both the visual and the tap area are now correct.
 const double _kActionSize  = 40.0;
-const double _kTapZoneSize = 48.0;
+const double _kTapZoneSize = AppConstants.buttonHeightMd;
 // [W1 FIX]: _kAiBtnHeight 34.0 → 32.0 (8dp-grid snap).
 const double _kAiBtnHeight = 32.0;
 // [S3 FIX]: was bare `size: 11` — off every standard scale (iconSizeXs=16).

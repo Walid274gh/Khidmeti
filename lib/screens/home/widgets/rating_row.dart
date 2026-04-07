@@ -21,7 +21,9 @@ class RatingRow extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(AppIcons.ratingFilled, color: starColor, size: 14),
+        // [AUTO FIX W1]: was size: 14 — off the icon scale (iconSizeXs=16
+        // is the floor). Raised to AppConstants.iconSizeXs (16dp).
+        Icon(AppIcons.ratingFilled, color: starColor, size: AppConstants.iconSizeXs),
         // [UI-FIX SPACING]: was SizedBox(width: 3) — off 4dp grid.
         // Replaced with AppConstants.spacingXxs (2dp — nearest on-grid value).
         const SizedBox(width: AppConstants.spacingXxs),
