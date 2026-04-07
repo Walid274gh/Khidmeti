@@ -12,6 +12,7 @@ import '../../utils/localization.dart';
 import '../../utils/snack_utils.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../utils/validation_form.dart';
+import '../../widgets/text_field.dart';
 import 'widgets/auth_submit_button.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -175,19 +176,26 @@ class _FormState extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: AppConstants.spacingXl),
-          TextFormField(
-            controller:      emailController,
-            keyboardType:    TextInputType.emailAddress,
-            autofillHints:   const [AutofillHints.email],
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => onSubmit(),
-            decoration: InputDecoration(
-              labelText:  context.tr('login.email_label'),
-              hintText:   context.tr('login.email_hint'),
-              prefixIcon: const Icon(AppIcons.email),
-            ),
+
+          // FIX [UI-INPUT]: replaced raw TextFormField + manual InputDecoration
+          // with GlassTextField — the shared auth input widget used everywhere
+          // else in the auth module. Matches the email field pattern from
+          // login_form_card.dart.
+          GlassTextField(
+            controller:       emailController,
+            labelText:        context.tr('login.email_label'),
+            hintText:         context.tr('login.email_hint'),
+            prefixIcon:       AppIcons.email,
+            keyboardType:     TextInputType.emailAddress,
+            autofillHints:    const [AutofillHints.email],
+            textInputAction:  TextInputAction.done,
+            enabled:          !isLoading,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            maxLength:        AppConstants.maxEmailLength,
+            onEditingComplete: onSubmit,
             validator: (value) => FormValidators.validateEmail(value, context),
           ),
+
           if (errorMessage != null) ...[
             const SizedBox(height: AppConstants.spacingSm),
             Text(

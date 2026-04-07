@@ -220,14 +220,18 @@ class _VerificationCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // FIX [Col-OPAC]: replaced accent.withOpacity(0.12) →
+          // AppTheme.accentSelectedFill and accent.withOpacity(0.25) →
+          // AppTheme.accentBorderSubtle — both are pre-baked const tokens.
           Container(
             width:  AppConstants.iconContainerFeature,
             height: AppConstants.iconContainerFeature,
-            decoration: BoxDecoration(
-              color:  accent.withOpacity(0.12),
+            decoration: const BoxDecoration(
+              color:  AppTheme.accentSelectedFill,
               shape:  BoxShape.circle,
-              border: Border.all(
-                color: accent.withOpacity(0.25), width: 0.5),
+              border: Border.fromBorderSide(
+                BorderSide(color: AppTheme.accentBorderSubtle, width: 0.5),
+              ),
             ),
             child: Icon(Icons.mark_email_unread_outlined,
                 color: accent, size: 26),
@@ -361,14 +365,17 @@ class _VerificationCard extends StatelessWidget {
             ),
           ),
 
+          // FIX [Col-OPAC]: replaced darkSecondaryText.withOpacity(0.6) /
+          // lightSecondaryText.withOpacity(0.6) → pre-baked const tokens
+          // AppTheme.darkSecondaryTextMuted / lightSecondaryTextMuted.
           Text(
             context.tr('verify_email.change_account_hint'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: AppConstants.fontSizeXxs,
               color: isDark
-                  ? AppTheme.darkSecondaryText.withOpacity(0.6)
-                  : AppTheme.lightSecondaryText.withOpacity(0.6),
+                  ? AppTheme.darkSecondaryTextMuted
+                  : AppTheme.lightSecondaryTextMuted,
             ),
           ),
         ],
