@@ -119,29 +119,29 @@ class LoginFormCard extends StatelessWidget {
             SizedBox(height: AppConstants.spacingSm),
 
             // Forgot password — RTL-safe alignment
+            // FIX [A11Y-DUP]: removed outer Semantics(button: true, label:)
+            // wrapper. TextButton with a visible text child already exposes
+            // correct button semantics. The redundant wrapper caused double-
+            // labelling, which harms TalkBack / VoiceOver users.
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: Semantics(
-                button: true,
-                label:  context.tr('login.forgot_password'),
-                child: TextButton(
-                  onPressed: (state.isLoading || _isLockedOut)
-                      ? null
-                      : onForgotPassword,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.paddingSm,
-                      vertical:   AppConstants.paddingXs,
-                    ),
-                    minimumSize: const Size(48, 48),
+              child: TextButton(
+                onPressed: (state.isLoading || _isLockedOut)
+                    ? null
+                    : onForgotPassword,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingSm,
+                    vertical:   AppConstants.paddingXs,
                   ),
-                  child: Text(
-                    context.tr('login.forgot_password'),
-                    style: TextStyle(
-                      color:      isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-                      fontWeight: FontWeight.w600,
-                      fontSize:   AppConstants.fontSizeCaption,
-                    ),
+                  minimumSize: const Size(48, 48),
+                ),
+                child: Text(
+                  context.tr('login.forgot_password'),
+                  style: TextStyle(
+                    color:      isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize:   AppConstants.fontSizeCaption,
                   ),
                 ),
               ),

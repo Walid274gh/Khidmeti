@@ -38,22 +38,22 @@ class AuthSwitchCta extends StatelessWidget {
                 : AppTheme.lightSecondaryText,
           ),
         ),
-        Semantics(
-          button: true,
-          label:  context.tr(linkKey),
-          child: TextButton(
-            onPressed: () => context.go(route),
-            style: TextButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingSm),
-            ),
-            child: Text(
-              context.tr(linkKey),
-              style: TextStyle(
-                color:      isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-                fontWeight: FontWeight.w700,
-              ),
+        // FIX [A11Y-DUP]: removed outer Semantics(button: true, label:) wrapper.
+        // TextButton with a visible text child already exposes correct button
+        // semantics to screen readers. The redundant wrapper caused double-
+        // labelling, which harms TalkBack / VoiceOver users.
+        TextButton(
+          onPressed: () => context.go(route),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingSm),
+          ),
+          child: Text(
+            context.tr(linkKey),
+            style: TextStyle(
+              color:      isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),

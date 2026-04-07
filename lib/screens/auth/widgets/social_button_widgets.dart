@@ -162,6 +162,9 @@ class FacebookLogo extends StatelessWidget {
 
 // ============================================================================
 // APPLE LOGO
+// FIX [Col-OPAC]: Colors.white / Colors.black → AppTheme.darkText / lightText
+// These are semantic theme tokens — they adapt correctly if the palette ever
+// changes, whereas Colors.white / Colors.black are hardcoded absolutes.
 // ============================================================================
 
 class AppleLogo extends StatelessWidget {
@@ -174,7 +177,7 @@ class AppleLogo extends StatelessWidget {
       AppSocialAssets.apple,
       fit: BoxFit.contain,
       colorFilter: ColorFilter.mode(
-        isDark ? Colors.white : Colors.black,
+        isDark ? AppTheme.darkText : AppTheme.lightText,
         BlendMode.srcIn,
       ),
     );
