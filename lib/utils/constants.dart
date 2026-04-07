@@ -116,6 +116,17 @@
 //          the 44dp vs 48dp split between home_categories_sheet and
 //          advanced_search_bar. Single source of truth.
 //
+// CHANGES (ui-apply AUTO — token additions):
+//   [AUTO] paddingInputV = 12.0 — vertical padding for textButtonTheme;
+//          no prior matching token. Backs the 12dp vertical padding on TextButtons.
+//   [AUTO] fontSizeAppBar = 17.0 — AppBar titleTextStyle font size token;
+//          replaces raw 17 literal in both dark and light appBarTheme.
+//   [AUTO] backButtonSize = 48.0 — back button touch target raised from 44dp
+//          (Apple HIG minimum) to 48dp (Material minimum). The inline comment
+//          "meets the 44dp minimum" in register_header.dart was factually wrong
+//          for Material; this token and the updated comment reflect the correct
+//          platform requirement.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -169,11 +180,15 @@ class AppConstants {
   static const double spacingChipGap = 12.0;
 
   // Padding
-  static const double paddingXs = 4.0;
-  static const double paddingSm = 8.0;
-  static const double paddingMd = 16.0;
-  static const double paddingLg = 24.0;
-  static const double paddingXl = 32.0;
+  static const double paddingXs     = 4.0;
+  static const double paddingSm     = 8.0;
+  static const double paddingMd     = 16.0;
+  static const double paddingLg     = 24.0;
+  static const double paddingXl     = 32.0;
+
+  /// Vertical padding for TextButton theme and similar compact interactive rows.
+  /// 12dp sits between paddingSm (8) and paddingMd (16) — deliberate compact value.
+  static const double paddingInputV = 12.0;
 
   // Radius
   static const double radiusXs     = 4.0;
@@ -190,6 +205,11 @@ class AppConstants {
   static const double buttonHeight   = 54.0;
   static const double buttonHeightMd = 48.0;
   static const double buttonHeightSm = 44.0;
+
+  /// Back button touch target size.
+  /// 48dp meets the Material Design minimum interactive touch target.
+  /// (Previous value was 44dp — meets Apple HIG but not Material 48dp minimum.)
+  static const double backButtonSize = 48.0;
 
   /// Canonical button label font size.
   /// [H2]: tokenises the raw literal 15 in auth_submit_button.dart and
@@ -263,6 +283,9 @@ class AppConstants {
   static const double fontSizeXl      = 18.0;
   static const double fontSizeXxl     = 20.0;
   static const double fontSizeDisplay = 24.0;
+
+  /// AppBar title font size — replaces raw literal 17 in both theme definitions.
+  static const double fontSizeAppBar = 17.0;
 
   // Line heights
   /// Tight line-height for dense inline text (e.g. lockout banner body).

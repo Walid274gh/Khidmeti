@@ -5,6 +5,26 @@
 //   Raised to 11dp in both themes to meet platform accessibility minimums.
 //   All widgets using textTheme.labelSmall automatically benefit — no
 //   call-site changes required.
+//
+// [AUTO FIX — opacity-baked tokens added]:
+//   accentBorderSubtle      = Color(0x404F46E5)  — replaces accent.withOpacity(0.25)
+//                             in _VerificationCard icon container border.
+//   darkSecondaryTextMuted  = Color(0x997A6E96)  — replaces darkSecondaryText.withOpacity(0.6)
+//   lightSecondaryTextMuted = Color(0x996B64A0)  — replaces lightSecondaryText.withOpacity(0.6)
+//   Both muted tokens used in email_verification_screen change_account_hint text.
+//
+// [AUTO FIX — raw literal → token in theme definitions]:
+//   textButtonTheme padding:
+//     horizontal: 16 → AppConstants.paddingMd
+//     vertical:   12 → AppConstants.paddingInputV
+//   outlinedButtonTheme padding:
+//     horizontal: 28 → AppConstants.paddingLg (24dp — nearest on-grid value)
+//     vertical:   16 → AppConstants.paddingMd
+//   appBarTheme titleTextStyle fontSize: 17 → AppConstants.fontSizeAppBar
+//   snackBarTheme insetPadding: EdgeInsets.all(16) → EdgeInsets.all(AppConstants.paddingMd)
+//   inputDecorationTheme contentPadding:
+//     horizontal: 18 → AppConstants.inputPaddingH
+//     vertical:   15 → AppConstants.inputPaddingV
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,7 +100,15 @@ class AppTheme {
   static const Color lightAccentHalo      = Color(0x124F46E5);
   static const Color accentShadow         = Color(0x594F46E5);
   static const Color accentDisabledFill   = Color(0x734F46E5);
+
+  /// Accent icon container fill — replaces accent.withOpacity(0.12).
+  /// Used in _VerificationCard icon container background (≈ 15% alpha).
   static const Color accentSelectedFill   = Color(0x264F46E5);
+
+  /// Accent icon container border — replaces accent.withOpacity(0.25).
+  /// Used in _VerificationCard icon container border (≈ 25% alpha = 0x40).
+  static const Color accentBorderSubtle   = Color(0x404F46E5);
+
   static const Color sheetHandleDark      = Color(0x26FFFFFF);
   static const Color sheetHandleLight     = Color(0x1F000000);
   static const Color darkWarningSubtle    = Color(0x14FBBF24);
@@ -96,6 +124,14 @@ class AppTheme {
   static const Color lightBackButtonFill  = Color(0x0F000000);
   static const Color darkCheckboxBorder   = Color(0x40FFFFFF);
   static const Color lightCheckboxBorder  = Color(0x33000000);
+
+  /// Muted dark secondary text — replaces darkSecondaryText.withOpacity(0.6).
+  /// Used for low-emphasis hint text in dark theme (60% alpha = 0x99).
+  static const Color darkSecondaryTextMuted  = Color(0x997A6E96);
+
+  /// Muted light secondary text — replaces lightSecondaryText.withOpacity(0.6).
+  /// Used for low-emphasis hint text in light theme (60% alpha = 0x99).
+  static const Color lightSecondaryTextMuted = Color(0x996B64A0);
 
   // ==========================================================
   // 🎨 OVERLAY TOKENS
@@ -269,7 +305,10 @@ class AppTheme {
         labelStyle:         const TextStyle(color: darkSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         floatingLabelStyle: const TextStyle(color: darkAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: darkHintText, fontFamily: 'Inter'),
-        contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        contentPadding:     const EdgeInsets.symmetric(
+          horizontal: AppConstants.inputPaddingH,
+          vertical:   AppConstants.inputPaddingV,
+        ),
         prefixIconColor:    darkSecondaryText,
         suffixIconColor:    darkSecondaryText,
       ),
@@ -286,7 +325,10 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: darkAccent,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingMd,
+            vertical:   AppConstants.paddingInputV,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMd)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
@@ -295,7 +337,10 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: darkText,
           side: const BorderSide(color: darkBorderSubtle, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingLg,
+            vertical:   AppConstants.paddingMd,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
@@ -310,7 +355,13 @@ class AppTheme {
           statusBarColor:          Colors.transparent,
           statusBarIconBrightness: Brightness.light,
         ),
-        titleTextStyle: TextStyle(color: darkText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
+        titleTextStyle: TextStyle(
+          color:         darkText,
+          fontSize:      AppConstants.fontSizeAppBar,
+          fontWeight:    FontWeight.w600,
+          fontFamily:    'Inter',
+          letterSpacing: -0.3,
+        ),
         iconTheme:        IconThemeData(color: darkAccent, size: 24),
         actionsIconTheme: IconThemeData(color: darkText),
       ),
@@ -332,7 +383,7 @@ class AppTheme {
         ),
         behavior:     SnackBarBehavior.floating,
         elevation:    0,
-        insetPadding: const EdgeInsets.all(16),
+        insetPadding: const EdgeInsets.all(AppConstants.paddingMd),
       ),
       dialogTheme: DialogTheme(
         backgroundColor: darkSurface,
@@ -462,7 +513,10 @@ class AppTheme {
         labelStyle:         const TextStyle(color: lightSecondaryText, fontFamily: 'Inter', fontWeight: FontWeight.w400),
         floatingLabelStyle: const TextStyle(color: lightAccent, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         hintStyle:          const TextStyle(color: lightHintText, fontFamily: 'Inter'),
-        contentPadding:     const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        contentPadding:     const EdgeInsets.symmetric(
+          horizontal: AppConstants.inputPaddingH,
+          vertical:   AppConstants.inputPaddingV,
+        ),
         prefixIconColor:    lightSecondaryText,
         suffixIconColor:    lightSecondaryText,
       ),
@@ -479,7 +533,10 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: lightAccent,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingMd,
+            vertical:   AppConstants.paddingInputV,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMd)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
@@ -488,7 +545,10 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: lightText,
           side: const BorderSide(color: lightBorder, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingLg,
+            vertical:   AppConstants.paddingMd,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusLg)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
@@ -503,7 +563,13 @@ class AppTheme {
           statusBarColor:          Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
         ),
-        titleTextStyle:   TextStyle(color: lightText, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'Inter', letterSpacing: -0.3),
+        titleTextStyle: TextStyle(
+          color:         lightText,
+          fontSize:      AppConstants.fontSizeAppBar,
+          fontWeight:    FontWeight.w600,
+          fontFamily:    'Inter',
+          letterSpacing: -0.3,
+        ),
         iconTheme:        IconThemeData(color: lightAccent, size: 24),
         actionsIconTheme: IconThemeData(color: lightText),
       ),
@@ -525,7 +591,7 @@ class AppTheme {
         ),
         behavior:     SnackBarBehavior.floating,
         elevation:    4,
-        insetPadding: const EdgeInsets.all(16),
+        insetPadding: const EdgeInsets.all(AppConstants.paddingMd),
       ),
       dialogTheme: DialogTheme(
         backgroundColor: lightSurface,
