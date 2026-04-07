@@ -1,4 +1,4 @@
-// lib/screens/auth/widgets/register_header.dart
+// lib/screens/auth/register_header.dart
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -28,6 +28,11 @@ class RegisterHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Back button
+        // FIX [MANUAL]: raised touch target from AppConstants.buttonHeightSm
+        // (44dp) to AppConstants.backButtonSize (48dp). The previous comment
+        // "meets the 44dp minimum" was factually wrong for Material — the
+        // Material Design minimum interactive touch target is 48dp. Apple HIG
+        // allows 44dp, but 48dp satisfies both platforms simultaneously.
         Semantics(
           button: true,
           label:  context.tr('common.back'),
@@ -36,11 +41,8 @@ class RegisterHeader extends StatelessWidget {
                 ? context.pop()
                 : context.go(AppRoutes.login),
             child: Container(
-              // FIX [C1/P1]: was raw literals width:44, height:44 — replaced
-              // with AppConstants.buttonHeightSm (44dp). Touch target meets
-              // the 44dp minimum.
-              width:  AppConstants.buttonHeightSm,
-              height: AppConstants.buttonHeightSm,
+              width:  AppConstants.backButtonSize,
+              height: AppConstants.backButtonSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 // FIX [C1/P1]: was Colors.white.withOpacity(0.08) /
