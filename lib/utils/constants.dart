@@ -110,6 +110,12 @@
 //   checkboxIconSize = 14.0 — check icon size inside checkbox container.
 //   checkboxRadius = 6.0 — border radius of checkbox container.
 //
+// CHANGES (ui-apply AUTO — grid alignment):
+//   [AUTO] sectionCardGap: 10.0 → 12.0 — snapped to nearest 4dp grid value.
+//   [AUTO] searchBarHeight: 44.0 → 48.0 — aligned to buttonHeightMd to resolve
+//          the 44dp vs 48dp split between home_categories_sheet and
+//          advanced_search_bar. Single source of truth.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -220,7 +226,8 @@ class AppConstants {
   // Sections
   static const double sectionLabelMB = 12.0;
   static const double sectionMT      = 24.0;
-  static const double sectionCardGap = 10.0;
+  // [AUTO] sectionCardGap: 10.0 → 12.0 — snapped to nearest 4dp grid value.
+  static const double sectionCardGap = 12.0;
 
   // Badges / chips / tile gaps
   // TODO(S3-grid-audit): spacingTileInner (14dp) and badgePaddingV (3dp) are
@@ -363,7 +370,11 @@ class AppConstants {
   static const int fallbackWorkerQueryLimit = 100;
 
   // Search / input
-  static const double searchBarHeight      = 44.0;
+  // [AUTO] searchBarHeight: 44.0 → 48.0 — aligned to buttonHeightMd.
+  // Resolves the 44dp vs 48dp split between home_categories_sheet and
+  // advanced_search_bar. Both now reference buttonHeightMd as the single
+  // source of truth; this constant is kept for backward-compat call sites.
+  static const double searchBarHeight      = 48.0;
   static const double categoryTileIconSize = 48.0;
 
   /// Canonical row height for SettingsTile, SignOutTile, _DeleteAccountTile.
