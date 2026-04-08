@@ -1,4 +1,8 @@
 // lib/screens/service_request/rating_screen.dart
+//
+// [C2] FIX: height: 52 (submit button) → AppConstants.buttonHeightMd (48dp).
+// [W4] FIX: foregroundColor: Colors.black → AppTheme.lightText.
+//      Also color: Colors.black in spinner + label text → AppTheme.lightText.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -50,7 +54,6 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
     final notifier     = ref.read(ratingControllerProvider(widget.requestId).notifier);
     final requestAsync = ref.watch(serviceRequestStreamProvider(widget.requestId));
 
-    // FIX: Navigation on success — ref.listen, never in build().
     ref.listen<RatingState>(
       ratingControllerProvider(widget.requestId),
       (_, next) {
@@ -81,8 +84,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                       child: GestureDetector(
                         onTap: () => context.pop(),
                         child: Container(
-                          width:  48,
-                          height: 48,
+                          width:  AppConstants.backButtonSize,
+                          height: AppConstants.backButtonSize,
                           decoration: BoxDecoration(
                             color: (isDark ? Colors.white : Colors.black)
                                 .withOpacity(0.07),
@@ -175,7 +178,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
 
                       const SizedBox(height: AppConstants.spacingXl),
 
-                      // Stars row — delegates setStars to controller
+                      // Stars row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(5, (i) {
@@ -187,7 +190,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                               onTap: () => notifier.setStars(i + 1),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6),
+                                    horizontal: AppConstants.spacingSm),
                                 child: Icon(
                                   filled
                                       ? AppIcons.ratingFilled
@@ -270,7 +273,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 ),
                 child: SizedBox(
                   width:  double.infinity,
-                  height: 52,
+                  // [C2] FIX: height: 52 → buttonHeightMd (48dp)
+                  height: AppConstants.buttonHeightMd,
                   child: ElevatedButton(
                     onPressed: state.canSubmit
                         ? () => notifier.submit(
@@ -281,7 +285,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
-                      foregroundColor: Colors.black,
+                      // [W4] FIX: Colors.black → AppTheme.lightText
+                      foregroundColor: AppTheme.lightText,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius:
@@ -289,11 +294,13 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                       ),
                     ),
                     child: state.isSubmitting
-                        ? const SizedBox(
-                            width:  20,
-                            height: 20,
+                        ? SizedBox(
+                            width:  AppConstants.spinnerSizeLg,
+                            height: AppConstants.spinnerSizeLg,
                             child:  CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.black),
+                                strokeWidth: 2,
+                                // [W4] FIX: Colors.black → AppTheme.lightText
+                                color: AppTheme.lightText),
                           )
                         : Text(
                             context.tr('rating.submit'),
@@ -301,7 +308,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                                 .textTheme
                                 .labelLarge
                                 ?.copyWith(
-                                  color:      Colors.black,
+                                  // [W4] FIX: Colors.black → AppTheme.lightText
+                                  color:      AppTheme.lightText,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
