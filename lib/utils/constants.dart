@@ -127,6 +127,17 @@
 //          for Material; this token and the updated comment reflect the correct
 //          platform requirement.
 //
+// CHANGES (ui-apply MANUAL — service_request tokens):
+//   [MANUAL] serviceIconContainerSize = 40.0 — canonical service icon container
+//            used in request_card and tracking_body. Replaces raw 40/44 literals;
+//            40dp is the more-common usage and the canonical value.
+//   [MANUAL] monoFontFamily = 'monospace' — replaces the raw 'monospace' string
+//            literal used for coordinate display in location_visual.dart.
+//   [MANUAL] radioOuterSize = 16.0 — outer radio dot in priority_selector;
+//            snaps 15dp to 4dp grid.
+//   [MANUAL] radioInnerSize = 6.0 — inner radio dot in priority_selector;
+//            snaps 5dp to nearest even value.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -275,6 +286,10 @@ class AppConstants {
   static const double heroFontSize    = 32.0;
   static const double fontSizeTileLg  = 15.0;
   static const double fontSizeXxs     = 11.0;
+  /// NOTE: fontSizeXs = 10dp is below the 11dp platform minimum (Apple HIG /
+  /// Android MDC). All new code must use fontSizeXxs (11dp) instead.
+  /// This token is kept only for backward-compat reference — do NOT use in
+  /// new widgets. Scheduled for removal in the next design-system audit pass.
   static const double fontSizeXs      = 10.0;
   static const double fontSizeSm      = 12.0;
   static const double fontSizeCaption = 13.0;
@@ -300,6 +315,7 @@ class AppConstants {
   static const double iconSizeXl = 48.0;
 
   /// Mid-scale icon token between iconSizeXl (48) and iconSizeHero (80).
+  /// Also used as the canonical picker-button height (64dp on 8dp grid).
   static const double iconSizeLg2 = 64.0;
 
   /// Hero-scale icon used in full-screen state illustrations.
@@ -314,6 +330,11 @@ class AppConstants {
 
   /// Feature icon container — circular container wrapping a content icon.
   static const double iconContainerFeature = 56.0;
+
+  /// Canonical service icon container size (width = height).
+  /// Used in request_card, tracking_body service summary rows.
+  /// Chosen value: 40dp (more common of the 40/44 split found in audit).
+  static const double serviceIconContainerSize = 40.0;
 
   /// Emoji / flag icon size used in SheetOption rows.
   static const double emojiIconSize = 22.0;
@@ -380,6 +401,22 @@ class AppConstants {
   /// Password length threshold above [minPasswordLength] that awards the
   /// "good length" bonus point in the strength scorer.
   static const int goodPasswordLength = 10;
+
+  // ── Priority selector radio dots ──────────────────────────────────────────
+
+  /// Outer radio dot size in priority_selector.dart.
+  /// Snaps the original 15dp off-grid value to the 4dp grid (16dp).
+  static const double radioOuterSize = 16.0;
+
+  /// Inner radio dot (selected fill) size in priority_selector.dart.
+  /// Snaps the original 5dp off-grid value to 6dp.
+  static const double radioInnerSize = 6.0;
+
+  // ── Typography tokens ─────────────────────────────────────────────────────
+
+  /// Monospace font family name — used for coordinate / technical displays.
+  /// Replace with a custom monospace font name here if the project adds one.
+  static const String monoFontFamily = 'monospace';
 
   static const double filterChipHeight   = 36.0;
   static const double filterChipPaddingV = 8.0;
