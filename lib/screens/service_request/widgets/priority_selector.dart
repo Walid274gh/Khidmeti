@@ -1,4 +1,9 @@
 // lib/screens/service_request/widgets/priority_selector.dart
+//
+// [MANUAL] FIX: Radio outer dot width/height: 15dp (off-grid) →
+//      AppConstants.radioOuterSize (16dp, snaps to 4dp grid).
+// [MANUAL] FIX: Inner radio dot width/height: 5dp (off-grid) →
+//      AppConstants.radioInnerSize (6dp).
 
 import 'package:flutter/material.dart';
 
@@ -10,7 +15,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // PRIORITY SELECTOR
 // Side-by-side "Normal / Urgent" cards with a radio dot indicator.
-// Selection state fully animated; no business logic inside.
 // ============================================================================
 
 class PrioritySelector extends StatelessWidget {
@@ -136,8 +140,9 @@ class _PriorityCard extends StatelessWidget {
                   // Radio dot
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 15,
-                    height: 15,
+                    // [MANUAL] FIX: 15dp (off-grid) → radioOuterSize (16dp)
+                    width:  AppConstants.radioOuterSize,
+                    height: AppConstants.radioOuterSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isSelected ? cardColor : Colors.transparent,
@@ -153,8 +158,9 @@ class _PriorityCard extends StatelessWidget {
                     child: isSelected
                         ? Center(
                             child: Container(
-                              width: 5,
-                              height: 5,
+                              // [MANUAL] FIX: 5dp (off-grid) → radioInnerSize (6dp)
+                              width:  AppConstants.radioInnerSize,
+                              height: AppConstants.radioInnerSize,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,

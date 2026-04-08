@@ -205,12 +205,6 @@ class _CentralPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pinColor = isFailed
-        ? AppTheme.signOutRed
-        : isDetected
-            ? accentColor
-            : (isDark ? AppTheme.darkSurfaceVariant : AppTheme.lightSurfaceVariant);
-
     final iconColor = isFailed
         ? AppTheme.signOutRed
         : isDetected
@@ -369,14 +363,15 @@ class _AddressFooter extends StatelessWidget {
             ],
           ),
 
-          // Coordinates badge
+          // Coordinates badge — [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+          // [MANUAL] FIX: raw 'monospace' string → AppConstants.monoFontFamily
           if (_isDetected && latitude != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppConstants.spacingXs),
             Text(
               '${latitude!.toStringAsFixed(4)}, ${longitude!.toStringAsFixed(4)}',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontFamily: 'monospace',
-                    fontSize: AppConstants.fontSizeXs,
+                    fontFamily: AppConstants.monoFontFamily,
+                    fontSize: AppConstants.fontSizeXxs,
                     color: accentColor.withOpacity(0.65),
                   ),
             ),

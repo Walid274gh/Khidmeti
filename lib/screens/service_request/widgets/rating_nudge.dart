@@ -1,4 +1,8 @@
 // lib/screens/service_request/widgets/rating_nudge.dart
+//
+// [W5] FIX: EdgeInsets.symmetric(horizontal: 12, vertical: 6) on CTA button:
+//      vertical: 6dp (off-grid) → AppConstants.spacingXs (4dp, on-grid).
+//      horizontal: 12dp → AppConstants.spacingChipGap (12dp token).
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +14,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // RATING NUDGE
 // CTA banner shown when job is completed but not yet rated.
-// Extracted from request_tracking_screen.dart (one-class-per-file rule).
 // ============================================================================
 
 class RatingNudge extends StatelessWidget {
@@ -54,8 +57,12 @@ class RatingNudge extends StatelessWidget {
                 AppRoutes.clientRating.replaceAll(':id', requestId),
               ),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                // [W5] FIX: horizontal: 12 → spacingChipGap (12dp token)
+                //           vertical: 6 (off-grid) → spacingXs (4dp)
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacingChipGap,
+                  vertical:   AppConstants.spacingXs,
+                ),
                 decoration: BoxDecoration(
                   color:        AppTheme.warningAmber,
                   borderRadius: BorderRadius.circular(AppConstants.radiusSm),

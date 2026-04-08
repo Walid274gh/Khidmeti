@@ -1,4 +1,8 @@
 // lib/screens/service_request/widgets/service_type_card.dart
+//
+// [C1] FIX: fontSize: AppConstants.fontSizeXs (10dp) → fontSizeXxs (11dp)
+//      on availability label.
+// [W6] FIX: check badge icon size: 10dp → 12dp (legibility).
 
 import 'package:flutter/material.dart';
 
@@ -80,9 +84,10 @@ class ServiceTypeCard extends StatelessWidget {
                               color: color,
                               shape: BoxShape.circle,
                             ),
+                            // [W6] FIX: check badge icon size 10dp → 12dp
                             child: const Icon(
                               Icons.check_rounded,
-                              size: 10,
+                              size: 12,
                               color: Colors.white,
                             ),
                           ),
@@ -125,7 +130,7 @@ class ServiceTypeCard extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppConstants.spacingXs),
                           Expanded(
                             child: Text(
                               availabilityLabel,
@@ -135,7 +140,8 @@ class ServiceTypeCard extends StatelessWidget {
                                   .textTheme
                                   .labelSmall
                                   ?.copyWith(
-                                    fontSize: AppConstants.fontSizeXs,
+                                    // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+                                    fontSize: AppConstants.fontSizeXxs,
                                     color: isDark
                                         ? AppTheme.darkSuccess
                                         : AppTheme.lightSuccess,

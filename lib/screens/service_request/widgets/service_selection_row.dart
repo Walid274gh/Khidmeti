@@ -2,19 +2,22 @@
 //
 // CHANGE: _ServiceItem private class removed — replaced with public ServiceItem
 //         imported from lib/models/service_item_model.dart.
+// [W8] FIX: const double _kCircleD = 48.0 removed — duplicated
+//      AppConstants.categoryTileIconSize. All usages now reference the token.
+// [C1] FIX: fontSize: AppConstants.fontSizeXs (10dp) → fontSizeXxs (11dp).
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../models/service_item_model.dart'; // NEW
+import '../../../models/service_item_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'service_selection_sheet.dart';
 
-const double _kCardW   = 72.0;
-const double _kCardH   = 80.0;
-const double _kCircleD = 48.0;
+const double _kCardW = 72.0;
+const double _kCardH = 80.0;
+// _kCircleD removed — use AppConstants.categoryTileIconSize (48dp) directly.
 
 class ServiceSelectionRow extends StatelessWidget {
   final String? selected;
@@ -85,7 +88,7 @@ class ServiceSelectionRow extends StatelessWidget {
 }
 
 class _ServiceChip extends StatelessWidget {
-  final ServiceItem item; // WAS: _ServiceItem (private)
+  final ServiceItem item;
   final bool        isActive;
   final bool        isDark;
   final VoidCallback onTap;
@@ -115,8 +118,9 @@ class _ServiceChip extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve:    Curves.easeOutCubic,
-                width:    _kCircleD,
-                height:   _kCircleD,
+                // [W8] FIX: was _kCircleD (48dp) — now uses token directly
+                width:    AppConstants.categoryTileIconSize,
+                height:   AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isActive
@@ -142,7 +146,8 @@ class _ServiceChip extends StatelessWidget {
               Text(
                 item.label,
                 style: TextStyle(
-                  fontSize:   AppConstants.fontSizeXs,
+                  // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+                  fontSize:   AppConstants.fontSizeXxs,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   color: isActive
                       ? color
@@ -196,8 +201,9 @@ class _AllServicesChip extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width:  _kCircleD,
-                height: _kCircleD,
+                // [W8] FIX: was _kCircleD — now uses token directly
+                width:  AppConstants.categoryTileIconSize,
+                height: AppConstants.categoryTileIconSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: accentColor.withOpacity(isDark ? 0.12 : 0.08),
@@ -214,7 +220,8 @@ class _AllServicesChip extends StatelessWidget {
               Text(
                 context.tr('home.see_all'),
                 style: TextStyle(
-                  fontSize:   AppConstants.fontSizeXs,
+                  // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+                  fontSize:   AppConstants.fontSizeXxs,
                   fontWeight: FontWeight.w600,
                   color:      accentColor,
                   height:     1.2,

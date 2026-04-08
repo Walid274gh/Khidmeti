@@ -1,4 +1,9 @@
 // lib/screens/service_request/widgets/tracking_body.dart
+//
+// [C3] FIX: width: 44, height: 44 (service icon container in summary row) →
+//      width: AppConstants.serviceIconContainerSize,
+//      height: AppConstants.serviceIconContainerSize (40dp token).
+//      Aligns with request_card.dart (canonical service icon container size).
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +23,6 @@ import 'worker_card.dart';
 // TRACKING BODY
 // Main scrollable content of RequestTrackingScreen.
 // Pure presentational — receives resolved ServiceRequestEnhancedModel.
-// Extracted from request_tracking_screen.dart (one-class-per-file rule).
 // ============================================================================
 
 class TrackingBody extends StatelessWidget {
@@ -55,8 +59,8 @@ class TrackingBody extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => context.pop(),
                   child: Container(
-                    width:  48,
-                    height: 48,
+                    width:  AppConstants.backButtonSize,
+                    height: AppConstants.backButtonSize,
                     decoration: BoxDecoration(
                       color: (isDark ? Colors.white : Colors.black)
                           .withOpacity(0.07),
@@ -129,15 +133,16 @@ class TrackingBody extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        width:  44,
-                        height: 44,
+                        // [C3] FIX: raw 44 → serviceIconContainerSize (40dp)
+                        width:  AppConstants.serviceIconContainerSize,
+                        height: AppConstants.serviceIconContainerSize,
                         decoration: BoxDecoration(
                           color: serviceColor.withOpacity(0.12),
                           borderRadius:
                               BorderRadius.circular(AppConstants.radiusMd),
                         ),
                         child:
-                            Icon(serviceIcon, size: 22, color: serviceColor),
+                            Icon(serviceIcon, size: 20, color: serviceColor),
                       ),
                       const SizedBox(width: AppConstants.spacingMd),
                       Expanded(

@@ -1,4 +1,8 @@
 // lib/screens/service_request/widgets/rating_summary.dart
+//
+// [W6] FIX: star icon size: 14dp (off-grid, no token) →
+//      AppConstants.iconSizeXs (16dp — nearest on-grid token above 14dp).
+//      16dp is the smallest named icon token in the system.
 
 import 'package:flutter/material.dart';
 
@@ -9,7 +13,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // RATING SUMMARY
 // Confirmation banner showing submitted star rating.
-// Extracted from request_tracking_screen.dart (one-class-per-file rule).
 // ============================================================================
 
 class RatingSummary extends StatelessWidget {
@@ -49,7 +52,8 @@ class RatingSummary extends StatelessWidget {
               5,
               (i) => Icon(
                 i < rating ? AppIcons.ratingFilled : AppIcons.ratingOutlined,
-                size:  14,
+                // [W6] FIX: size: 14 (off-grid) → iconSizeXs (16dp)
+                size:  AppConstants.iconSizeXs,
                 color: AppTheme.warningAmber,
               ),
             ),

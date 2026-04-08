@@ -41,9 +41,10 @@ class SchedulePill extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
+          // [W2] FIX: vertical: spacingMd - 2 (14dp, off-grid) → spacingTileInner (14dp token)
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.spacingXs,
-            vertical: AppConstants.spacingMd - 2,
+            vertical:   AppConstants.spacingTileInner,
           ),
           decoration: BoxDecoration(
             color: isActive
@@ -72,13 +73,14 @@ class SchedulePill extends StatelessWidget {
                         ? AppTheme.darkSecondaryText
                         : AppTheme.lightSecondaryText),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppConstants.spacingXs),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
                       fontSize: AppConstants.fontSizeXxs,
                       fontWeight:
                           isActive ? FontWeight.w700 : FontWeight.w400,
@@ -96,7 +98,8 @@ class SchedulePill extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: AppConstants.fontSizeXs,
+                      // subLabel uses fontSizeXxs (11dp) — meets platform minimum
+                      fontSize: AppConstants.fontSizeXxs,
                       fontWeight: FontWeight.w400,
                       color: isActive
                           ? Colors.white.withOpacity(0.70)

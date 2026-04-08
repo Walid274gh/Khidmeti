@@ -1,4 +1,9 @@
 // lib/screens/service_request/widgets/media_picker_area.dart
+//
+// [C2-adjacent] FIX: _PickerButton height: 68dp (off 8dp grid) →
+//      AppConstants.iconSizeLg2 (64dp — nearest 8dp-grid value below 68).
+// [W6] FIX: video placeholder icon size: 34dp (no token, between iconSizeLg=32
+//      and iconSizeXl=48) → AppConstants.iconSizeLg (32dp, snaps to grid).
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -134,7 +139,8 @@ class _PickerButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 68,
+          // [C2-adjacent] FIX: height: 68 (off 8dp grid) → iconSizeLg2 (64dp)
+          height: AppConstants.iconSizeLg2,
           decoration: BoxDecoration(
             color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
             borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -149,7 +155,7 @@ class _PickerButton extends StatelessWidget {
                     ? AppTheme.darkSecondaryText
                     : AppTheme.lightSecondaryText,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppConstants.spacingXs),
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -201,7 +207,6 @@ class _ThumbnailStrip extends StatelessWidget {
           return _MediaThumbnail(
             file:     files[i],
             onRemove: () => onRemove(i),
-            // FIX: removeLabel passed through for localized Semantics
             removeLabel: context.tr('request_form.remove_media'),
           );
         },
@@ -239,10 +244,11 @@ class _MediaThumbnail extends StatelessWidget {
                   width:  88,
                   height: 88,
                   color:  AppTheme.darkSurface,
-                  child: const Icon(
+                  child: Icon(
                     Icons.play_circle_outline_rounded,
                     color: Colors.white70,
-                    size:  34,
+                    // [W6] FIX: size: 34 (no token) → iconSizeLg (32dp)
+                    size:  AppConstants.iconSizeLg,
                   ),
                 )
               : Image.file(
@@ -250,19 +256,15 @@ class _MediaThumbnail extends StatelessWidget {
                   width:  88,
                   height: 88,
                   fit:    BoxFit.cover,
-                  // FIX (Performance): cacheWidth/cacheHeight prevent loading
-                  // full-resolution photos into memory when displayed at 88dp.
-                  // 264 = 88dp × 3 device pixel ratio (safe upper bound).
                   cacheWidth:  264,
                   cacheHeight: 264,
                 ),
         ),
         Positioned(
-          top:   4,
-          right: 4,
+          top:   AppConstants.spacingXs,
+          right: AppConstants.spacingXs,
           child: Semantics(
             button: true,
-            // FIX (L10n): was hardcoded English 'Remove media'.
             label:  removeLabel,
             child: GestureDetector(
               onTap: onRemove,
@@ -360,7 +362,7 @@ class _MediaPickerSheet extends StatelessWidget {
         children: [
           Container(
             width:  36,
-            height: 4,
+            height: AppConstants.sheetHandleHeight,
             margin: const EdgeInsets.only(bottom: AppConstants.spacingLg),
             decoration: BoxDecoration(
               color: (isDark ? Colors.white : Colors.black).withOpacity(0.14),
@@ -414,7 +416,7 @@ class _SheetRow extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 52,
+          height: AppConstants.buttonHeightMd,
           padding: const EdgeInsetsDirectional.symmetric(
             horizontal: AppConstants.paddingMd,
           ),
@@ -425,7 +427,7 @@ class _SheetRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(icon,
-                  size:  20,
+                  size:  AppConstants.iconSizeSm,
                   color: isDark ? AppTheme.darkText : AppTheme.lightText),
               const SizedBox(width: AppConstants.spacingMd),
               Text(label, style: Theme.of(context).textTheme.titleMedium),

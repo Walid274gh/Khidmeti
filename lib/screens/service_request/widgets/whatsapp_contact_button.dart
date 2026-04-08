@@ -1,4 +1,7 @@
 // lib/screens/service_request/widgets/whatsapp_contact_button.dart
+//
+// [C2] FIX: height: 50 → AppConstants.buttonHeightMd (48dp).
+// [W5] FIX: const SizedBox(width: 10) → const SizedBox(width: AppConstants.spacingSm) (8dp).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,9 +15,6 @@ import '../../../utils/whatsapp_launcher.dart';
 
 // ============================================================================
 // WHATSAPP CONTACT BUTTON
-// Fetches the worker phone via workerProfileProvider and opens WhatsApp.
-// White/dark tinted background ensures green icon colours remain readable.
-// Extracted from request_tracking_screen.dart (one-class-per-file rule).
 // ============================================================================
 
 class WhatsAppContactButton extends ConsumerStatefulWidget {
@@ -67,7 +67,8 @@ class _WhatsAppContactButtonState
       enabled: !isLoading && phone != null,
       child: SizedBox(
         width:  double.infinity,
-        height: 50,
+        // [C2] FIX: height: 50 → buttonHeightMd (48dp)
+        height: AppConstants.buttonHeightMd,
         child: ElevatedButton(
           onPressed:
               (isLoading || phone == null) ? null : () => _launch(phone),
@@ -88,8 +89,8 @@ class _WhatsAppContactButtonState
           ),
           child: isLoading
               ? const SizedBox(
-                  width:  20,
-                  height: 20,
+                  width:  AppConstants.spinnerSizeLg,
+                  height: AppConstants.spinnerSizeLg,
                   child:  CircularProgressIndicator(
                       strokeWidth: 2, color: kWhatsAppGreen),
                 )
@@ -97,7 +98,8 @@ class _WhatsAppContactButtonState
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     WhatsAppIcon(size: 22),
-                    const SizedBox(width: 10),
+                    // [W5] FIX: SizedBox(width: 10) → spacingSm (8dp)
+                    const SizedBox(width: AppConstants.spacingSm),
                     Text(
                       context.tr('tracking.contact_worker'),
                       style: const TextStyle(

@@ -1,4 +1,12 @@
 // lib/screens/service_request/widgets/form_bottom_nav.dart
+//
+// [C2] FIX: Container height: 52 (Next/Submit CTA) →
+//      height: AppConstants.buttonHeightMd (48dp).
+// [W1] FIX: Back button width: 52, height: 52 →
+//      width: AppConstants.backButtonSize, height: AppConstants.backButtonSize (48dp).
+// [W5] FIX: spinner SizedBox(width: 18, height: 18) →
+//      SizedBox(width: AppConstants.spinnerSizeLg, height: AppConstants.spinnerSizeLg) (20dp).
+// [W4] FIX: color: Colors.black (spinner + text) → AppTheme.lightText.
 
 import 'package:flutter/material.dart';
 
@@ -10,7 +18,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // FORM BOTTOM NAV
 // Back button (steps > 0) + full-width Next / Submit CTA.
-// Reads submit status labels from localization; loading spinner on submit.
 // ============================================================================
 
 class FormBottomNav extends StatelessWidget {
@@ -71,8 +78,9 @@ class FormBottomNav extends StatelessWidget {
               child: GestureDetector(
                 onTap: onBack,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  // [W1] FIX: 52dp → backButtonSize (48dp)
+                  width:  AppConstants.backButtonSize,
+                  height: AppConstants.backButtonSize,
                   decoration: BoxDecoration(
                     color: (isDark ? Colors.white : Colors.black)
                         .withOpacity(0.06),
@@ -106,7 +114,8 @@ class FormBottomNav extends StatelessWidget {
                   opacity: isEnabled ? 1.0 : 0.35,
                   duration: const Duration(milliseconds: 220),
                   child: Container(
-                    height: 52,
+                    // [C2] FIX: height: 52 → buttonHeightMd (48dp)
+                    height: AppConstants.buttonHeightMd,
                     decoration: BoxDecoration(
                       color: accent,
                       borderRadius:
@@ -125,12 +134,14 @@ class FormBottomNav extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (state.isSubmitting) ...[
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
+                          // [W5] FIX: 18dp → spinnerSizeLg (20dp)
+                          SizedBox(
+                            width:  AppConstants.spinnerSizeLg,
+                            height: AppConstants.spinnerSizeLg,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.black,
+                              // [W4] FIX: Colors.black → AppTheme.lightText
+                              color: AppTheme.lightText,
                             ),
                           ),
                           const SizedBox(width: AppConstants.spacingSm),
@@ -139,14 +150,16 @@ class FormBottomNav extends StatelessWidget {
                           label,
                           style:
                               Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: Colors.black,
+                                    // [W4] FIX: Colors.black → AppTheme.lightText
+                                    color: AppTheme.lightText,
                                     fontWeight: FontWeight.w700,
                                   ),
                         ),
                         if (!isLast && !state.isSubmitting) ...[
                           const SizedBox(width: AppConstants.spacingXs),
-                          const Icon(Icons.arrow_forward_rounded,
-                              size: 18, color: Colors.black),
+                          // [W4] FIX: Colors.black → AppTheme.lightText
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 18, color: AppTheme.lightText),
                         ],
                       ],
                     ),

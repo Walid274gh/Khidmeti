@@ -1,4 +1,10 @@
 // lib/screens/service_request/widgets/my_requests_panel.dart
+//
+// [C2] FIX: height: 50 (_EmptyState new-request button) →
+//      height: AppConstants.buttonHeightMd (48dp).
+// [W5] FIX: EdgeInsets.symmetric(horizontal: 14, vertical: 7) on filter chips:
+//      vertical: 7dp (off-grid) → AppConstants.chipPaddingV (4dp).
+//      horizontal: 14dp kept via AppConstants.spacingTileInner (existing token).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,15 +45,10 @@ class MyRequestsPanel extends ConsumerStatefulWidget {
 class _MyRequestsPanelState extends ConsumerState<MyRequestsPanel> {
   _RequestsFilter _filter = _RequestsFilter.all;
 
-  // Cached sorted sublists — only recomputed when stream emits new data.
   List<ServiceRequestEnhancedModel> _active = [];
   List<ServiceRequestEnhancedModel> _done   = [];
   bool _hasData = false;
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  /// Recomputes and caches the active/done sublists from raw stream data.
-  /// Called from ref.listen — never called from build().
   void _updateLists(List<ServiceRequestEnhancedModel> requests) {
     final active = requests
         .where((r) => r.status.isActive)
@@ -89,8 +90,6 @@ class _MyRequestsPanelState extends ConsumerState<MyRequestsPanel> {
     final requestsAsync =
         ref.watch(userServiceRequestsStreamProvider(user.uid));
 
-    // FIX: Listen updates the cached lists only when stream emits new data.
-    // This listener fires once per stream emission, not once per build().
     ref.listen<AsyncValue<List<ServiceRequestEnhancedModel>>>(
       userServiceRequestsStreamProvider(user.uid),
       (_, next) {
@@ -114,7 +113,6 @@ class _MyRequestsPanelState extends ConsumerState<MyRequestsPanel> {
           );
         }
 
-        // _visible uses cached lists — no computation in build().
         final visible = _visible;
 
         return Column(
@@ -211,8 +209,12 @@ class _FilterBar extends StatelessWidget {
                 onTap: () => onChanged(filter),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
+                  // [W5] FIX: horizontal: 14 → spacingTileInner (existing 14dp token)
+                  //           vertical:   7  → chipPaddingV (4dp, on-grid)
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 7),
+                    horizontal: AppConstants.spacingTileInner,
+                    vertical:   AppConstants.chipPaddingV,
+                  ),
                   decoration: BoxDecoration(
                     color: selected
                         ? accentColor.withOpacity(0.12)
@@ -310,7 +312,8 @@ class _EmptyState extends StatelessWidget {
             child: GestureDetector(
               onTap: onNewRequest,
               child: Container(
-                height: 50,
+                // [C2] FIX: height: 50 → buttonHeightMd (48dp)
+                height: AppConstants.buttonHeightMd,
                 padding: const EdgeInsetsDirectional.symmetric(
                     horizontal: AppConstants.paddingLg),
                 decoration: BoxDecoration(
@@ -327,12 +330,12 @@ class _EmptyState extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(AppIcons.add, size: 18, color: Colors.black),
+                    Icon(AppIcons.add, size: 18, color: AppTheme.lightText),
                     const SizedBox(width: AppConstants.spacingXs),
                     Text(
                       context.tr('requests.new_request'),
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color:      Colors.black,
+                            color:      AppTheme.lightText,
                             fontWeight: FontWeight.w700,
                           ),
                     ),

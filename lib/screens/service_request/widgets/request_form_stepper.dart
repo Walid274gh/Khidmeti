@@ -1,4 +1,10 @@
 // lib/screens/service_request/widgets/request_form_stepper.dart
+//
+// [C1] FIX: fontSize: AppConstants.fontSizeXs (10dp) → fontSizeXxs (11dp)
+//      on step label text.
+// [W5] FIX: SizedBox(height: 3) (off-grid) → SizedBox(height: spacingXxs) (2dp).
+// [W5] FIX: EdgeInsets.only(bottom: 18) (off-grid) →
+//      EdgeInsets.only(bottom: AppConstants.spacingMdLg) (20dp).
 
 import 'package:flutter/material.dart';
 
@@ -67,7 +73,6 @@ class RequestFormStepper extends StatelessWidget {
 }
 
 // ── Step circle ───────────────────────────────────────────────────────────────
-// Kept private — used only by RequestFormStepper, < 40 lines.
 
 class _StepCircle extends StatelessWidget {
   final int index;
@@ -126,11 +131,13 @@ class _StepCircle extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(height: 3),
+        // [W5] FIX: SizedBox(height: 3) (off-grid) → spacingXxs (2dp)
+        const SizedBox(height: AppConstants.spacingXxs),
         Text(
           label,
           style: TextStyle(
-            fontSize: AppConstants.fontSizeXs,
+            // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+            fontSize: AppConstants.fontSizeXxs,
             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
             color: isCurrent
                 ? accent
@@ -147,7 +154,6 @@ class _StepCircle extends StatelessWidget {
 }
 
 // ── Step connector ────────────────────────────────────────────────────────────
-// Kept private — trivially small, single-consumer.
 
 class _StepConnector extends StatelessWidget {
   final bool done;
@@ -164,7 +170,8 @@ class _StepConnector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 18),
+        // [W5] FIX: bottom: 18 (off-grid) → spacingMdLg (20dp, on-grid)
+        padding: const EdgeInsets.only(bottom: AppConstants.spacingMdLg),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           height: 2,

@@ -267,7 +267,7 @@ class _DragHintBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.spacingMd - 2,
-        vertical:   4,
+        vertical:   AppConstants.spacingXs,
       ),
       decoration: BoxDecoration(
         color: isDark
@@ -281,7 +281,6 @@ class _DragHintBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // FIX: was Icons.open_with_rounded directly; now uses AppIcons token.
           Icon(
             AppIcons.openWith,
             size:  11,
@@ -289,11 +288,12 @@ class _DragHintBadge extends StatelessWidget {
                 ? AppTheme.darkSecondaryText
                 : AppTheme.lightSecondaryText,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppConstants.spacingXs),
           Text(
             context.tr('request_form.drag_to_adjust'),
+            // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
             style: TextStyle(
-              fontSize: AppConstants.fontSizeXs,
+              fontSize: AppConstants.fontSizeXxs,
               color: isDark
                   ? AppTheme.darkSecondaryText
                   : AppTheme.lightSecondaryText,
@@ -374,7 +374,6 @@ class _AddressFooter extends StatelessWidget {
               child: Icon(
                 address.isNotEmpty && !isDragging
                     ? AppIcons.location
-                    // FIX: was Icons.location_searching_rounded; now AppIcons token.
                     : AppIcons.locationSearch,
                 size:  14,
                 color: address.isNotEmpty && !isDragging
@@ -392,9 +391,7 @@ class _AddressFooter extends StatelessWidget {
                 key:   ValueKey(text),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color:      textColor,
-                      fontWeight: address.isNotEmpty && !isDragging
-                          ? FontWeight.w400
-                          : FontWeight.w400,
+                      fontWeight: FontWeight.w400,
                     ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

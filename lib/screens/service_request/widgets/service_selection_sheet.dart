@@ -2,11 +2,15 @@
 //
 // CHANGE: _ServiceItem private class removed — replaced with public ServiceItem
 //         imported from lib/models/service_item_model.dart.
+// [C1] FIX: fontSize: AppConstants.fontSizeXs (10dp) → fontSizeXxs (11dp).
+// [W2] FIX: SizedBox(height: AppConstants.spacingXs + 3) (7dp, off-grid)
+//      → SizedBox(height: AppConstants.spacingSm) (8dp).
+// [MANUAL] FIX: check badge icon size: 9dp → 12dp for legibility.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../models/service_item_model.dart'; // NEW
+import '../../../models/service_item_model.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
@@ -46,7 +50,7 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  late final List<ServiceItem> _allItems; // WAS: _ServiceItem (private)
+  late final List<ServiceItem> _allItems;
 
   @override
   void didChangeDependencies() {
@@ -282,7 +286,7 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 }
 
 class _ServiceTile extends StatelessWidget {
-  final ServiceItem  item; // WAS: _ServiceItem (private)
+  final ServiceItem  item;
   final bool         isSelected;
   final bool         isDark;
   final Color        accent;
@@ -354,14 +358,16 @@ class _ServiceTile extends StatelessWidget {
                           width: 1.5,
                         ),
                       ),
+                      // [MANUAL] FIX: check badge icon 9dp → 12dp for legibility
                       child: const Icon(Icons.check_rounded,
-                          size: 9, color: Colors.white),
+                          size: 12, color: Colors.white),
                     ),
                   ),
               ],
             ),
 
-            SizedBox(height: AppConstants.spacingXs + 3),
+            // [W2] FIX: SizedBox(height: spacingXs + 3) (7dp) → spacingSm (8dp)
+            const SizedBox(height: AppConstants.spacingSm),
 
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -374,6 +380,8 @@ class _ServiceTile extends StatelessWidget {
                           : (isDark
                               ? AppTheme.darkText
                               : AppTheme.lightSecondaryText),
+                      // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
+                      fontSize: AppConstants.fontSizeXxs,
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w400,

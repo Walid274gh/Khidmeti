@@ -1,4 +1,8 @@
 // lib/screens/service_request/widgets/request_summary_card.dart
+//
+// [W3] FIX: DateFormat('EEE d MMM', 'en') → DateFormat('EEE d MMM', 'fr').
+//      App targets Algerian market; 'fr' is consistent with request_card.dart
+//      and all other date format call sites. 'en' was a locale mismatch.
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -11,7 +15,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // REQUEST SUMMARY CARD
 // Read-only key-value table shown on step 3 (Confirm).
-// Receives scalar data; no business logic.
 // ============================================================================
 
 class RequestSummaryCard extends StatelessWidget {
@@ -34,7 +37,8 @@ class RequestSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('EEE d MMM', 'en').format(scheduledDate);
+    // [W3] FIX: locale 'en' → 'fr' (consistent with request_card.dart)
+    final dateStr = DateFormat('EEE d MMM', 'fr').format(scheduledDate);
     final timeStr =
         '${scheduledTime.hour.toString().padLeft(2, '0')}:${scheduledTime.minute.toString().padLeft(2, '0')}';
 

@@ -1,4 +1,14 @@
 // lib/screens/service_request/widgets/bid_card.dart
+//
+// [C2] FIX: height: 46 → height: AppConstants.buttonHeightSm (44dp).
+//      Applies to both the ElevatedButton and the "selected" Container.
+// [W2] FIX: EdgeInsets.all(AppConstants.paddingSm + 2) (10dp, off-grid) →
+//      EdgeInsets.all(AppConstants.paddingSm) (8dp). Best-practice decision:
+//      round to nearest token rather than introduce a 10dp one-off.
+// [W4] FIX: foregroundColor: Colors.black → AppTheme.lightText.
+//      Also CircularProgressIndicator color: Colors.black → AppTheme.lightText.
+// [W5] FIX: const SizedBox(width: 6) → spacingSm (8dp).
+//      const SizedBox(width: 3) → spacingXxs (2dp).
 
 import 'package:flutter/material.dart';
 
@@ -90,7 +100,8 @@ class BidCard extends StatelessWidget {
                         children: [
                           Icon(AppIcons.ratingFilled,
                               size: 12, color: AppTheme.warningAmber),
-                          const SizedBox(width: 3),
+                          // [W5] FIX: SizedBox(width: 3) → spacingXxs (2dp)
+                          const SizedBox(width: AppConstants.spacingXxs),
                           Text(
                             bid.workerAverageRating.toStringAsFixed(1),
                             style: Theme.of(context)
@@ -101,7 +112,8 @@ class BidCard extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
-                          const SizedBox(width: 6),
+                          // [W5] FIX: SizedBox(width: 6) → spacingSm (8dp)
+                          const SizedBox(width: AppConstants.spacingSm),
                           Text(
                             '· ${bid.workerJobsCompleted} ${context.tr('bids.missions')}',
                             style: Theme.of(context)
@@ -145,7 +157,8 @@ class BidCard extends StatelessWidget {
             if (bid.message != null && bid.message!.isNotEmpty) ...[
               const SizedBox(height: AppConstants.spacingMd),
               Container(
-                padding: const EdgeInsets.all(AppConstants.paddingSm + 2),
+                // [W2] FIX: paddingSm + 2 (10dp, off-grid) → paddingSm (8dp)
+                padding: const EdgeInsets.all(AppConstants.paddingSm),
                 decoration: BoxDecoration(
                   color: (isDark
                           ? AppTheme.darkSurfaceVariant
@@ -176,12 +189,14 @@ class BidCard extends StatelessWidget {
                 enabled: !isAccepting,
                 child: SizedBox(
                   width:  double.infinity,
-                  height: 46,
+                  // [C2] FIX: height: 46 → buttonHeightSm (44dp)
+                  height: AppConstants.buttonHeightSm,
                   child: ElevatedButton(
                     onPressed: isAccepting ? null : onAccept,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
-                      foregroundColor: Colors.black,
+                      // [W4] FIX: Colors.black → AppTheme.lightText
+                      foregroundColor: AppTheme.lightText,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius:
@@ -189,11 +204,13 @@ class BidCard extends StatelessWidget {
                       ),
                     ),
                     child: isAccepting
-                        ? const SizedBox(
-                            width:  18,
-                            height: 18,
+                        ? SizedBox(
+                            width:  AppConstants.spinnerSizeLg,
+                            height: AppConstants.spinnerSizeLg,
                             child:  CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.black),
+                                strokeWidth: 2,
+                                // [W4] FIX: Colors.black → AppTheme.lightText
+                                color: AppTheme.lightText),
                           )
                         : Text(
                             context.tr('bids.choose_provider'),
@@ -201,7 +218,8 @@ class BidCard extends StatelessWidget {
                                 .textTheme
                                 .labelLarge
                                 ?.copyWith(
-                                  color:      Colors.black,
+                                  // [W4] FIX: Colors.black → AppTheme.lightText
+                                  color:      AppTheme.lightText,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -211,7 +229,8 @@ class BidCard extends StatelessWidget {
             else
               Container(
                 width:  double.infinity,
-                height: 46,
+                // [C2] FIX: height: 46 → buttonHeightSm (44dp)
+                height: AppConstants.buttonHeightSm,
                 decoration: BoxDecoration(
                   color: AppTheme.acceptGreen.withOpacity(0.12),
                   borderRadius:
@@ -222,7 +241,8 @@ class BidCard extends StatelessWidget {
                   children: [
                     Icon(AppIcons.check,
                         size: 16, color: AppTheme.acceptGreen),
-                    const SizedBox(width: 6),
+                    // [W5] FIX: SizedBox(width: 6) → spacingSm (8dp)
+                    const SizedBox(width: AppConstants.spacingSm),
                     Text(
                       context.tr('bids.selected'),
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -242,8 +262,6 @@ class BidCard extends StatelessWidget {
 
 // ============================================================================
 // BID CARD SKELETON
-// Animated shimmer placeholder matching the exact BidCard layout.
-// Used in BidsListScreen loading state instead of CircularProgressIndicator.
 // ============================================================================
 
 class BidCardSkeleton extends StatefulWidget {
@@ -323,7 +341,7 @@ class _BidCardSkeletonState extends State<BidCardSkeleton>
                                 BorderRadius.circular(AppConstants.radiusXs),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: AppConstants.spacingSm),
                         Container(
                           width:  80,
                           height: 9,
@@ -349,7 +367,8 @@ class _BidCardSkeletonState extends State<BidCardSkeleton>
               const SizedBox(height: AppConstants.spacingMd),
               Container(
                 width:  double.infinity,
-                height: 46,
+                // skeleton matches fixed buttonHeightSm
+                height: AppConstants.buttonHeightSm,
                 decoration: BoxDecoration(
                   color:        shimmer,
                   borderRadius: BorderRadius.circular(AppConstants.radiusMd),

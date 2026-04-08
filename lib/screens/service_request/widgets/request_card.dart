@@ -1,4 +1,11 @@
 // lib/screens/service_request/widgets/request_card.dart
+//
+// [C1] FIX: fontSize: 10 (raw literal, below 11dp min) →
+//      fontSize: AppConstants.fontSizeXxs (11dp).
+// [C3] FIX: width: 40, height: 40 (service icon container raw literals) →
+//      width: AppConstants.serviceIconContainerSize,
+//      height: AppConstants.serviceIconContainerSize (40dp token).
+// [W3] CONFIRMED: DateFormat locale is already 'fr' — no change needed.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +69,6 @@ class RequestCard extends ConsumerWidget {
     final color        = _statusColor(isDark);
     final serviceColor = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final serviceIcon  = AppTheme.getProfessionIcon(request.serviceType);
-    // DateFormat created once per build — acceptable cost for a single card.
     final dateStr =
         DateFormat('d MMM', 'fr').format(request.scheduledDate);
     final timeStr =
@@ -103,8 +109,9 @@ class RequestCard extends ConsumerWidget {
                 Row(
                   children: [
                     Container(
-                      width:  40,
-                      height: 40,
+                      // [C3] FIX: raw 40 → serviceIconContainerSize token
+                      width:  AppConstants.serviceIconContainerSize,
+                      height: AppConstants.serviceIconContainerSize,
                       decoration: BoxDecoration(
                         color: serviceColor.withOpacity(0.12),
                         borderRadius:
@@ -174,7 +181,7 @@ class RequestCard extends ConsumerWidget {
                             ? AppTheme.darkSecondaryText
                             : AppTheme.lightSecondaryText,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppConstants.spacingXs),
                       Expanded(
                         child: Text(
                           request.userAddress,
@@ -218,7 +225,7 @@ class RequestCard extends ConsumerWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppConstants.spacingXs),
                         Icon(AppIcons.forward,
                             size: 11, color: AppTheme.warningAmber),
                       ],
@@ -255,7 +262,8 @@ class RequestCard extends ConsumerWidget {
                                 ?.copyWith(
                                   color:      color,
                                   fontWeight: FontWeight.w700,
-                                  fontSize:   10,
+                                  // [C1] FIX: raw literal 10 → fontSizeXxs (11dp)
+                                  fontSize:   AppConstants.fontSizeXxs,
                                 ),
                           ),
                         ),
@@ -304,21 +312,6 @@ class RequestCard extends ConsumerWidget {
 
 // ============================================================================
 // CANCEL BUTTON
-//
-// FIX (Engineer — P0): The original implementation called
-// `ref.read(firestoreServiceProvider).cancelRequest(requestId)` directly
-// inside the GestureDetector callback — raw service call with no loading
-// state, no error feedback, and no double-tap protection.
-//
-// STRUCTURAL FIX: Now uses CancelRequestController which:
-//   1. Shows a CircularProgressIndicator while the operation is running
-//   2. Prevents double-tap (isLoading guard in controller)
-//   3. Surfaces errors via SnackBar through ref.listen
-//   4. Exposes success state for potential follow-up actions
-//
-// FIX (RW): ref.read(notifier) was captured as a local variable in build().
-// It is now called inline inside each callback so Riverpod never holds a
-// stale notifier reference across rebuilds.
 // ============================================================================
 
 class _CancelButton extends ConsumerWidget {
@@ -331,7 +324,6 @@ class _CancelButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(cancelRequestControllerProvider(requestId));
 
-    // Surface controller errors as SnackBar
     ref.listen<CancelRequestState>(
       cancelRequestControllerProvider(requestId),
       (_, next) {
@@ -346,7 +338,6 @@ class _CancelButton extends ConsumerWidget {
       },
     );
 
-    // Show spinner while loading — no text, no double-tap possible
     if (state.isLoading) {
       return const SizedBox(
         width:  16,

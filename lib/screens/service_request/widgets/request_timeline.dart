@@ -1,4 +1,7 @@
 // lib/screens/service_request/widgets/request_timeline.dart
+//
+// [W5] FIX: Positioned(start: 5.5) (fractional dp, off-grid) →
+//      start: AppConstants.spacingXs (4dp, on-grid).
 
 import 'package:flutter/material.dart';
 
@@ -11,7 +14,6 @@ import '../../../utils/localization.dart';
 // ============================================================================
 // REQUEST TIMELINE
 // 4-step progress indicator: Posted → Selected → Started → Done.
-// Extracted from request_tracking_screen.dart (one-class-per-file rule).
 // ============================================================================
 
 class RequestTimeline extends StatelessWidget {
@@ -121,8 +123,9 @@ class RequestTimeline extends StatelessWidget {
                 ),
                 if (!isLast)
                   Padding(
+                    // [W5] FIX: start: 5.5 (fractional, off-grid) → spacingXs (4dp)
                     padding: const EdgeInsetsDirectional.only(
-                        start: 5.5, top: 2, bottom: 2),
+                        start: AppConstants.spacingXs, top: 2, bottom: 2),
                     child: Container(
                       width:  1.5,
                       height: 18,
