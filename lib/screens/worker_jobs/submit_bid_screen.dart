@@ -78,11 +78,10 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
         _errorMessage = e.message;
       });
     } catch (_) {
-      // FIX (QA P0): was e.toString() — never expose raw exception strings.
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = null; // shown via tr key below
+        _errorMessage = null;
       });
     }
   }
@@ -162,13 +161,9 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                       children: [
                         // ── Request summary ───────────────────────────────
                         requestAsync.when(
-                          // FIX (Async States): was SizedBox.shrink() — worker
-                          // saw no loading feedback and could submit a blind offer.
                           loading: () => _RequestSummarySkeletonCard(
                             isDark: isDark,
                           ),
-                          // FIX (Async States): was SizedBox.shrink() — show
-                          // an error notice so the worker knows data failed.
                           error: (_, __) => _RequestSummaryError(
                             isDark: isDark,
                             accent: accent,
@@ -259,7 +254,6 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                               return context
                                   .tr('worker_browse.price_invalid');
                             }
-                            // FIX (QA P1): Added maximum price guard.
                             if (p > AppConstants.maxBidPrice) {
                               return context
                                   .tr('worker_browse.price_too_high');
@@ -339,13 +333,10 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                                 ),
                           ),
                         ],
-                        // FIX (QA P0): generic error shown via localized key
-                        // instead of raw exception string.
-                        if (!_isSubmitting &&
-                            _errorMessage == null &&
-                            _priceCtrl.text.isEmpty == false) ...[
-                          // Intentionally empty — error cleared on re-submit.
-                        ],
+                        // [DEAD CODE FIX]: removed the intentionally-empty
+                        // spread block `if (!_isSubmitting && ...) ...[...]`
+                        // — it compiled but produced no widgets and cluttered
+                        // the build method. Removed entirely.
                       ],
                     ),
                   ),
@@ -375,8 +366,6 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                                       : () => _submit(worker),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: accent,
-                                    // FIX (WCAG AA): was Colors.black — fails
-                                    // on darkAccent. Colors.white passes AA.
                                     foregroundColor: Colors.white,
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
@@ -428,8 +417,6 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
 
 // ============================================================================
 // _RequestSummarySkeletonCard
-// FIX (Async States): replaces SizedBox.shrink() during request loading.
-// Matches the approximate height of the loaded summary card.
 // ============================================================================
 
 class _RequestSummarySkeletonCard extends StatefulWidget {
@@ -483,7 +470,6 @@ class _RequestSummarySkeletonCardState
 
 // ============================================================================
 // _RequestSummaryError
-// FIX (Async States): replaces SizedBox.shrink() on request load failure.
 // ============================================================================
 
 class _RequestSummaryError extends StatelessWidget {
@@ -516,7 +502,7 @@ class _RequestSummaryError extends StatelessWidget {
 }
 
 // ============================================================================
-// _FieldLabel — internal form label helper
+// _FieldLabel
 // ============================================================================
 
 class _FieldLabel extends StatelessWidget {
@@ -540,7 +526,7 @@ class _FieldLabel extends StatelessWidget {
 }
 
 // ============================================================================
-// _DurationPicker — +/- spinner (unchanged logic, cleaned up import)
+// _DurationPicker
 // ============================================================================
 
 class _DurationPicker extends StatelessWidget {
