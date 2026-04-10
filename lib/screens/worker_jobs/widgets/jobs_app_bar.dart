@@ -37,7 +37,7 @@ class JobsAppBar extends StatelessWidget {
                 Text(
                   context.tr('worker_jobs.screen_title'),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight:    FontWeight.w700,   // was w800 — forbidden
+                        fontWeight:    FontWeight.w700,
                         letterSpacing: -0.5,
                       ),
                 ),
@@ -47,8 +47,10 @@ class JobsAppBar extends StatelessWidget {
                     child: Row(
                       children: [
                         Container(
-                          width:  7,
-                          height: 7,
+                          // [TOKEN FIX]: was width: 7, height: 7 — no token.
+                          // AppConstants.statusDotSize = 8.0 (on-grid, existing token).
+                          width:  AppConstants.statusDotSize,
+                          height: AppConstants.statusDotSize,
                           decoration: BoxDecoration(
                             color:  accentColor,
                             shape:  BoxShape.circle,

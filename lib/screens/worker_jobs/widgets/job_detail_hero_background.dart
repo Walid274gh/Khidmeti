@@ -79,14 +79,13 @@ class JobDetailHeroBackground extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  // FIX (P2 — QA): was substring(0, 8) — throws RangeError if
-                  // id is shorter than 8 chars. clamp(0, 8) is safe for any length.
                   '#${job.id.substring(0, job.id.length.clamp(0, 8)).toUpperCase()}',
                   style: TextStyle(
                     color:      Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize:   AppConstants.fontSizeXxs,
-                    fontFamily: 'monospace',
+                    // [TOKEN FIX]: was raw 'monospace' string literal.
+                    fontFamily: AppConstants.monoFontFamily,
                   ),
                 ),
               ),

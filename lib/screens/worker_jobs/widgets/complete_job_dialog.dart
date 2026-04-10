@@ -61,9 +61,11 @@ class _CompleteJobDialogState extends State<CompleteJobDialog> {
                   : Colors.white.withOpacity(0.97),
               borderRadius: BorderRadius.circular(AppConstants.radiusXxl),
               border: Border.all(
+                // [TOKEN FIX]: was Colors.white/black.withOpacity(0.1/0.08) —
+                // replaced with baked tokens darkTileBorder / lightTileBorder.
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.08),
+                    ? AppTheme.darkTileBorder
+                    : AppTheme.lightTileBorder,
               ),
             ),
             child: Form(
@@ -157,7 +159,6 @@ class _CompleteJobDialogState extends State<CompleteJobDialog> {
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
                       hintText: context.tr('worker_jobs.complete_price_hint'),
-                      // FIX (L10n P1): was hardcoded 'DZD '
                       prefixText: '${context.tr('common.currency')} ',
                     ),
                     validator: (val) {
@@ -229,4 +230,3 @@ class _CompleteJobDialogState extends State<CompleteJobDialog> {
     Navigator.pop(context, CompleteJobResult(notes: notes, price: price));
   }
 }
-

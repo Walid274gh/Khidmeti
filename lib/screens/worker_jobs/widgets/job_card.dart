@@ -16,8 +16,6 @@ import 'job_media_viewer.dart';
 import 'job_meta_chip.dart';
 import 'job_urgent_badge.dart';
 
-// CHANGES:
-//   • JobCardHeader call: context: parameter removed (field deleted from constructor)
 class JobCard extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final JobActionStatus             actionStatus;
@@ -64,6 +62,9 @@ class JobCard extends StatelessWidget {
     final isError      = actionStatus == JobActionStatus.error;
 
     return Semantics(
+      // [A11Y FIX]: was missing button: true — screen-readers couldn't
+      // identify the card as interactive.
+      button: true,
       label: '${job.title}, ${job.userName}, ${_statusLabel(context, job.status)}',
       child: GestureDetector(
         onTap: isLoading ? null : onViewDetails,
@@ -109,7 +110,6 @@ class JobCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // CHANGE: context: removed from JobCardHeader
                     JobCardHeader(
                       job:          job,
                       serviceColor: serviceColor,
@@ -118,7 +118,6 @@ class JobCard extends StatelessWidget {
                       isDark:       isDark,
                     ),
 
-                    // FIX [spacing]: was SizedBox(height: 10) — off 4dp grid.
                     const SizedBox(height: AppConstants.spacingSm),
 
                     Text(
@@ -133,7 +132,6 @@ class JobCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    // FIX [spacing]: was SizedBox(height: 10) — off 4dp grid.
                     const SizedBox(height: AppConstants.spacingSm),
 
                     Wrap(

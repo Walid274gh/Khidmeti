@@ -13,21 +13,12 @@ import 'browse_card_icon_button.dart';
 import 'countdown_text.dart';
 import 'job_location_map_sheet.dart';
 
-// ============================================================================
-// AVAILABLE REQUEST CARD
-// Fully stateless — countdown is delegated to CountdownText.
-// FIX (Accessibility): wrapped in Semantics(button: true) — was missing.
-// FIX (UI Quality): icon sizes set to iconSizeXs (16dp minimum grid).
-// FIX (Designer): border colours use AppTheme tokens instead of raw opacity.
-// ============================================================================
-
 class AvailableRequestCard extends StatelessWidget {
   final ServiceRequestEnhancedModel request;
   final bool isDark;
   final Color accent;
 
   /// True when the current worker already has a pending bid on this request.
-  /// Resolved via AvailableRequestsState.hasMyBid(request.id) in the parent.
   final bool hasMyBid;
 
   const AvailableRequestCard({
@@ -46,8 +37,6 @@ class AvailableRequestCard extends StatelessWidget {
     final isUrgent     = request.priority == ServicePriority.urgent;
 
     return Semantics(
-      // FIX (Accessibility P0): was missing — screen-readers could not
-      // identify the card as an interactive element.
       button: true,
       label: context.tr('services.${request.serviceType}'),
       child: GestureDetector(
@@ -61,9 +50,12 @@ class AvailableRequestCard extends StatelessWidget {
                 : AppTheme.lightSurface,
             borderRadius: BorderRadius.circular(AppConstants.radiusLg),
             border: Border.all(
-              // FIX (Designer): was Colors.white/black.withOpacity — use tokens.
+              // [DARK-MODE SEMANTIC FIX]: was AppTheme.lightError.withOpacity(0.3)
+              // unconditionally — light-theme error token bled into dark mode.
+              // Now resolves the correct error token per active theme.
               color: isUrgent
-                  ? AppTheme.lightError.withOpacity(0.3)
+                  ? (isDark ? AppTheme.darkError : AppTheme.lightError)
+                      .withOpacity(0.3)
                   : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
             ),
           ),
@@ -156,7 +148,6 @@ class AvailableRequestCard extends StatelessWidget {
                     children: [
                       Icon(
                         AppIcons.wallet,
-                        // FIX (UI Quality): was 12dp — below minimum 16dp grid.
                         size: AppConstants.iconSizeXs,
                         color: isDark
                             ? AppTheme.darkSecondaryText
@@ -201,7 +192,6 @@ class AvailableRequestCard extends StatelessWidget {
                     if (request.userPhone.isNotEmpty) ...[
                       const SizedBox(width: AppConstants.spacingXs),
                       BrowseCardIconButton(
-                        // FIX (Engineer): was Icons.phone_rounded → AppIcons.phone.
                         icon: AppIcons.phone,
                         color: AppTheme.cyanBlue,
                         semanticsLabel:

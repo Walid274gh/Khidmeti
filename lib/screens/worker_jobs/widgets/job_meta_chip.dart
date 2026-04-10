@@ -29,13 +29,12 @@ class JobMetaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: color),
+          // [TOKEN FIX]: was size: 11 — below iconSizeXs floor (16dp).
+          // Raised to AppConstants.iconSizeXs (16dp) to meet minimum icon grid.
+          Icon(icon, size: AppConstants.iconSizeXs, color: color),
           const SizedBox(width: 4),
           Text(
             label,
-            // FIX [WARN]: was `fontSize: 10` inline — bypasses textTheme.
-            // Now delegates to textTheme.labelSmall (10sp in this project's
-            // theme) so size responds to user accessibility settings.
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color:      color,
                   fontWeight: FontWeight.w600,

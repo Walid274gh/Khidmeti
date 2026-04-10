@@ -12,7 +12,8 @@ class JobLoadingBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 46,
+      // [TOKEN FIX]: was 46 — no token; aligned to AppConstants.buttonHeightMd (48).
+      height: AppConstants.buttonHeightMd,
       decoration: BoxDecoration(
         color: accentColor.withOpacity(0.12),
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),
@@ -30,4 +31,3 @@ class JobLoadingBtn extends StatelessWidget {
     );
   }
 }
-

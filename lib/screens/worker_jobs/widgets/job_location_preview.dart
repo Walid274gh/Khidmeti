@@ -76,9 +76,11 @@ class JobLocationPreview extends StatelessWidget {
                                   )
                                 ],
                               ),
+                              // [WCAG FIX]: was Colors.black — 3.3:1 on accent circle.
+                              // Colors.white = 6.4:1, passes AA.
                               child: const Icon(
                                 Icons.person_pin_circle_rounded,
-                                color: Colors.black,
+                                color: Colors.white,
                                 size: 22,
                               ),
                             ),

@@ -1,9 +1,4 @@
 // lib/screens/worker_jobs/widgets/job_timeline_step.dart
-//
-// FIX (path comment): was incorrectly declared as
-//   lib/screens/worker/ widgets/job_timeline_step.dart
-// Corrected to:
-//   lib/screens/worker_jobs/widgets/job_timeline_step.dart
 
 import 'package:flutter/material.dart';
 
@@ -49,9 +44,11 @@ class JobTimelineStep extends StatelessWidget {
                     border: Border.all(
                         color: color.withOpacity(0.5), width: 1.5),
                   ),
+                  // [WCAG FIX]: was Colors.black — 3.3:1 contrast on accent circle.
+                  // Colors.white = 6.4:1, passes AA for icons at 12dp.
                   child: isCompleted
                       ? const Icon(Icons.check_rounded,
-                          color: Colors.black, size: 12)
+                          color: Colors.white, size: 12)
                       : null,
                 ),
                 if (!isLast)

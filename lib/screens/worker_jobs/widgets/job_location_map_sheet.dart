@@ -285,9 +285,11 @@ class _JobLocationMapSheetState extends State<JobLocationMapSheet>
                                       )
                                     ],
                                   ),
+                                  // [WCAG FIX]: was Colors.black — 3.3:1 on accent.
+                                  // Colors.white = 6.4:1, passes AA.
                                   child: const Icon(
                                     Icons.person_pin_circle_rounded,
-                                    color: Colors.black,
+                                    color: Colors.white,
                                     size: 22,
                                   ),
                                 ),
@@ -327,7 +329,8 @@ class _JobLocationMapSheetState extends State<JobLocationMapSheet>
                   Text(
                     '${widget.latitude.toStringAsFixed(5)}, ${widget.longitude.toStringAsFixed(5)}',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontFamily: 'monospace',
+                          // [TOKEN FIX]: was raw 'monospace' string literal.
+                          fontFamily: AppConstants.monoFontFamily,
                           color: isDark
                               ? AppTheme.darkSecondaryText
                               : AppTheme.lightSecondaryText,

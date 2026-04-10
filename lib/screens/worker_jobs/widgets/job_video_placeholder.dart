@@ -4,9 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../../utils/localization.dart';
 
-// FIX (P1 — Engineer): BuildContext context removed from constructor.
-// The field was stored but the build method already used ctx.tr() (the
-// parameter) consistently. Field removal is purely dead-code cleanup.
 class JobVideoPlaceholder extends StatelessWidget {
   final String url;
   final bool   isDark;
@@ -39,10 +36,12 @@ class JobVideoPlaceholder extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             context.tr('worker_jobs.video_preview_unavailable'),
-            style: const TextStyle(
-              color:    Colors.white60,
-              fontSize: 14,
-            ),
+            // [TEXTSTYLE FIX]: was hardcoded TextStyle(color: Colors.white60,
+            // fontSize: 14) — bypassed textTheme entirely.
+            // Now uses textTheme.bodyMedium with color override.
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white60,
+                ),
           ),
         ],
       ),

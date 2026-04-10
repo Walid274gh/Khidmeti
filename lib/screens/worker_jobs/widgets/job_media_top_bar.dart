@@ -62,11 +62,13 @@ class JobMediaTopBar extends StatelessWidget {
             ),
             child: Text(
               '${currentIndex + 1} / $total',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+              // [TEXTSTYLE FIX]: was hardcoded TextStyle(color: Colors.white,
+              // fontWeight: FontWeight.w600, fontSize: 13) — bypassed textTheme.
+              // Now uses textTheme.labelMedium with overrides.
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color:      Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -74,4 +76,3 @@ class JobMediaTopBar extends StatelessWidget {
     );
   }
 }
-

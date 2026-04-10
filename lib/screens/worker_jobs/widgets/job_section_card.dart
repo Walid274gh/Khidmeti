@@ -29,9 +29,11 @@ class JobSectionCard extends StatelessWidget {
         color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
         borderRadius: BorderRadius.circular(AppConstants.radiusXl),
         border: Border.all(
+          // [TOKEN FIX]: was Colors.white/black.withOpacity(0.07) — replaced
+          // with baked opacity tokens darkCardBorderOverlay / lightCardBorderOverlay.
           color: isDark
-              ? Colors.white.withOpacity(0.07)
-              : Colors.black.withOpacity(0.07),
+              ? AppTheme.darkCardBorderOverlay
+              : AppTheme.lightCardBorderOverlay,
         ),
       ),
       child: Column(
@@ -59,9 +61,11 @@ class JobSectionCard extends StatelessWidget {
           ),
           const SizedBox(height: AppConstants.spacingSm),
           Divider(
+            // [TOKEN FIX]: was Colors.white/black.withOpacity(0.06) — replaced
+            // with baked opacity tokens darkTileBorder / lightTileBorder.
             color: isDark
-                ? Colors.white.withOpacity(0.06)
-                : Colors.black.withOpacity(0.06),
+                ? AppTheme.darkTileBorder
+                : AppTheme.lightTileBorder,
             height: 1,
           ),
           child,

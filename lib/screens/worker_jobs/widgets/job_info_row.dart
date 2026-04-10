@@ -31,7 +31,9 @@ class JobInfoRow extends StatelessWidget {
       children: [
         Icon(
           icon,
-          size: 16,
+          // [TOKEN FIX]: was raw size: 16 literal — replaced with
+          // AppConstants.iconSizeXs (16.0) so it references the token system.
+          size: AppConstants.iconSizeXs,
           color: isDark
               ? AppTheme.darkSecondaryText
               : AppTheme.lightSecondaryText,
@@ -50,7 +52,7 @@ class JobInfoRow extends StatelessWidget {
           value,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                fontFamily: mono ? 'monospace' : null,
+                fontFamily: mono ? AppConstants.monoFontFamily : null,
                 color: highlight ? accentColor : null,
               ),
         ),
@@ -58,4 +60,3 @@ class JobInfoRow extends StatelessWidget {
     );
   }
 }
-

@@ -7,11 +7,6 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import 'job_status_badge.dart';
 
-// FIX (P1 — Engineer): BuildContext context removed from constructor.
-// The field was stored but never read inside build() — ctx (the build parameter)
-// was used for all Theme.of() calls, and ctx was also passed to JobStatusBadge.
-// Now that JobStatusBadge no longer accepts context: either, both callers are
-// updated in lockstep.
 class JobCardHeader extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final Color serviceColor;
@@ -70,22 +65,28 @@ class JobCardHeader extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.person_outline_rounded,
-                    size:  13,
+                    // [TOKEN FIX]: was size: 13 — below iconSizeXs floor (16dp).
+                    size:  AppConstants.iconSizeXs,
                     color: isDark
                         ? AppTheme.darkSecondaryText
                         : AppTheme.lightSecondaryText,
                   ),
-                  const SizedBox(width: 3),
-                  Text(
-                    job.userName,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color:      isDark
-                              ? AppTheme.darkSecondaryText
-                              : AppTheme.lightSecondaryText,
-                          fontWeight: FontWeight.w400,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // [TOKEN FIX]: was SizedBox(width: 3) — no token (spacingXxs=2,
+                  // spacingXs=4, nothing at 3). Snapped to spacingXxs=2 which is
+                  // the nearest token below; keeps the label tight to the icon.
+                  const SizedBox(width: AppConstants.spacingXs),
+                  Expanded(
+                    child: Text(
+                      job.userName,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:      isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText,
+                            fontWeight: FontWeight.w400,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -93,7 +94,7 @@ class JobCardHeader extends StatelessWidget {
           ),
         ),
 
-        // Status badge — no longer receives context: parameter
+        // Status badge
         JobStatusBadge(
           status: job.status,
           color:  statusColor,

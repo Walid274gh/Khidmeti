@@ -6,9 +6,6 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 
-// FIX (P1 — Engineer): BuildContext context removed from constructor.
-// Was: context.tr('worker_jobs.job_closed') using the field.
-// Now: context.tr('worker_jobs.job_closed') using the build parameter.
 class JobCompletedBadge extends StatelessWidget {
   final bool isDark;
 
@@ -20,7 +17,8 @@ class JobCompletedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 46,
+      // [TOKEN FIX]: was 46 — no token; aligned to AppConstants.buttonHeightMd (48).
+      height: AppConstants.buttonHeightMd,
       decoration: BoxDecoration(
         color:        AppTheme.onlineGreen.withOpacity(0.1),
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),

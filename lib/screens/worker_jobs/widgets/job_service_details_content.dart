@@ -8,9 +8,6 @@ import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import 'job_info_row.dart';
 
-// FIX (P1 — Engineer): BuildContext context removed from constructor.
-// Storing BuildContext as a field is unsafe — it can go stale between
-// builds. The context from build(BuildContext context) is always safe.
 class JobServiceDetailsContent extends StatelessWidget {
   final ServiceRequestEnhancedModel job;
   final bool isDark;
@@ -37,7 +34,9 @@ class JobServiceDetailsContent extends StatelessWidget {
           JobInfoRow(
             icon:   Icons.tag_rounded,
             label:  context.tr('worker_jobs.request_id'),
-            value:  '#${job.id.substring(0, 8).toUpperCase()}',
+            // [CRASH FIX]: was .substring(0, 8) — throws RangeError if id < 8 chars.
+            // .clamp(0, 8) is safe for any id length.
+            value:  '#${job.id.substring(0, job.id.length.clamp(0, 8)).toUpperCase()}',
             isDark: isDark,
             mono:   true,
           ),

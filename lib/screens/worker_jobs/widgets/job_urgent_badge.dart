@@ -56,8 +56,10 @@ class _JobUrgentBadgeState extends State<JobUrgentBadge>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // [TOKEN FIX]: was size: 11 — below iconSizeXs floor (16dp).
+                // Raised to AppConstants.iconSizeXs (16dp).
                 Icon(Icons.flash_on_rounded,
-                    size: 11, color: AppTheme.signOutRed),
+                    size: AppConstants.iconSizeXs, color: AppTheme.signOutRed),
                 const SizedBox(width: 4),
                 Text(
                   context.tr('worker_jobs.urgent_priority'),
@@ -75,4 +77,3 @@ class _JobUrgentBadgeState extends State<JobUrgentBadge>
     );
   }
 }
-

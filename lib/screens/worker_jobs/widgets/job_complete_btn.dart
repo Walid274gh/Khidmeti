@@ -6,14 +6,6 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 
-// FIX (P1 — Engineer): BuildContext context removed from constructor.
-// Was: context.tr('worker_jobs.complete_job') using the field.
-// Now: context.tr('worker_jobs.complete_job') using the build parameter.
-// FIX (Designer P1): was LinearGradient(accentColor → accentColor.withOpacity(0.7)).
-// Gradient on action buttons is forbidden. Replaced with solid accent.
-// FIX [CRITICAL]: was `color: Colors.black` on icon and text — hardcoded
-// contrast against accent background. Replaced with Colors.white so text/icon
-// remain legible on both darkAccent (#4F46E5) and lightAccent (#4F46E5).
 class JobCompleteBtn extends StatelessWidget {
   final Color        accentColor;
   final VoidCallback onTap;
@@ -32,7 +24,8 @@ class JobCompleteBtn extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 46,
+          // [TOKEN FIX]: was 46 — no token; aligned to AppConstants.buttonHeightMd (48).
+          height: AppConstants.buttonHeightMd,
           decoration: BoxDecoration(
             color:        accentColor,
             borderRadius: BorderRadius.circular(AppConstants.radiusLg),

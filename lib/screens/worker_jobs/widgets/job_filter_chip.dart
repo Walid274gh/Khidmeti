@@ -38,16 +38,22 @@ class JobFilterChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive
                 ? accentColor.withOpacity(0.18)
+                // [TOKEN FIX]: was AppTheme.darkSurface.withOpacity(0.5) /
+                // Colors.white.withOpacity(0.7). Dark half-opacity surface
+                // replaced with baked token AppTheme.darkSurfaceHalf.
                 : (isDark
-                    ? AppTheme.darkSurface.withOpacity(0.5)
+                    ? AppTheme.darkSurfaceHalf
                     : Colors.white.withOpacity(0.7)),
             borderRadius: BorderRadius.circular(AppConstants.radiusMd),
             border: Border.all(
               color: isActive
                   ? accentColor.withOpacity(0.7)
+                  // [TOKEN FIX]: was Colors.white/black.withOpacity(0.08) —
+                  // replaced with baked tokens darkCardBorderOverlay /
+                  // lightCardBorderOverlay.
                   : (isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.08)),
+                      ? AppTheme.darkCardBorderOverlay
+                      : AppTheme.lightCardBorderOverlay),
               width: isActive ? 1.5 : 1.0,
             ),
             boxShadow: isActive
@@ -73,7 +79,7 @@ class JobFilterChip extends StatelessWidget {
                               : AppTheme.lightSecondaryText),
                       fontWeight: isActive
                           ? FontWeight.w700
-                          : FontWeight.w400,   // was w500 — forbidden
+                          : FontWeight.w400,
                     ),
               ),
               if (count > 0) ...[
