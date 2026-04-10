@@ -42,101 +42,54 @@
 //   [W8]  settingsRetryButtonWidth = 180.0 — replaces the arithmetic
 //         splashRetryButtonMinWidth * 1.5 in SettingsErrorView.
 //   [W2/W3] Opacity tokens for state-conditional destructive tiles.
-//         These are runtime .withValues() calls — they cannot be const-baked
-//         because the base color is caller-resolved (signOutRed, error scheme).
-//         Named constants replace magic literals and document each level's intent.
 //
 // CHANGES (settings ui-apply — AUTO pass, sheet_option.dart tokens):
-//   [W1-AUTO] 5 opacity constants added for SheetOption — replaces 5 raw float
-//         literals that bypassed the opacity token system.
-//         opacitySheetFillDark / opacitySheetFillLight — selection highlight fill
-//         opacitySheetBorderSel — selected option border alpha
-//         opacitySheetBorderUnsel — unselected option border alpha
-//         opacitySheetIconMuted — unselected icon colour alpha
-//   [S2-AUTO] profileCardSkeletonHeight = 110.0 — promotes the magic height
-//         literal in _ProfileCardSkeleton to a named token. Skeleton height
-//         will no longer silently diverge if ProfileCard content grows.
-//   [W1-AUTO-SPLIT] opacityDeleteTileFillDarkEn = 0.08 added as an alias that
-//         makes the dual-usage of opacityTileFillLightEn explicit. Both resolve
-//         to the same design value today; the separate token documents intent and
-//         prevents silent breakage if the two contexts ever diverge.
+//   [W1-AUTO] 5 opacity constants added for SheetOption.
+//   [S2-AUTO] profileCardSkeletonHeight = 110.0 added.
+//   [W1-AUTO-SPLIT] opacityDeleteTileFillDarkEn = 0.08 added.
 //
 // CHANGES (settings ui-apply — MANUAL pass):
-//   [M1] borderWidthDefault = 1.0 — standard tile / option border stroke.
-//        Backs the unselected SheetOption border and any future standard border.
-//   [M2] borderWidthSelected = 1.5 — selected-state emphasis border stroke.
-//        Backs the selected SheetOption border.
-//   [M3] animDurationMicro = Duration(milliseconds: 200) — short micro-interaction
-//        duration used in SheetOption AnimatedContainer. Replaces the bare
-//        Duration(milliseconds: 200) magic literal.
+//   [M1] borderWidthDefault = 1.0
+//   [M2] borderWidthSelected = 1.5
+//   [M3] animDurationMicro = Duration(milliseconds: 200)
 //
 // CHANGES (auth ui-apply — H2/A1/C3):
-//   [H2]  buttonFontSize = 15.0 — tokenises the raw 15 literal in
-//         auth_submit_button.dart and both elevatedButton theme textStyles.
-//   [A1]  authCardEntranceDuration = Duration(milliseconds: 900) — the
-//         reference entrance animation duration from register_screen.dart,
-//         applied to email_verification_screen.dart (was 700ms).
-//   [C3]  spinnerSizeLg = 20.0 — large CircularProgressIndicator dimension
-//         used across primary action buttons.
-//         spinnerSizeSm = 14.0 — small spinner used in secondary / text buttons.
-//   [A1]  iconContainerFeature = 56.0 — feature icon container size used in
-//         email_verification_screen (was hardcoded width:56, height:56).
-//         Designer sign-off pending: keep 56dp or align to 48/64?
+//   [H2]  buttonFontSize = 15.0
+//   [A1]  authCardEntranceDuration = Duration(milliseconds: 900)
+//   [C3]  spinnerSizeLg = 20.0 / spinnerSizeSm = 14.0
+//   [A1]  iconContainerFeature = 56.0
 //
 // CHANGES (auth ui-apply — MANUAL pass, dimension tokens):
-//   logoOrbSize = 64.0 — login header logo orb container (raw 64 literals).
-//   logoOrbIconSize = 30.0 — icon inside login logo orb (off-grid 30dp; pending
-//       designer sign-off: 32dp would snap to grid).
-//   socialButtonSize = 52.0 — CircularSocialButton width/height (raw 52 literals).
-//   socialSpinnerSize = 18.0 — loading spinner inside social button (was 18dp;
-//       note: sits between spinnerSizeSm=14 and spinnerSizeLg=20, not on grid).
-//   roleToggleHeight = 56.0 — RegisterRoleSelector toggle container height.
-//   strengthBarHeight = 3.0 — password strength segment bar height.
-//   strengthBarGap = 3.0 — gap between password strength segments.
-//   strengthBarRadius = 2.0 — border radius of strength bar segments
-//       (nearest token radiusXs=4; kept at 2 pending designer sign-off).
-//   accentShadowOpacity = 0.35 — opacity used for accent-coloured box shadows.
-//   goodPasswordLength = 10 — threshold above minPasswordLength (6) used in the
-//       strength scorer to award the "good length" bonus point.
-//   lineHeightTight = 1.4 — tighter line-height used in dense inline text
-//       (e.g. _LockoutWidget body). Standard body uses 1.6 in the textTheme.
+//   logoOrbSize, logoOrbIconSize, socialButtonSize, socialSpinnerSize,
+//   roleToggleHeight, strengthBarHeight, strengthBarGap, strengthBarRadius,
+//   accentShadowOpacity, goodPasswordLength, lineHeightTight
 //
 // CHANGES (ui-apply pass — checkbox / role tab tokens):
-//   roleTabIconSize = 18.0 — icon size in RegisterRoleSelector tabs.
-//       Pending designer sign-off: 18dp sits between iconSizeXs (16) and
-//       iconSizeSm (20).
-//   checkboxSize = 22.0 — RegisterTermsCheckbox container size.
-//       TODO: confirm 20dp or 24dp (22dp is off the 4dp grid).
-//   checkboxIconSize = 14.0 — check icon size inside checkbox container.
-//   checkboxRadius = 6.0 — border radius of checkbox container.
+//   roleTabIconSize, checkboxSize, checkboxIconSize, checkboxRadius
 //
 // CHANGES (ui-apply AUTO — grid alignment):
-//   [AUTO] sectionCardGap: 10.0 → 12.0 — snapped to nearest 4dp grid value.
-//   [AUTO] searchBarHeight: 44.0 → 48.0 — aligned to buttonHeightMd to resolve
-//          the 44dp vs 48dp split between home_categories_sheet and
-//          advanced_search_bar. Single source of truth.
+//   [AUTO] sectionCardGap: 10.0 → 12.0
+//   [AUTO] searchBarHeight: 44.0 → 48.0
 //
 // CHANGES (ui-apply AUTO — token additions):
-//   [AUTO] paddingInputV = 12.0 — vertical padding for textButtonTheme;
-//          no prior matching token. Backs the 12dp vertical padding on TextButtons.
-//   [AUTO] fontSizeAppBar = 17.0 — AppBar titleTextStyle font size token;
-//          replaces raw 17 literal in both dark and light appBarTheme.
-//   [AUTO] backButtonSize = 48.0 — back button touch target raised from 44dp
-//          (Apple HIG minimum) to 48dp (Material minimum). The inline comment
-//          "meets the 44dp minimum" in register_header.dart was factually wrong
-//          for Material; this token and the updated comment reflect the correct
-//          platform requirement.
+//   [AUTO] paddingInputV = 12.0
+//   [AUTO] fontSizeAppBar = 17.0
+//   [AUTO] backButtonSize = 48.0
 //
 // CHANGES (ui-apply MANUAL — service_request tokens):
-//   [MANUAL] serviceIconContainerSize = 40.0 — canonical service icon container
-//            used in request_card and tracking_body. Replaces raw 40/44 literals;
-//            40dp is the more-common usage and the canonical value.
-//   [MANUAL] monoFontFamily = 'monospace' — replaces the raw 'monospace' string
-//            literal used for coordinate display in location_visual.dart.
-//   [MANUAL] radioOuterSize = 16.0 — outer radio dot in priority_selector;
-//            snaps 15dp to 4dp grid.
-//   [MANUAL] radioInnerSize = 6.0 — inner radio dot in priority_selector;
-//            snaps 5dp to nearest even value.
+//   [MANUAL] serviceIconContainerSize = 40.0
+//   [MANUAL] monoFontFamily = 'monospace'
+//   [MANUAL] radioOuterSize = 16.0 / radioInnerSize = 6.0
+//
+// CHANGES (worker_jobs ui-apply — MANUAL):
+//   [MANUAL] buttonHeightFab = 48.0 — canonical FAB-area CTA button height.
+//            All FAB-area buttons (JobCompleteBtn, JobCompletedBadge,
+//            JobLoadingBtn, _StartJobBtn in JobDetailFabRow) must use this
+//            token. Resolves the 44/46/48dp three-way split identified in the
+//            UI audit. buttonHeightMd (48dp) is the reference value; this
+//            constant is a named alias that documents intent for the FAB area.
+//            Note: buttonHeightMd already = 48.0. buttonHeightFab = 48.0 is an
+//            alias — if the design ever diverges, change only buttonHeightFab.
 //
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
@@ -163,21 +116,17 @@ class AppConstants {
   static const Duration longTimeout     = Duration(minutes: 2);
   static const Duration cacheExpiry     = Duration(hours: 1);
 
-  /// Micro-interaction animation duration — short state transitions such as
-  /// the SheetOption AnimatedContainer selection highlight.
-  /// [M3]: promotes the raw Duration(milliseconds: 200) magic literal.
+  /// Micro-interaction animation duration.
   static const Duration animDurationMicro = Duration(milliseconds: 200);
 
-  /// Auth card entrance animation duration — card fade/slide in from off-screen.
-  /// [A1]: reference implementation is register_screen.dart (900ms).
-  /// Applied to email_verification_screen.dart (was 700ms — inconsistent).
+  /// Auth card entrance animation duration.
   static const Duration authCardEntranceDuration = Duration(milliseconds: 900);
 
   static const int biddingDeadlineMinutes  = 120;
   static const int maxPendingBidsPerWorker = 5;
 
   // Spacing
-  // TODO(S3-grid-audit): spacingXxs (2dp) is off the 4dp grid — designer sign-off required.
+  // TODO(S3-grid-audit): spacingXxs (2dp) is off the 4dp grid.
   static const double spacingXxs  = 2.0;
   static const double spacingXs   = 4.0;
   static const double spacingSm   = 8.0;
@@ -186,8 +135,6 @@ class AppConstants {
   static const double spacingXl   = 32.0;
   static const double spacingMdLg = 20.0;
 
-  // [UI-FIX] 12dp gap token — used in HomeServiceGrid chip separators.
-  // Sits between spacingSm (8) and spacingMd (16); deliberate design gap.
   static const double spacingChipGap = 12.0;
 
   // Padding
@@ -196,9 +143,6 @@ class AppConstants {
   static const double paddingMd     = 16.0;
   static const double paddingLg     = 24.0;
   static const double paddingXl     = 32.0;
-
-  /// Vertical padding for TextButton theme and similar compact interactive rows.
-  /// 12dp sits between paddingSm (8) and paddingMd (16) — deliberate compact value.
   static const double paddingInputV = 12.0;
 
   // Radius
@@ -217,22 +161,23 @@ class AppConstants {
   static const double buttonHeightMd = 48.0;
   static const double buttonHeightSm = 44.0;
 
+  /// Canonical FAB-area CTA button height (48dp).
+  /// All FAB-area primary action buttons (JobCompleteBtn, JobCompletedBadge,
+  /// JobLoadingBtn, _StartJobBtn) must use this token so they stay visually
+  /// aligned. Currently aliases buttonHeightMd; update independently if
+  /// the FAB row ever needs its own height in the design system.
+  static const double buttonHeightFab = 48.0;
+
   /// Back button touch target size.
-  /// 48dp meets the Material Design minimum interactive touch target.
-  /// (Previous value was 44dp — meets Apple HIG but not Material 48dp minimum.)
   static const double backButtonSize = 48.0;
 
   /// Canonical button label font size.
-  /// [H2]: tokenises the raw literal 15 in auth_submit_button.dart and
-  /// elevatedButtonTheme textStyles in app_theme.dart.
   static const double buttonFontSize = 15.0;
 
   // Cards
   static const double cardPadding     = 18.0;
   static const double cardBorderWidth = 0.5;
   static const double accentBarWidth  = 3.0;
-
-  // [MANUAL FIX]: gap between a circular icon and its label in grid chips.
   static const double cardIconLabelGap = 8.0;
 
   // Inputs
@@ -257,12 +202,10 @@ class AppConstants {
   // Sections
   static const double sectionLabelMB = 12.0;
   static const double sectionMT      = 24.0;
-  // [AUTO] sectionCardGap: 10.0 → 12.0 — snapped to nearest 4dp grid value.
   static const double sectionCardGap = 12.0;
 
   // Badges / chips / tile gaps
-  // TODO(S3-grid-audit): spacingTileInner (14dp) and badgePaddingV (3dp) are
-  //   off the 4dp grid — schedule for next design-system alignment pass.
+  // TODO(S3-grid-audit): spacingTileInner (14dp) and badgePaddingV (3dp) are off-grid.
   static const double spacingTileInner = 14.0;
   static const double badgePaddingH    = 10.0;
   static const double badgePaddingV    = 3.0;
@@ -271,10 +214,7 @@ class AppConstants {
   static const double chipPaddingV     = 4.0;
 
   // ── Border widths ─────────────────────────────────────────────────────────
-  /// Standard tile / option border stroke (unselected state).
   static const double borderWidthDefault  = 1.0;
-
-  /// Selected-state emphasis border stroke.
   static const double borderWidthSelected = 1.5;
 
   // Wordmark
@@ -286,10 +226,7 @@ class AppConstants {
   static const double heroFontSize    = 32.0;
   static const double fontSizeTileLg  = 15.0;
   static const double fontSizeXxs     = 11.0;
-  /// NOTE: fontSizeXs = 10dp is below the 11dp platform minimum (Apple HIG /
-  /// Android MDC). All new code must use fontSizeXxs (11dp) instead.
-  /// This token is kept only for backward-compat reference — do NOT use in
-  /// new widgets. Scheduled for removal in the next design-system audit pass.
+  /// NOTE: fontSizeXs = 10dp is below platform minimums. Use fontSizeXxs (11dp).
   static const double fontSizeXs      = 10.0;
   static const double fontSizeSm      = 12.0;
   static const double fontSizeCaption = 13.0;
@@ -298,13 +235,9 @@ class AppConstants {
   static const double fontSizeXl      = 18.0;
   static const double fontSizeXxl     = 20.0;
   static const double fontSizeDisplay = 24.0;
-
-  /// AppBar title font size — replaces raw literal 17 in both theme definitions.
-  static const double fontSizeAppBar = 17.0;
+  static const double fontSizeAppBar  = 17.0;
 
   // Line heights
-  /// Tight line-height for dense inline text (e.g. lockout banner body).
-  /// Standard body line-height is 1.6 in the textTheme.
   static const double lineHeightTight = 1.4;
 
   // Icons
@@ -313,12 +246,7 @@ class AppConstants {
   static const double iconSizeMd = 24.0;
   static const double iconSizeLg = 32.0;
   static const double iconSizeXl = 48.0;
-
-  /// Mid-scale icon token between iconSizeXl (48) and iconSizeHero (80).
-  /// Also used as the canonical picker-button height (64dp on 8dp grid).
-  static const double iconSizeLg2 = 64.0;
-
-  /// Hero-scale icon used in full-screen state illustrations.
+  static const double iconSizeLg2  = 64.0;
   static const double iconSizeHero = 80.0;
 
   // Container sizes
@@ -327,95 +255,36 @@ class AppConstants {
   static const double iconContainerLg  = 36.0;
   static const double iconContainerXl  = 40.0;
   static const double buttonIconSize   = 20.0;
-
-  /// Feature icon container — circular container wrapping a content icon.
   static const double iconContainerFeature = 56.0;
-
-  /// Canonical service icon container size (width = height).
-  /// Used in request_card, tracking_body service summary rows.
-  /// Chosen value: 40dp (more common of the 40/44 split found in audit).
   static const double serviceIconContainerSize = 40.0;
-
-  /// Emoji / flag icon size used in SheetOption rows.
   static const double emojiIconSize = 22.0;
-
-  /// Large spinner size — primary action button CircularProgressIndicator.
   static const double spinnerSizeLg = 20.0;
-
-  /// Small spinner size — secondary / text button CircularProgressIndicator.
   static const double spinnerSizeSm = 14.0;
 
   // ── Auth UI tokens ────────────────────────────────────────────────────────
-
-  /// Login header logo orb container size (width = height).
-  /// Pending designer sign-off: 64dp diverges from iconContainerFeature (56dp).
-  static const double logoOrbSize = 64.0;
-
-  /// Icon size inside the login logo orb.
-  /// Note: 30dp is off the 20/24/32 icon scale — designer sign-off pending.
-  static const double logoOrbIconSize = 30.0;
-
-  /// CircularSocialButton width and height.
-  static const double socialButtonSize = 52.0;
-
-  /// Loading spinner inside CircularSocialButton.
-  /// Note: 18dp sits between spinnerSizeSm (14) and spinnerSizeLg (20).
+  static const double logoOrbSize       = 64.0;
+  static const double logoOrbIconSize   = 30.0;
+  static const double socialButtonSize  = 52.0;
   static const double socialSpinnerSize = 18.0;
-
-  /// RegisterRoleSelector toggle container height.
-  static const double roleToggleHeight = 56.0;
-
-  /// Password strength bar segment height.
-  /// Note: 3dp is off the 4dp grid — designer sign-off pending.
+  static const double roleToggleHeight  = 56.0;
   static const double strengthBarHeight = 3.0;
-
-  /// Gap between password strength bar segments.
-  /// Note: 3dp is off the 4dp grid — designer sign-off pending.
-  static const double strengthBarGap = 3.0;
-
-  /// Border radius of password strength bar segments.
-  /// Note: 2dp; nearest token is radiusXs (4dp) — designer sign-off pending.
+  static const double strengthBarGap    = 3.0;
   static const double strengthBarRadius = 2.0;
 
   // ── Checkbox / role tab tokens ────────────────────────────────────────────
-
-  /// Icon size in RegisterRoleSelector tabs.
-  /// Pending designer sign-off: 18dp sits between iconSizeXs (16) and
-  /// iconSizeSm (20) — confirm intended value before token is published.
-  static const double roleTabIconSize = 18.0;
-
-  /// Checkbox container size (width = height).
-  /// TODO: designer sign-off — confirm 20dp or 24dp (current 22dp is off-grid).
-  static const double checkboxSize = 22.0;
-
-  /// Check icon size inside the checkbox container.
+  static const double roleTabIconSize  = 18.0;
+  static const double checkboxSize     = 22.0;
   static const double checkboxIconSize = 14.0;
-
-  /// Border radius of the checkbox container.
-  /// Note: 6dp sits between radiusXs (4) and radiusSm (8).
-  static const double checkboxRadius = 6.0;
-
-  /// Opacity applied to accent-coloured box shadows (e.g. logo orb, submit button).
+  static const double checkboxRadius   = 6.0;
   static const double accentShadowOpacity = 0.35;
-
-  /// Password length threshold above [minPasswordLength] that awards the
-  /// "good length" bonus point in the strength scorer.
-  static const int goodPasswordLength = 10;
+  static const int    goodPasswordLength  = 10;
 
   // ── Priority selector radio dots ──────────────────────────────────────────
-
-  /// Outer radio dot size in priority_selector.dart.
-  /// Snaps the original 15dp off-grid value to the 4dp grid (16dp).
   static const double radioOuterSize = 16.0;
-
-  /// Inner radio dot (selected fill) size in priority_selector.dart.
-  /// Snaps the original 5dp off-grid value to 6dp.
   static const double radioInnerSize = 6.0;
 
   // ── Typography tokens ─────────────────────────────────────────────────────
-
   /// Monospace font family name — used for coordinate / technical displays.
-  /// Replace with a custom monospace font name here if the project adds one.
   static const String monoFontFamily = 'monospace';
 
   static const double filterChipHeight   = 36.0;
@@ -430,21 +299,14 @@ class AppConstants {
   static const int fallbackWorkerQueryLimit = 100;
 
   // Search / input
-  // [AUTO] searchBarHeight: 44.0 → 48.0 — aligned to buttonHeightMd.
-  // Resolves the 44dp vs 48dp split between home_categories_sheet and
-  // advanced_search_bar. Both now reference buttonHeightMd as the single
-  // source of truth; this constant is kept for backward-compat call sites.
   static const double searchBarHeight      = 48.0;
   static const double categoryTileIconSize = 48.0;
 
   /// Canonical row height for SettingsTile, SignOutTile, _DeleteAccountTile.
   static const double tileHeight = 64.0;
 
-  /// Width of the retry button in SettingsErrorView.
-  static const double settingsRetryButtonWidth = 180.0;
-
-  /// Height of the ProfileCard shimmer skeleton in _ProfileCardSkeleton.
-  static const double profileCardSkeletonHeight = 110.0;
+  static const double settingsRetryButtonWidth    = 180.0;
+  static const double profileCardSkeletonHeight   = 110.0;
 
   // ── Toggle switch ─────────────────────────────────────────────────────────
   static const double toggleTrackW    = 40.0;
@@ -462,19 +324,19 @@ class AppConstants {
   static const double splashRetryButtonMinWidth = 120.0;
 
   // ── Opacity tokens — state-conditional destructive tiles ─────────────────
-  static const double opacityDisabledColor    = 0.40;
-  static const double opacityChevron          = 0.50;
-  static const double opacityTileFillDisabled = 0.04;
-  static const double opacityTileFillDarkEn   = 0.12;
-  static const double opacityTileFillLightEn  = 0.08;
+  static const double opacityDisabledColor        = 0.40;
+  static const double opacityChevron              = 0.50;
+  static const double opacityTileFillDisabled     = 0.04;
+  static const double opacityTileFillDarkEn       = 0.12;
+  static const double opacityTileFillLightEn      = 0.08;
   static const double opacityDeleteTileFillDarkEn = 0.08;
-  static const double opacityDeleteFillLightEn = 0.05;
-  static const double opacityDeleteFillDis     = 0.03;
-  static const double opacityIconBg            = 0.12;
-  static const double opacityIconBgAlt         = 0.15;
-  static const double opacityBorderEnabled     = 0.20;
-  static const double opacityBorderDisabled    = 0.08;
-  static const double opacityDeleteBorderDis   = 0.06;
+  static const double opacityDeleteFillLightEn    = 0.05;
+  static const double opacityDeleteFillDis        = 0.03;
+  static const double opacityIconBg               = 0.12;
+  static const double opacityIconBgAlt            = 0.15;
+  static const double opacityBorderEnabled        = 0.20;
+  static const double opacityBorderDisabled       = 0.08;
+  static const double opacityDeleteBorderDis      = 0.06;
 
   // ── Opacity tokens — SheetOption ─────────────────────────────────────────
   static const double opacitySheetFillDark    = 0.20;
