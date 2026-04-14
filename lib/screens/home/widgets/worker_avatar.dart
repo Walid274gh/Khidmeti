@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/worker_model.dart';
+import '../../../utils/app_config.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/media_path_helper.dart';
 
 // ============================================================================
 // WORKER AVATAR
@@ -15,9 +17,11 @@ import '../../../utils/constants.dart';
 // off the 8dp icon grid (between iconSizeMd=24 and iconSizeLg=32).
 // Aligned to AppConstants.iconSizeMd (24dp): on-grid, proportional at ~37%
 // of the 64dp avatar container, and consistent with icon scale system-wide.
+//
+// [MEDIA FIX]: profileImageUrl est un storedPath ("bucket/uid/file.jpg").
+// Converti en URL proxy via MediaPathHelper.toUrl() avant Image.network.
 // ============================================================================
 
-// Canonical avatar size — on 8dp grid.
 const double _kAvatarSize = 64.0;
 
 class WorkerAvatar extends StatelessWidget {
@@ -28,6 +32,14 @@ class WorkerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Convertit storedPath ou ancienne URL en URL proxy complète
+    final displayUrl = worker.profileImageUrl != null
+        ? MediaPathHelper.toUrl(
+            worker.profileImageUrl,
+            apiBaseUrl: AppConfig.apiBaseUrl,
+          )
+        : null;
+
     return Container(
       width:  _kAvatarSize,
       height: _kAvatarSize,
@@ -36,10 +48,10 @@ class WorkerAvatar extends StatelessWidget {
         color:  color.withOpacity(0.12),
         border: Border.all(color: color, width: 2),
       ),
-      child: worker.profileImageUrl != null
+      child: displayUrl != null && displayUrl.isNotEmpty
           ? ClipOval(
               child: Image.network(
-                worker.profileImageUrl!,
+                displayUrl,
                 fit:          BoxFit.cover,
                 errorBuilder: (_, __, ___) => Icon(
                   AppIcons.person,
