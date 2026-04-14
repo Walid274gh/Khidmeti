@@ -3,9 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../utils/app_config.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../utils/media_path_helper.dart';
 import 'job_media_viewer.dart';
 
 class JobMediaGallery extends StatelessWidget {
@@ -39,7 +41,13 @@ class JobMediaGallery extends StatelessWidget {
           separatorBuilder: (_, __) =>
               const SizedBox(width: AppConstants.spacingSm),
           itemBuilder: (context, i) {
-            final url = urls[i];
+            final storedPath = urls[i];
+            // Convertit storedPath ou ancienne URL en URL proxy complète
+            final displayUrl = MediaPathHelper.toUrl(
+              storedPath,
+              apiBaseUrl: AppConfig.apiBaseUrl,
+            );
+
             return Semantics(
               button: true,
               label: context
@@ -52,13 +60,13 @@ class JobMediaGallery extends StatelessWidget {
                   initialIndex: i,
                 ),
                 child: Hero(
-                  tag: 'media_${url}_$i',
+                  tag: 'media_${storedPath}_$i',
                   child: ClipRRect(
                     borderRadius:
                         BorderRadius.circular(AppConstants.radiusMd),
                     child: Stack(
                       children: [
-                        if (_isVideo(url))
+                        if (_isVideo(storedPath))
                           Container(
                             width: 100,
                             height: 100,
@@ -75,7 +83,7 @@ class JobMediaGallery extends StatelessWidget {
                           )
                         else
                           CachedNetworkImage(
-                            imageUrl: url,
+                            imageUrl: displayUrl,
                             width: 100,
                             height: 100,
                             fit: BoxFit.cover,

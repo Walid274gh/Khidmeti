@@ -1,18 +1,19 @@
 // lib/screens/worker_jobs/widgets/job_media_viewer.dart
 //
-// CHANGE: JobVideoPlaceholder(url: url, isDark: true, context: context)
-//         → JobVideoPlaceholder(url: url, isDark: true)
-//   context: field was removed from JobVideoPlaceholder constructor as part
-//   of the BuildContext-in-constructor fix (P1 — Engineer).
+// [MEDIA FIX]: Les URLs dans mediaUrls sont des storedPaths ou anciennes URLs.
+// On les convertit via MediaPathHelper.toUrl() avant CachedNetworkImage.
+// Le tag Hero utilise le storedPath original pour cohérence avec job_media_gallery.
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../utils/app_config.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../utils/media_path_helper.dart';
 import 'job_media_top_bar.dart';
 import 'job_media_nav_arrow.dart';
 import 'job_media_dot_indicators.dart';
@@ -115,18 +116,26 @@ class _JobMediaViewerState extends State<JobMediaViewer>
               itemCount:   widget.mediaUrls.length,
               onPageChanged: (i) => setState(() => _currentIndex = i),
               itemBuilder: (context, i) {
-                final url = widget.mediaUrls[i];
-                if (_isVideo(url)) {
-                  // CHANGE: removed context: context parameter
-                  return JobVideoPlaceholder(url: url, isDark: true);
+                final storedPath = widget.mediaUrls[i];
+
+                if (_isVideo(storedPath)) {
+                  return JobVideoPlaceholder(url: storedPath, isDark: true);
                 }
+
+                // Convertit storedPath ou ancienne URL en URL proxy complète
+                final displayUrl = MediaPathHelper.toUrl(
+                  storedPath,
+                  apiBaseUrl: AppConfig.apiBaseUrl,
+                );
+
                 return InteractiveViewer(
                   minScale: 0.7,
                   maxScale: 4.0,
                   child: Hero(
-                    tag:   'media_${url}_$i',
+                    // Tag cohérent avec job_media_gallery (utilise le storedPath)
+                    tag:   'media_${storedPath}_$i',
                     child: CachedNetworkImage(
-                      imageUrl: url,
+                      imageUrl: displayUrl,
                       fit:      BoxFit.contain,
                       placeholder: (context, url) => const Center(
                         child: CircularProgressIndicator(
