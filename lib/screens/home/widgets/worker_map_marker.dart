@@ -47,7 +47,7 @@ class WorkerMapMarker extends StatelessWidget {
         ? AppTheme.warningAmber
         : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent);
 
-    final icon = AppTheme.getProfessionIcon(worker.profession);
+    final icon = AppTheme.getProfessionIcon(worker.profession!);
     final size = isBest ? 56.0 : 48.0;
 
     final borderColor = Theme.of(context).colorScheme.onPrimary;
