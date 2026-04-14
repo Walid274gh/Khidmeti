@@ -8,16 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../utils/app_config.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
+import '../../utils/media_path_helper.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../../utils/validation_form.dart';
 import '../../providers/edit_profile_provider.dart';
-
-// ============================================================================
-// EDIT PROFILE SCREEN — getSurfaceDecoration() deleted, inline BoxDecoration
-// ============================================================================
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -340,6 +338,8 @@ class _FormView extends StatelessWidget {
 
 // ============================================================================
 // PRIVATE — AVATAR IMAGE
+// [MEDIA FIX]: networkUrl est un storedPath. On le convertit via
+// MediaPathHelper.toUrl() avant de le passer à Image.network.
 // ============================================================================
 
 class _AvatarImage extends StatelessWidget {
@@ -363,8 +363,15 @@ class _AvatarImage extends StatelessWidget {
       );
     }
     if (networkUrl != null && networkUrl!.isNotEmpty) {
+      // Convertit storedPath ou ancienne URL en URL proxy complète
+      final displayUrl = MediaPathHelper.toUrl(
+        networkUrl,
+        apiBaseUrl: AppConfig.apiBaseUrl,
+      );
+      if (displayUrl.isEmpty) return _Initials(name: name);
+
       return Image.network(
-        networkUrl!,
+        displayUrl,
         fit: BoxFit.cover,
         loadingBuilder: (_, child, progress) =>
             progress == null ? child : _Initials(name: name),
