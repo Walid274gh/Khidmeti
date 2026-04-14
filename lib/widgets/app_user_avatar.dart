@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 
+import '../utils/app_config.dart';
+import '../utils/media_path_helper.dart';
+
 class AppUserAvatar extends StatelessWidget {
   final String? imageUrl;
   final String  name;
@@ -18,8 +21,6 @@ class AppUserAvatar extends StatelessWidget {
     this.borderWidth = 2.0,
   });
 
-  // ── Initials derivation — handles single-word names and empty strings ──────
-
   String get _initials {
     final t = name.trim();
     if (t.isEmpty) return '?';
@@ -32,14 +33,17 @@ class AppUserAvatar extends StatelessWidget {
         .toUpperCase();
   }
 
-  // ── Cache size: 2× radius at 3× device pixel ratio (reasonable upper bound) ─
-
   int get _cacheSize => (radius * 2 * 3).ceil();
 
   @override
   Widget build(BuildContext context) {
     final ringColor = borderColor ?? Colors.white.withOpacity(0.40);
     final size      = radius * 2;
+
+    // Convertit storedPath ou ancienne URL en URL proxy complète
+    final displayUrl = (imageUrl != null && imageUrl!.isNotEmpty)
+        ? MediaPathHelper.toUrl(imageUrl, apiBaseUrl: AppConfig.apiBaseUrl)
+        : null;
 
     return Semantics(
       label: name.trim().isNotEmpty ? name.trim() : _initials,
@@ -52,9 +56,9 @@ class AppUserAvatar extends StatelessWidget {
           border: Border.all(color: ringColor, width: borderWidth),
         ),
         child: ClipOval(
-          child: imageUrl != null && imageUrl!.isNotEmpty
+          child: displayUrl != null && displayUrl.isNotEmpty
               ? Image.network(
-                  imageUrl!,
+                  displayUrl,
                   width:       size,
                   height:      size,
                   fit:         BoxFit.cover,
@@ -73,8 +77,6 @@ class AppUserAvatar extends StatelessWidget {
     );
   }
 }
-
-// ── Private fallback — rendered when imageUrl is null / empty / load-failed ──
 
 class _InitialsFallback extends StatelessWidget {
   final String initials;
@@ -97,17 +99,6 @@ class _InitialsFallback extends StatelessWidget {
       child: Text(
         initials,
         style: TextStyle(
-          // FIX (Engineer): was `fontSize: null` which always produced the
-          // theme default (14dp) regardless of avatar size. A 28×28 avatar
-          // (radius 14) got 14dp text — too large. A 128×128 avatar (radius 64)
-          // also got 14dp — too small. The comment "~37% of diameter" was
-          // correct in intent but never implemented.
-          //
-          // Fix: fontSize = radius × 0.74 ≈ 37% of the diameter.
-          // Examples:
-          //   radius 20  →  14.8dp   (small chip avatar)
-          //   radius 36  →  26.6dp   (standard list avatar)
-          //   radius 64  →  47.4dp   (profile header avatar)
           fontSize:   radius * 0.74,
           fontWeight: FontWeight.w700,
           color: isDark
