@@ -28,19 +28,33 @@ class HomeWorkerSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark       = Theme.of(context).brightness == Brightness.dark;
-    final workerState  = ref.watch(workerHomeControllerProvider);
-    final jobsState    = ref.watch(workerJobsControllerProvider);
+    final isDark      = Theme.of(context).brightness == Brightness.dark;
+    final workerState = ref.watch(workerHomeControllerProvider);
+    final jobsState   = ref.watch(workerJobsControllerProvider);
 
-    if (workerState.isWorkerLoading) return const SizedBox.shrink();
-    if (workerState.isWorkerError)   return const SizedBox.shrink();
+    // FIX (Bug 1b visible): remplacer les SizedBox.shrink() silencieux par des
+    // états explicites. L'utilisateur voit désormais un skeleton pendant le
+    // chargement et un message d'erreur avec retry en cas d'échec.
+    if (workerState.isWorkerLoading) {
+      return const _WorkerSectionSkeleton();
+    }
+
+    if (workerState.isWorkerError) {
+      return _WorkerSectionError(
+        isDark:  isDark,
+        onRetry: () =>
+            ref.read(workerHomeControllerProvider.notifier).refresh(),
+      );
+    }
 
     final worker = workerState.worker;
+    // Guard défensif : ne devrait pas arriver si AsyncValue est bien géré,
+    // mais conservé pour la sécurité du typage.
     if (worker == null) return const SizedBox.shrink();
 
     final isOnline = workerState.isOnline;
-    final rating     = worker.averageRating;
-    final pending    = jobsState.jobs
+    final rating   = worker.averageRating;
+    final pending  = jobsState.jobs
         .where((j) => j.status == ServiceStatus.open)
         .take(_kMaxNearbyJobs)
         .toList();
@@ -116,8 +130,8 @@ class HomeWorkerSection extends ConsumerWidget {
 // ── ① Availability toggle ─────────────────────────────────────────────────────
 
 class _AvailabilityToggle extends StatelessWidget {
-  final bool       isDark;
-  final bool       isOnline;
+  final bool         isDark;
+  final bool         isOnline;
   final VoidCallback onToggle;
 
   const _AvailabilityToggle({
@@ -128,10 +142,10 @@ class _AvailabilityToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onColor   = AppTheme.onlineGreen;
-    final offColor  = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    final dotColor  = isOnline ? onColor : offColor;
-    final subtext   = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final onColor  = AppTheme.onlineGreen;
+    final offColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final dotColor = isOnline ? onColor : offColor;
+    final subtext  = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -155,9 +169,6 @@ class _AvailabilityToggle extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // [S1 MANUAL FIX]: was width: 8, height: 8 — raw literals.
-              // Now resolved via AppConstants.statusDotSize (8dp token added
-              // to constants.dart in this pass).
               Container(
                 width:  AppConstants.statusDotSize,
                 height: AppConstants.statusDotSize,
@@ -211,17 +222,11 @@ class _ToggleSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onColor = AppTheme.onlineGreen;
+    final onColor       = AppTheme.onlineGreen;
     final offTrackColor = isDark
         ? AppTheme.darkSurfaceVariant
         : AppTheme.lightSurfaceVariant;
 
-    // [S1 MANUAL FIX]: was width:40/height:20 (track) and width:16/height:16
-    // (thumb) — raw literals with no token backing. Tokens added to
-    // constants.dart: AppConstants.toggleTrackW (40), toggleTrackH (20),
-    // toggleThumbSize (16). thumb margin:2 left as file-local bare value —
-    // it is a construction detail (gap between thumb edge and track edge),
-    // not a spacing token; adding a named constant would not aid readability.
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width:  AppConstants.toggleTrackW,
@@ -263,7 +268,7 @@ class _RoiStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -315,9 +320,6 @@ class _RoiCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.spacingSm,
-          // [S1 FIX]: was "vertical: AppConstants.spacingXs + 4" — arithmetic
-          // expression that evaluates to 8dp (= spacingSm). Replaced with the
-          // named token directly for clarity and design-system consistency.
           vertical:   AppConstants.spacingSm,
         ),
         decoration: BoxDecoration(
@@ -430,10 +432,6 @@ class _DemandBar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppConstants.spacingSm),
-            // [AUTO FIX W4]: was BorderRadius.circular(2) — raw literal with
-            // no token backing. Replaced with AppConstants.strengthBarRadius
-            // (2dp) — the same token used for password strength bar segments.
-            // Both are decorative progress bars with intentionally tight rounding.
             ClipRRect(
               borderRadius: BorderRadius.circular(AppConstants.strengthBarRadius),
               child: Stack(
@@ -502,8 +500,6 @@ class _NearbyJobTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // [S1 FIX]: was width: 32, height: 32 — raw literals.
-            // Replaced with AppConstants.iconContainerMd (32dp named token).
             Container(
               width:  AppConstants.iconContainerMd,
               height: AppConstants.iconContainerMd,
@@ -544,7 +540,6 @@ class _NearbyJobTile extends StatelessWidget {
                 ],
               ),
             ),
-            // NEW badge
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.spacingSm,
@@ -554,10 +549,6 @@ class _NearbyJobTile extends StatelessWidget {
                 color:        AppTheme.recordingRed,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSm),
               ),
-              // [C1 FIX]: was color: Colors.white — hardcoded primitive.
-              // Replaced with colorScheme.onPrimary — semantically correct:
-              // text contrasting with the recordingRed fill. onPrimary maps
-              // to Colors.white in both the dark and light theme ColorScheme.
               child: Text(
                 context.tr('worker_home.badge_new'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -568,6 +559,111 @@ class _NearbyJobTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── ⑤ Loading skeleton ────────────────────────────────────────────────────────
+
+class _WorkerSectionSkeleton extends StatelessWidget {
+  const _WorkerSectionSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base   = (isDark ? AppTheme.darkText : AppTheme.lightText)
+        .withOpacity(0.08);
+
+    Widget bone({double? width, required double height}) => Container(
+          width:  width ?? double.infinity,
+          height: height,
+          margin: const EdgeInsets.symmetric(vertical: AppConstants.spacingXs),
+          decoration: BoxDecoration(
+            color:        base,
+            borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+          ),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.paddingLg,
+        AppConstants.spacingMd,
+        AppConstants.paddingLg,
+        AppConstants.spacingMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Divider
+          Container(height: _kSectionDividerH, color: base),
+          const SizedBox(height: AppConstants.spacingMd),
+          // Toggle card
+          bone(height: AppConstants.buttonHeight),
+          const SizedBox(height: AppConstants.spacingSm),
+          // ROI strip — 3 cartes côte à côte
+          Row(
+            children: [
+              Expanded(child: bone(height: 64)),
+              const SizedBox(width: AppConstants.spacingXs),
+              Expanded(child: bone(height: 64)),
+              const SizedBox(width: AppConstants.spacingXs),
+              Expanded(child: bone(height: 64)),
+            ],
+          ),
+          const SizedBox(height: AppConstants.spacingSm),
+          // Demand bar
+          bone(height: 80),
+          const SizedBox(height: AppConstants.spacingMd),
+        ],
+      ),
+    );
+  }
+}
+
+// ── ⑥ Error state ─────────────────────────────────────────────────────────────
+
+class _WorkerSectionError extends StatelessWidget {
+  final bool         isDark;
+  final VoidCallback onRetry;
+
+  const _WorkerSectionError({
+    required this.isDark,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtext = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
+
+    return Padding(
+      padding: const EdgeInsets.all(AppConstants.paddingLg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: AppConstants.spacingLg),
+          Icon(
+            AppIcons.warning,
+            size:  AppConstants.iconSizeLg,
+            color: subtext,
+          ),
+          const SizedBox(height: AppConstants.spacingSm),
+          Text(
+            context.tr('worker_home.load_error'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: subtext,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppConstants.spacingMd),
+          OutlinedButton(
+            onPressed: onRetry,
+            child: Text(context.tr('common.retry')),
+          ),
+          const SizedBox(height: AppConstants.spacingLg),
+        ],
       ),
     );
   }
