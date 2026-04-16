@@ -1,20 +1,21 @@
 // lib/screens/auth/user_profile_screen.dart
 //
 // Client profile setup. Called after role selection for new users.
-// - Avatar picker (emoji + camera/gallery)
-// - Name text field
-// - "Entrer dans l'app" CTA
-// - "Passer" skip avatar link
 //
-// Uses profileSetupControllerProvider. Navigation on success is handled
-// by the router watching firebaseAuthStreamProvider.
+// NAVIGATION FIX:
+//   Previously relied on "router watching firebaseAuthStreamProvider" which
+//   never fires here (Firebase auth state doesn't change during profile setup —
+//   the user is already authenticated). submitClientProfile() now explicitly
+//   sets cachedUserRoleProvider and navigates to /home on success.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/profile_setup_state.dart';
 import '../../providers/profile_setup_controller.dart';
+import '../../providers/user_role_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/form_validators.dart';
@@ -36,7 +37,7 @@ class UserProfileScreen extends ConsumerStatefulWidget {
 class _UserProfileScreenState extends ConsumerState<UserProfileScreen>
     with TickerProviderStateMixin {
 
-  final _nameCtrl = TextEditingController();
+  final _nameCtrl  = TextEditingController();
   final _nameFocus = FocusNode();
 
   late final AnimationController _slideCtrl;
@@ -67,7 +68,18 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen>
     FocusScope.of(context).unfocus();
     HapticFeedback.mediumImpact();
     ref.read(profileSetupControllerProvider.notifier).setName(_nameCtrl.text);
-    await ref.read(profileSetupControllerProvider.notifier).submitClientProfile();
+
+    final success =
+        await ref.read(profileSetupControllerProvider.notifier).submitClientProfile();
+
+    if (success && mounted) {
+      // FIX: Set the cached role so MainNavigationScreen shows the correct
+      // tab bar immediately, then navigate to /home.
+      // The router's redirect won't fire here (no Firebase auth state change),
+      // so we navigate explicitly.
+      setCachedUserRole(ref, UserRole.client, force: true);
+      context.go(AppRoutes.home);
+    }
   }
 
   @override

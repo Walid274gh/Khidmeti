@@ -6,17 +6,26 @@
 //   State 2 — Success/loading: animated checkmark while router redirects
 //
 // State machine is driven by authControllerProvider (AuthController).
-// Navigation is handled by the router watching firebaseAuthStreamProvider.
-// This screen never calls context.go() — it only sets state.
+//
+// NAVIGATION FIXES:
+//   • ref.listen handles navigation on AuthStatus.success:
+//       - isNewUser  → context.go(AppRoutes.roleSelection)
+//       - existing   → fetch role via currentUserRoleProvider,
+//                      set cachedUserRoleProvider, then navigate to /home.
+//   • isOtpPhase now includes AuthStatus.success so the OTP card stays
+//     visible (instead of the phone card flashing) while navigation occurs.
+//   • Verify button now calls onCompleted with the real OTP code as fallback.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/auth_state.dart';
 import '../../providers/auth_controller.dart';
+import '../../providers/user_role_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/form_validators.dart';
@@ -82,6 +91,30 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     super.dispose();
   }
 
+  // ── Navigation after successful authentication ────────────────────────────
+  //
+  // FIX: The router redirect waits for cachedUserRoleProvider != unknown,
+  // but nobody sets that provider after phone auth. We handle navigation
+  // here instead, for both new users and returning users.
+
+  /// Called by ref.listen when AuthStatus.success is reached for an
+  /// existing user (isNewUser == false). Fetches the user's role from the
+  /// API, writes it into cachedUserRoleProvider so MainNavigationScreen
+  /// displays the correct tab bar, then navigates to /home.
+  Future<void> _handleExistingUserLogin() async {
+    try {
+      final role = await ref.read(currentUserRoleProvider.future);
+      if (!mounted) return;
+      setCachedUserRole(ref, role, force: true);
+    } catch (_) {
+      // Degrade gracefully: treat as client if the API is unreachable.
+      if (!mounted) return;
+      setCachedUserRole(ref, UserRole.client, force: true);
+    }
+    if (!mounted) return;
+    context.go(AppRoutes.home);
+  }
+
   // ── Phone submission ────────────────────────────────────────────────────────
 
   Future<void> _sendOtp() async {
@@ -93,7 +126,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     final e164 = '${_selectedCountry.dialCode}$raw';
     await ref.read(authControllerProvider.notifier).sendOtp(e164);
 
-    // Replay card entrance animation for OTP state
+    // Replay card entrance animation for OTP state.
     if (mounted) {
       _cardController.reset();
       _cardController.forward();
@@ -146,8 +179,31 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     final authState = ref.watch(authControllerProvider);
     final isDark    = Theme.of(context).brightness == Brightness.dark;
 
-    final isOtpPhase = authState.status == AuthStatus.otpSent ||
-        authState.status == AuthStatus.verifying;
+    // ── Navigation listener ──────────────────────────────────────────────────
+    // FIX: Navigate as soon as the controller reaches success.
+    // This is the correct place for navigation since the router's redirect
+    // function waits for cachedUserRoleProvider to be resolved, which only
+    // happens here for freshly-authenticated users.
+    ref.listen<AuthState>(authControllerProvider, (_, next) {
+      if (!mounted) return;
+      if (next.status != AuthStatus.success) return;
+
+      if (next.isNewUser) {
+        // New user has no profile yet — send to role selection.
+        context.go(AppRoutes.roleSelection);
+      } else {
+        // Existing user — resolve role then go home.
+        _handleExistingUserLogin();
+      }
+    });
+
+    // FIX: Include AuthStatus.success so the OTP card stays visible while
+    // the navigation animation plays. Without this, the phone card briefly
+    // appears after successful verification (status changes to success which
+    // is not otpSent/verifying → isOtpPhase was false → phone card shown).
+    final isOtpPhase = authState.status == AuthStatus.otpSent    ||
+                       authState.status == AuthStatus.verifying   ||
+                       authState.status == AuthStatus.success;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemOverlayStyle(isDark),
@@ -298,8 +354,6 @@ class _PhoneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-
     return _AuthCard(
       isDark: isDark,
       child: Column(
@@ -328,11 +382,11 @@ class _PhoneCard extends StatelessWidget {
 
           // Phone input row: [flag+dial] [number]
           _PhoneInputRow(
-            isDark:       isDark,
-            controller:   controller,
-            country:      country,
+            isDark:        isDark,
+            controller:    controller,
+            country:       country,
             onPickCountry: onPickCountry,
-            onSubmit:     onSubmit,
+            onSubmit:      onSubmit,
           ),
 
           // Error
@@ -526,12 +580,12 @@ class _PhoneInputRowState extends State<_PhoneInputRow> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _OtpCard extends StatefulWidget {
-  final AuthState              authState;
-  final bool                   isDark;
+  final AuthState                   authState;
+  final bool                        isDark;
   final GlobalKey<OtpInputRowState> otpKey;
-  final ValueChanged<String>   onCompleted;
-  final VoidCallback           onResend;
-  final VoidCallback           onBack;
+  final ValueChanged<String>        onCompleted;
+  final VoidCallback                onResend;
+  final VoidCallback                onBack;
 
   const _OtpCard({
     super.key,
@@ -548,14 +602,14 @@ class _OtpCard extends StatefulWidget {
 }
 
 class _OtpCardState extends State<_OtpCard> {
-  bool _codeComplete = false;
-
   @override
   Widget build(BuildContext context) {
-    final isVerifying = widget.authState.status == AuthStatus.verifying;
-    final cooldown    = widget.authState.resendCooldown;
-    final phone       = widget.authState.phone;
-    final masked      = phone.length >= 4
+    // Show spinner when verifying OR when success (navigation in progress).
+    final isVerifyingOrDone = widget.authState.status == AuthStatus.verifying ||
+                              widget.authState.status == AuthStatus.success;
+    final cooldown = widget.authState.resendCooldown;
+    final phone    = widget.authState.phone;
+    final masked   = phone.length >= 4
         ? '${phone.substring(0, phone.length - 4)}****'
         : phone;
 
@@ -564,35 +618,38 @@ class _OtpCardState extends State<_OtpCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Back link
-          Semantics(
-            button: true,
-            label:  'Retour à la saisie du numéro',
-            child: GestureDetector(
-              onTap: widget.onBack,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.arrow_back_rounded,
-                    size:  AppConstants.iconSizeSm,
-                    color: widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    context.tr('phone_auth.change_number'),
-                    style: TextStyle(
-                      fontSize:   AppConstants.fontSizeSm,
-                      fontWeight: FontWeight.w600,
+          // Back link — hidden while verifying/success so user can't go back
+          // mid-flight.
+          if (!isVerifyingOrDone)
+            Semantics(
+              button: true,
+              label:  'Retour à la saisie du numéro',
+              child: GestureDetector(
+                onTap: widget.onBack,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.arrow_back_rounded,
+                      size:  AppConstants.iconSizeSm,
                       color: widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      context.tr('phone_auth.change_number'),
+                      style: TextStyle(
+                        fontSize:   AppConstants.fontSizeSm,
+                        fontWeight: FontWeight.w600,
+                        color: widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: AppConstants.spacingMd),
+          if (!isVerifyingOrDone)
+            const SizedBox(height: AppConstants.spacingMd),
 
           // Title
           Text(
@@ -620,9 +677,7 @@ class _OtpCardState extends State<_OtpCard> {
             key:         widget.otpKey,
             hasError:    widget.authState.hasError,
             onCompleted: widget.onCompleted,
-            onChanged:   () {
-              // Re-enable submit if user starts editing after error
-            },
+            onChanged:   () {},
           ),
 
           // Error
@@ -636,25 +691,31 @@ class _OtpCardState extends State<_OtpCard> {
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // Verify button
+          // FIX: Verify button now actually submits the OTP.
+          // It reads the current code from OtpInputRowState.currentCode
+          // (public getter added in otp_input_row.dart) and calls onCompleted.
+          // This acts as a reliable fallback if auto-submit didn't fire.
           AuthSubmitButton(
-            isLoading: isVerifying,
+            isLoading: isVerifyingOrDone,
             isDark:    widget.isDark,
-            onPressed: isVerifying ? null : () {
-              // Manual verify — already auto-submitted via OtpInputRow
-              // This acts as a fallback
+            onPressed: isVerifyingOrDone ? null : () {
+              final code = widget.otpKey.currentState?.currentCode ?? '';
+              if (code.length == 6) {
+                widget.onCompleted(code);
+              }
             },
             labelKey:  'phone_auth.verify',
           ),
 
           const SizedBox(height: AppConstants.spacingMd),
 
-          // Resend timer
-          _ResendTimer(
-            cooldown: cooldown,
-            isDark:   widget.isDark,
-            onResend: cooldown == 0 ? widget.onResend : null,
-          ),
+          // Resend timer — hidden while verifying/success
+          if (!isVerifyingOrDone)
+            _ResendTimer(
+              cooldown: cooldown,
+              isDark:   widget.isDark,
+              onResend: cooldown == 0 ? widget.onResend : null,
+            ),
         ],
       ),
     );
@@ -666,8 +727,8 @@ class _OtpCardState extends State<_OtpCard> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ResendTimer extends StatelessWidget {
-  final int        cooldown;
-  final bool       isDark;
+  final int           cooldown;
+  final bool          isDark;
   final VoidCallback? onResend;
 
   const _ResendTimer({

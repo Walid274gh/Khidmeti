@@ -1,27 +1,24 @@
 // lib/screens/auth/worker_profile_screen.dart
 //
 // Worker profile SETUP screen — shown once to new users who chose the
-// "worker" role. Distinct from lib/screens/worker_profile/worker_profile_screen.dart
-// which is the public profile viewer that takes a workerId parameter.
+// "worker" role. Distinct from lib/screens/worker_profile/worker_profile_screen.dart.
 //
 // CLASS NAME: WorkerProfileSetupScreen
-//   Renamed from WorkerProfileScreen to eliminate the compile-time ambiguity
-//   caused by having two exported WorkerProfileScreen classes in app_router.dart.
 //
-// Flow:
-//   - Avatar picker (emoji + camera/gallery)
-//   - Name text field
-//   - Profession picker V2 (API-driven, scalable, with voice detection)
-//   - "Commencer à travailler" CTA
-//
-// Navigation on success is handled by the router watching firebaseAuthStreamProvider.
+// NAVIGATION FIX (same root cause as user_profile_screen.dart):
+//   Previously relied on "router watching firebaseAuthStreamProvider" which
+//   never fires during profile setup (auth state doesn't change — user is
+//   already signed in). submitWorkerProfile() now explicitly sets
+//   cachedUserRoleProvider to UserRole.worker and navigates to /home.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/profile_setup_state.dart';
 import '../../providers/profile_setup_controller.dart';
+import '../../providers/user_role_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
@@ -52,8 +49,6 @@ class _WorkerProfileSetupScreenState
   final _nameCtrl  = TextEditingController();
   final _nameFocus = FocusNode();
 
-  /// Key exposes [ProfessionPickerV2State.autoSelect] so the voice button can
-  /// programmatically highlight the detected profession in the grid.
   final GlobalKey<ProfessionPickerV2State> _pickerKey =
       GlobalKey<ProfessionPickerV2State>();
 
@@ -84,9 +79,7 @@ class _WorkerProfileSetupScreenState
   // ── Voice detection callback ───────────────────────────────────────────────
 
   void _onVoiceProfessionDetected(String key) {
-    // 1. Update controller state
     ref.read(profileSetupControllerProvider.notifier).setProfession(key);
-    // 2. Animate highlight in picker grid
     _pickerKey.currentState?.autoSelect(key);
   }
 
@@ -96,7 +89,16 @@ class _WorkerProfileSetupScreenState
     FocusScope.of(context).unfocus();
     HapticFeedback.mediumImpact();
     ref.read(profileSetupControllerProvider.notifier).setName(_nameCtrl.text);
-    await ref.read(profileSetupControllerProvider.notifier).submitWorkerProfile();
+
+    final success =
+        await ref.read(profileSetupControllerProvider.notifier).submitWorkerProfile();
+
+    if (success && mounted) {
+      // FIX: Set the cached role to worker so MainNavigationScreen shows the
+      // three-tab worker bar immediately, then navigate to /home.
+      setCachedUserRole(ref, UserRole.worker, force: true);
+      context.go(AppRoutes.home);
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -228,7 +230,6 @@ class _WorkerProfileSetupScreenState
                                     ),
                                   ),
                                 ),
-                                // Selected profession badge
                                 if (state.profession != null)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
