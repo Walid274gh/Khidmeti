@@ -62,8 +62,9 @@ class OtpInputRowState extends State<OtpInputRow> {
     setState(() {});
   }
 
-  String get _currentCode =>
-      _controllers.map((c) => c.text).join();
+  /// Returns the digits currently entered (may be fewer than 6).
+  /// Used by the fallback verify button in _OtpCard.
+  String get currentCode => _controllers.map((c) => c.text).join();
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -122,7 +123,7 @@ class OtpInputRowState extends State<OtpInputRow> {
   void _notifyChange() {
     setState(() {});
     widget.onChanged?.call();
-    final code = _currentCode;
+    final code = currentCode;
     if (code.length == _length) {
       widget.onCompleted(code);
     }
