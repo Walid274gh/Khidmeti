@@ -9,8 +9,23 @@ import '../utils/localization.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN CONSTANTS  (local — not exposed outside this file)
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// [NAV-FIX]: _kPillHeight and _kPillInactive / _kPillActive are file-local
+// because they describe the internal pill layout, not the outer container.
+// The outer container height is now expressed exclusively in AppConstants tokens:
+//
+//   SizedBox height = AppConstants.navPillHeight        (58dp)
+//                   + AppConstants.navBarMarginB         (10dp)
+//                   + AppConstants.navBarBottomGap       (12dp)
+//                   = AppConstants.navBarHeight          (80dp)
+//
+// This means any screen that needs to know how much space the nav bar occupies
+// reads AppConstants.navBarHeight — the single source of truth.
+// Previously the SizedBox used `_kPillHeight + AppConstants.navBarMarginB + 12.0`
+// where _kPillHeight was file-local and 12.0 was an undocumented magic number,
+// making it impossible to derive the total height from constants alone.
 
-const double _kPillHeight   = 58.0;
+// Pill expand/collapse widths — internal layout detail, stays file-local.
 const double _kPillInactive = 58.0;
 const double _kPillActive   = 148.0;
 const double _kPillGap      = 8.0;
@@ -97,12 +112,18 @@ class WorkerGlassNavigationBar extends StatelessWidget {
 // ============================================================================
 // _NavShell
 //
-//  CRITICAL FIX: Scaffold.bottomNavigationBar measures its child height to
-//  reserve space at the bottom of the body. Without a fixed height the Align
-//  widget expands to fill the entire screen and covers all content.
+// CRITICAL FIX: Scaffold.bottomNavigationBar measures its child height to
+// reserve space at the bottom of the body. Without a fixed height the Align
+// widget expands to fill the entire screen and covers all content.
 //
-//  Solution: SizedBox pins the slot to exactly pill (58) + bottom margin (10)
-//  = 68 px — identical to the original navBarHeight — so the body is intact.
+// Solution: SizedBox pins the slot to exactly:
+//   AppConstants.navBarHeight (80dp)
+//   = navPillHeight(58) + navBarMarginB(10) + navBarBottomGap(12)
+//
+// [NAV-FIX]: was `_kPillHeight + AppConstants.navBarMarginB + 12.0`.
+//   _kPillHeight was file-local (58dp) and 12.0 was a magic number.
+//   Both are now read from AppConstants so the formula is auditable and
+//   any future size change requires editing only one file.
 // ============================================================================
 
 class _NavShell extends StatelessWidget {
@@ -120,7 +141,11 @@ class _NavShell extends StatelessWidget {
     return SafeArea(
       top: false,
       child: SizedBox(
-        height: _kPillHeight + AppConstants.navBarMarginB + 12.0,
+        // [NAV-FIX]: replaced `_kPillHeight + AppConstants.navBarMarginB + 12.0`
+        // (magic number formula) with AppConstants.navBarHeight (80dp).
+        // Both resolve to the same value — but now glass_navigation_bars.dart
+        // and every scroll clearance calculation share one source of truth.
+        height: AppConstants.navBarHeight,
         child: Align(
           alignment: Alignment.topCenter,
           child: Padding(
@@ -183,7 +208,10 @@ class _NavPill extends StatelessWidget {
           duration:     _kExpandDur,
           curve:        _kSpring,
           width:        isSelected ? _kPillActive : _kPillInactive,
-          height:       _kPillHeight,
+          // [NAV-FIX]: pill height uses the dedicated navPillHeight token.
+          // Previously _kPillHeight (file-local 58dp) — same value, now
+          // token-backed so it stays in sync with navBarHeight formula.
+          height:       AppConstants.navPillHeight,
           clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
             color: isSelected ? activeSurface : surface,
