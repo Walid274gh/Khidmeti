@@ -7,11 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/home_controller.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
-import '../../utils/system_ui_overlay.dart';          // NEW
+import '../../utils/system_ui_overlay.dart';
 import 'widgets/advanced_search_bar.dart';
 import 'widgets/fullscreen_map_controls.dart';
 import 'widgets/home_map_background.dart';
-import 'widgets/home_promo_section.dart';
+// import 'widgets/home_promo_section.dart'; // disabled — re-enable when ready
 import 'widgets/home_quick_actions.dart';
 import 'widgets/home_skeleton_loading.dart';
 import 'widgets/home_top_bar.dart';
@@ -19,16 +19,34 @@ import 'widgets/home_top_bar.dart';
 // ============================================================================
 // HOME SCREEN
 //
-// Changes vs previous version:
-//   • HomeWorkerSection is NO LONGER embedded inline in the scroll.
-//     Workers access their space via the "Vous" story chip in HomeServiceGrid
-//     → WorkerStoryModal (full-screen page, slide-up animation).
-//   • HomePromoSection is now shown to ALL users (clients AND workers).
-//     Workers used to miss the promo content — fixed.
-//   • Removed: import user_role_provider, import home_worker_section,
-//     the Consumer block with isWorker check, and the conditional rendering.
-//   • SystemUiOverlayStyle blocks replaced with systemOverlayStyle() from
-//     utils/system_ui_overlay.dart — eliminates the duplicated 14-line block.
+// ── Bottom clearance model ────────────────────────────────────────────────────
+//
+// This screen uses SafeArea(bottom: false) so the background gradient and map
+// extend edge-to-edge behind the floating nav bar. Bottom padding is added
+// manually at the end of the scroll column.
+//
+// Formula:
+//   bottomClearance = AppConstants.navBarScrollClearance (96dp)
+//                   + MediaQuery.viewPaddingOf(context).bottom
+//
+// navBarScrollClearance breakdown:
+//   navBarHeight   (80dp) = navPillHeight(58) + navBarMarginB(10) + navBarBottomGap(12)
+//   + spacingMd    (16dp) = breathing room so the last card is not flush
+//                           against the pill bottom edge
+//   ─────────────────────────────────────────────────────────────────────────
+//                 = 96dp
+//
+// viewPadding.bottom = physical device inset (home indicator / gesture bar).
+//   Independent of keyboard and Scaffold nav bar. Typically 0dp on hardware-
+//   button Android, 20–34dp on gesture-nav devices and iPhones ≥ X.
+//
+// [NAV-OVERLAP ROOT CAUSE — now fixed]:
+//   The previous code used fabClearance(80dp) which equalled navBarHeight
+//   exactly → zero breathing room. On top of that, navBarHeight in constants
+//   was stale at 68dp (old fixed-bar era), so fabClearance was already 12dp
+//   short of the true nav bar. Combined: last card was 12dp obscured + 0dp gap.
+//   Fix: navBarHeight corrected to 80dp in constants.dart; scroll clearance
+//   now uses navBarScrollClearance(96dp) which adds the 16dp breathing room.
 // ============================================================================
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -49,8 +67,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.initState();
     _transitionCtrl = AnimationController(
       vsync:    this,
-      // [W6 FIX]: was 420ms — exceeds the 300ms page-transition standard.
-      // Reduced to 300ms for snappier, industry-standard feel on device.
       duration: const Duration(milliseconds: 300),
     );
     _uiFade = CurvedAnimation(
@@ -73,7 +89,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeControllerProvider);
 
-    // Cold-start skeleton — wait for location to resolve
     if (homeState.userLocation == null &&
         homeState.locationStatus == HomeLocationStatus.loading) {
       return const HomeSkeletonLoading();
@@ -83,28 +98,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isDark       = Theme.of(context).brightness == Brightness.dark;
     final accent       = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
-    // FIX (SystemChrome): always stay in SystemUiMode.edgeToEdge so the
-    // status bar icons remain visible in both normal and fullscreen modes.
-    // systemOverlayStyle() centralises the brightness logic — no duplication.
-    //
-    // In fullscreen we override icon brightness to Brightness.light because
-    // the map background is always dark. On exit we restore the theme-derived
-    // style via systemOverlayStyle(isDark).
+    // navBarScrollClearance(96) + device bottom inset.
+    // All tokens live in constants.dart — zero magic numbers in this file.
+    final double bottomClearance =
+        AppConstants.navBarScrollClearance +
+        MediaQuery.viewPaddingOf(context).bottom;
+
     ref.listen<bool>(
       homeControllerProvider.select((s) => s.isMapFullscreen),
       (_, next) {
         if (next) {
           _transitionCtrl.forward();
-          // Map is always dark → force light (white) status-bar icons.
-          SystemChrome.setSystemUIOverlayStyle(
-            systemOverlayStyle(true), // true = treat as dark bg
-          );
+          SystemChrome.setSystemUIOverlayStyle(systemOverlayStyle(true));
         } else {
           _transitionCtrl.reverse();
-          // Restore theme-appropriate icon brightness.
-          SystemChrome.setSystemUIOverlayStyle(
-            systemOverlayStyle(isDark),
-          );
+          SystemChrome.setSystemUIOverlayStyle(systemOverlayStyle(isDark));
         }
       },
     );
@@ -122,18 +130,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         body: Stack(
           children: [
             // ── LAYER 0 ─────────────────────────────────────────────────────
-            // Map: مُبنية دائماً تحت الغطاء، جاهزة للـ fullscreen فوراً.
+            // Map always built under the cover, ready for fullscreen instantly.
             const Positioned.fill(child: HomeMapBackground()),
 
             // ── LAYER 1 ─────────────────────────────────────────────────────
-            // Solid cover: غطاء صلب opacity=1.0 يخفي الخريطة تماماً في
-            // الوضع العادي. يحل مشكلة الشاشة الرمادية أثناء بناء الخريطة.
-            // يتلاشى فقط عند الدخول للـ fullscreen.
+            // Solid cover: hides the map in normal mode, fades on fullscreen.
             AnimatedBuilder(
               animation: _mapBlur,
               builder: (_, __) {
-                final coverOpacity =
-                    (1.0 - _mapBlur.value).clamp(0.0, 1.0);
+                final coverOpacity = (1.0 - _mapBlur.value).clamp(0.0, 1.0);
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Container(
@@ -148,12 +153,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
 
             // ── LAYER 1.5 ────────────────────────────────────────────────────
-            // RadialGlow: هالة الأكسنت مركّزة في الثلث العلوي من الشاشة.
+            // RadialGlow: accent halo centred in the upper third.
             AnimatedBuilder(
               animation: _mapBlur,
               builder: (_, __) {
-                final glowOpacity =
-                    (1.0 - _mapBlur.value).clamp(0.0, 1.0);
+                final glowOpacity = (1.0 - _mapBlur.value).clamp(0.0, 1.0);
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Container(
@@ -177,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
 
             // ── LAYER 2 ──────────────────────────────────────────────────────
-            // Normal scrollable UI: يتلاشى عند الدخول للـ fullscreen.
+            // Normal scrollable UI: fades out on fullscreen entry.
             AnimatedBuilder(
               animation: _uiFade,
               builder: (_, child) => IgnorePointer(
@@ -193,14 +197,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: const [
-                      HomeTopBar(),
-                      AdvancedSearchBar(),
-                      HomeQuickActions(),
-                      HomePromoSection(),
-                      // [S1 FIX]: was SizedBox(height: 80) — raw literal.
-                      // Replaced with AppConstants.fabClearance (80dp named token).
-                      SizedBox(height: AppConstants.fabClearance),
+                    children: [
+                      const HomeTopBar(),
+                      const AdvancedSearchBar(),
+                      const HomeQuickActions(),
+                      // const HomePromoSection(), // re-enable when ready
+
+                      // Scroll clearance — keeps last card fully above nav bar.
+                      // = navBarScrollClearance(96dp) + device bottom inset.
+                      // See class-level comment for full formula breakdown.
+                      SizedBox(height: bottomClearance),
                     ],
                   ),
                 ),
@@ -208,7 +214,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
 
             // ── LAYER 3 ──────────────────────────────────────────────────────
-            // Fullscreen map controls: يظهر عند الدخول للـ fullscreen.
+            // Fullscreen map controls: visible only in fullscreen mode.
             AnimatedBuilder(
               animation: _uiFade,
               builder: (_, child) => IgnorePointer(
