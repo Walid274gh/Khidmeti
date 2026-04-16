@@ -96,7 +96,11 @@ class _WorkerProfileSetupScreenState
     if (success && mounted) {
       // FIX: Set the cached role to worker so MainNavigationScreen shows the
       // three-tab worker bar immediately, then navigate to /home.
-      setCachedUserRole(ref, UserRole.worker, force: true);
+      setCachedUserRole(
+        ref.read(cachedUserRoleProvider.notifier),
+        UserRole.worker,
+        force: true,
+      );
       context.go(AppRoutes.home);
     }
   }

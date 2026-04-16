@@ -105,11 +105,19 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     try {
       final role = await ref.read(currentUserRoleProvider.future);
       if (!mounted) return;
-      setCachedUserRole(ref, role, force: true);
+      setCachedUserRole(
+        ref.read(cachedUserRoleProvider.notifier),
+        role,
+        force: true,
+      );
     } catch (_) {
       // Degrade gracefully: treat as client if the API is unreachable.
       if (!mounted) return;
-      setCachedUserRole(ref, UserRole.client, force: true);
+      setCachedUserRole(
+        ref.read(cachedUserRoleProvider.notifier),
+        UserRole.client,
+        force: true,
+      );
     }
     if (!mounted) return;
     context.go(AppRoutes.home);

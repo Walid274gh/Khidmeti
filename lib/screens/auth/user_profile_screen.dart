@@ -77,7 +77,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen>
       // tab bar immediately, then navigate to /home.
       // The router's redirect won't fire here (no Firebase auth state change),
       // so we navigate explicitly.
-      setCachedUserRole(ref, UserRole.client, force: true);
+      setCachedUserRole(
+        ref.read(cachedUserRoleProvider.notifier),
+        UserRole.client,
+        force: true,
+      );
       context.go(AppRoutes.home);
     }
   }
