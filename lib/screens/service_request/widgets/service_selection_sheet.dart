@@ -1,22 +1,24 @@
 // lib/screens/service_request/widgets/service_selection_sheet.dart
 //
-// CHANGE: _ServiceItem private class removed — replaced with public ServiceItem
-//         imported from lib/models/service_item_model.dart.
-// [C1] FIX: fontSize: AppConstants.fontSizeXs (10dp) → fontSizeXxs (11dp).
-// [W2] FIX: SizedBox(height: AppConstants.spacingXs + 3) (7dp, off-grid)
-//      → SizedBox(height: AppConstants.spacingSm) (8dp).
-// [MANUAL] FIX: check badge icon size: 9dp → 12dp for legibility.
+// Full-screen service type picker with search.
+// MIGRATION: Removed ServiceItem dependency — uses ProfessionModel from
+// professionsProvider. Scalable to 100+ professions.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../models/service_item_model.dart';
+import '../../../models/profession_model.dart';
+import '../../../providers/professions_provider.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/profession_resolver.dart';
+import '../../../widgets/sheet_chrome.dart';
 
-class ServiceSelectionSheet extends StatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ServiceSelectionSheet extends ConsumerStatefulWidget {
   final String?              selected;
   final ValueChanged<String> onServiceSelected;
 
@@ -32,9 +34,9 @@ class ServiceSelectionSheet extends StatefulWidget {
     required ValueChanged<String> onServiceSelected,
   }) {
     showModalBottomSheet<void>(
-      context:             context,
-      isScrollControlled:  true,
-      backgroundColor:     Colors.transparent,
+      context:            context,
+      isScrollControlled: true,
+      backgroundColor:    Colors.transparent,
       builder: (_) => ServiceSelectionSheet(
         selected:          selected,
         onServiceSelected: onServiceSelected,
@@ -43,20 +45,15 @@ class ServiceSelectionSheet extends StatefulWidget {
   }
 
   @override
-  State<ServiceSelectionSheet> createState() => _ServiceSelectionSheetState();
+  ConsumerState<ServiceSelectionSheet> createState() =>
+      _ServiceSelectionSheetState();
 }
 
-class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
+class _ServiceSelectionSheetState
+    extends ConsumerState<ServiceSelectionSheet> {
+
   final _searchCtrl = TextEditingController();
   String _query = '';
-
-  late final List<ServiceItem> _allItems;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _allItems = _buildAllItems(context);
-  }
 
   @override
   void dispose() {
@@ -64,54 +61,40 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
     super.dispose();
   }
 
-  List<ServiceItem> _buildAllItems(BuildContext context) => [
-        ServiceItem(ServiceType.plumbing,
-            context.tr('services.${ServiceType.plumbing}'), AppIcons.plumbing),
-        ServiceItem(ServiceType.electrical,
-            context.tr('services.${ServiceType.electrical}'), AppIcons.electrical),
-        ServiceItem(ServiceType.cleaning,
-            context.tr('services.${ServiceType.cleaning}'), AppIcons.cleaning),
-        ServiceItem(ServiceType.painting,
-            context.tr('services.${ServiceType.painting}'), AppIcons.painting),
-        ServiceItem(ServiceType.carpentry,
-            context.tr('services.${ServiceType.carpentry}'), AppIcons.carpentry),
-        ServiceItem(ServiceType.airConditioning,
-            context.tr('services.${ServiceType.airConditioning}'),
-            AppIcons.airConditioning),
-        ServiceItem(ServiceType.gardening,
-            context.tr('services.${ServiceType.gardening}'), AppIcons.gardening),
-        ServiceItem(ServiceType.appliances,
-            context.tr('services.${ServiceType.appliances}'), AppIcons.appliances),
-        ServiceItem(ServiceType.masonry,
-            context.tr('request_form.masonry'),
-            AppTheme.getProfessionIcon(ServiceType.masonry)),
-      ];
+  List<ProfessionModel> _filter(List<ProfessionModel> all) {
+    if (_query.trim().isEmpty) return all;
 
-  List<ServiceItem> get _filtered {
-    if (_query.isEmpty) return _allItems;
+    final q = _query.trim().toLowerCase();
 
-    final q = _query.toLowerCase();
+    // Label match
+    final labelMatches = all.where((p) =>
+      p.label.toLowerCase().contains(q) ||
+      p.key.toLowerCase().contains(q)
+    ).toSet();
 
-    final labelMatches = _allItems
-        .where((i) => i.label.toLowerCase().contains(q))
-        .toSet();
+    // ProfessionResolver fuzzy match
+    final resolvedKey = ProfessionResolver.resolve(_query);
+    final resolverMatches = resolvedKey != null
+        ? all.where((p) => p.key == resolvedKey).toSet()
+        : <ProfessionModel>{};
 
-    final resolvedType = ProfessionResolver.resolve(_query);
-    final resolverMatches = resolvedType != null
-        ? _allItems.where((i) => i.type == resolvedType).toSet()
-        : <ServiceItem>{};
-
-    final matchedTypes =
-        {...labelMatches, ...resolverMatches}.map((i) => i.type).toSet();
-    return _allItems.where((i) => matchedTypes.contains(i.type)).toList();
+    final combined = {...labelMatches, ...resolverMatches}.toList();
+    combined.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return combined;
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark  = Theme.of(context).brightness == Brightness.dark;
-    final isRtl   = Directionality.of(context) == TextDirection.rtl;
-    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-    final items   = _filtered;
+    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final isRtl     = Directionality.of(context) == TextDirection.rtl;
+    final accent    = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+
+    final professionsAsync = ref.watch(professionsProvider);
+    final allProfessions   = professionsAsync.maybeWhen(
+      data:   (data) => data.where((p) => p.isActive).toList(),
+      orElse: ()     => kDefaultProfessions,
+    );
+    final filtered = _filter(allProfessions);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.70,
@@ -119,9 +102,7 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
       maxChildSize:     0.95,
       builder: (_, controller) => Container(
         decoration: BoxDecoration(
-          color: isDark
-              ? AppTheme.darkBackground
-              : AppTheme.lightBackground,
+          color: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(AppConstants.radiusXxl),
           ),
@@ -129,55 +110,32 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
         child: Column(
           children: [
             const SizedBox(height: AppConstants.spacingSm),
-            Container(
-              width:  AppConstants.sheetHandleWidth,
-              height: AppConstants.sheetHandleHeight,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.darkBorder.withOpacity(0.40)
-                    : AppTheme.lightBorder,
-                borderRadius: BorderRadius.circular(AppConstants.radiusXs),
-              ),
-            ),
+            const SheetHandle(),
             const SizedBox(height: AppConstants.spacingLg),
 
+            // Title + close
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingLg,
+              ),
               child: Row(
                 textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                 children: [
                   Expanded(
-                    child: Text(
-                      context.tr('request_form.section_service'),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight:    FontWeight.w700,
-                            letterSpacing: isRtl ? 0.0 : -0.3,
-                          ),
-                    ),
-                  ),
-                  Semantics(
-                    label:  context.tr('common.close'),
-                    button: true,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width:  AppConstants.iconSizeLg,
-                        height: AppConstants.iconSizeLg,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? AppTheme.darkSurface.withOpacity(0.60)
-                              : AppTheme.lightSurfaceVariant,
-                        ),
-                        child: Icon(
-                          AppIcons.close,
-                          size:  AppConstants.iconSizeSm,
-                          color: isDark
-                              ? AppTheme.darkSecondaryText
-                              : AppTheme.lightSecondaryText,
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        context.tr('request_form.section_service'),
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight:    FontWeight.w700,
+                          letterSpacing: isRtl ? 0.0 : -0.3,
                         ),
                       ),
                     ),
+                  ),
+                  SheetCloseButton(
+                    semanticsLabel: context.tr('common.close'),
+                    onTap: () => Navigator.pop(context),
                   ),
                 ],
               ),
@@ -185,8 +143,11 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
+            // Search bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingLg,
+              ),
               child: Container(
                 height: AppConstants.searchBarHeight,
                 decoration: BoxDecoration(
@@ -198,31 +159,31 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
                 child: Row(
                   children: [
                     const SizedBox(width: AppConstants.spacingMd),
-                    Icon(AppIcons.search,
-                        size:  AppConstants.iconSizeSm,
-                        color: isDark
-                            ? AppTheme.darkSecondaryText
-                            : AppTheme.lightSecondaryText),
+                    Icon(
+                      AppIcons.search,
+                      size:  AppConstants.iconSizeSm,
+                      color: isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText,
+                    ),
                     const SizedBox(width: AppConstants.spacingSm),
                     Expanded(
                       child: TextField(
                         controller: _searchCtrl,
                         onChanged:  (v) => setState(() => _query = v),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? AppTheme.darkText
-                                  : AppTheme.lightText,
-                            ),
+                          color: isDark ? AppTheme.darkText : AppTheme.lightText,
+                        ),
                         decoration: InputDecoration(
                           border:        InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           hintText:      context.tr('home.search_service'),
                           hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
-                              ),
+                            color: isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText,
+                          ),
                           isDense:        true,
                           contentPadding: EdgeInsets.zero,
                           filled:         true,
@@ -230,6 +191,17 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
                         ),
                       ),
                     ),
+                    if (_query.isNotEmpty)
+                      IconButton(
+                        icon:  const Icon(AppIcons.close, size: 16),
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _query = '');
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -237,16 +209,17 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
+            // Grid
             Expanded(
-              child: items.isEmpty
+              child: filtered.isEmpty
                   ? Center(
                       child: Text(
                         context.tr('home.no_service_found'),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark
-                                  ? AppTheme.darkSecondaryText
-                                  : AppTheme.lightSecondaryText,
-                            ),
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
                       ),
                     )
                   : GridView.builder(
@@ -264,15 +237,15 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
                         crossAxisSpacing: AppConstants.spacingMd,
                         childAspectRatio: 0.82,
                       ),
-                      itemCount:   items.length,
+                      itemCount:   filtered.length,
                       itemBuilder: (_, i) => _ServiceTile(
-                        item:       items[i],
-                        isSelected: widget.selected == items[i].type,
+                        profession: filtered[i],
+                        isSelected: widget.selected == filtered[i].key,
                         isDark:     isDark,
                         accent:     accent,
                         onTap: () {
                           HapticFeedback.lightImpact();
-                          widget.onServiceSelected(items[i].type);
+                          widget.onServiceSelected(filtered[i].key);
                           Navigator.pop(context);
                         },
                       ),
@@ -285,15 +258,19 @@ class _ServiceSelectionSheetState extends State<ServiceSelectionSheet> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Service tile
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _ServiceTile extends StatelessWidget {
-  final ServiceItem  item;
-  final bool         isSelected;
-  final bool         isDark;
-  final Color        accent;
-  final VoidCallback onTap;
+  final ProfessionModel profession;
+  final bool            isSelected;
+  final bool            isDark;
+  final Color           accent;
+  final VoidCallback    onTap;
 
   const _ServiceTile({
-    required this.item,
+    required this.profession,
     required this.isSelected,
     required this.isDark,
     required this.accent,
@@ -303,10 +280,11 @@ class _ServiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+    final icon  = AppTheme.getProfessionIcon(profession.key);
 
     return Semantics(
       button:   true,
-      label:    item.label,
+      label:    profession.label,
       selected: isSelected,
       child: GestureDetector(
         onTap: onTap,
@@ -333,14 +311,13 @@ class _ServiceTile extends StatelessWidget {
                         : null,
                   ),
                   child: Icon(
-                    item.icon,
+                    icon,
                     color: isSelected
                         ? color
                         : color.withOpacity(isDark ? 0.85 : 0.75),
                     size: AppConstants.iconSizeMd,
                   ),
                 ),
-
                 if (isSelected)
                   Positioned(
                     bottom: -2,
@@ -358,35 +335,34 @@ class _ServiceTile extends StatelessWidget {
                           width: 1.5,
                         ),
                       ),
-                      // [MANUAL] FIX: check badge icon 9dp → 12dp for legibility
-                      child: const Icon(Icons.check_rounded,
-                          size: 12, color: Colors.white),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        size:  12,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
               ],
             ),
 
-            // [W2] FIX: SizedBox(height: spacingXs + 3) (7dp) → spacingSm (8dp)
             const SizedBox(height: AppConstants.spacingSm),
 
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingXs),
+                horizontal: AppConstants.paddingXs,
+              ),
               child: Text(
-                item.label,
+                profession.label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isSelected
-                          ? color
-                          : (isDark
-                              ? AppTheme.darkText
-                              : AppTheme.lightSecondaryText),
-                      // [C1] FIX: fontSizeXs (10dp) → fontSizeXxs (11dp)
-                      fontSize: AppConstants.fontSizeXxs,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      height: 1.2,
-                    ),
+                  color: isSelected
+                      ? color
+                      : (isDark
+                          ? AppTheme.darkText
+                          : AppTheme.lightSecondaryText),
+                  fontSize:   AppConstants.fontSizeXxs,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  height:     1.2,
+                ),
                 textAlign: TextAlign.center,
                 maxLines:  2,
                 overflow:  TextOverflow.ellipsis,
