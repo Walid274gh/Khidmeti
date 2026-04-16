@@ -69,21 +69,41 @@ final currentUserRoleProvider = FutureProvider.autoDispose<UserRole>((ref) async
 //   N'écrire que si la valeur actuelle est `unknown`, OU si `force: true`.
 //   Ne jamais écraser un rôle résolu par `unknown` — cela provoque un
 //   redirect loop dans le router.
-//   → Utiliser setCachedUserRole(ref, role) et non .state = role directement.
+//   → Utiliser setCachedUserRole(notifier, role) et non .state = role directement.
 final cachedUserRoleProvider =
     StateProvider<UserRole>((ref) => UserRole.unknown);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // setCachedUserRole — helper thread-safe pour écrire dans le cache
 // ─────────────────────────────────────────────────────────────────────────────
-// [force: false] → écriture seulement si le rôle actuel est unknown
-// [force: true]  → écriture inconditionnelle (upgrade client→worker, etc.)
 //
-// Le flag force est nécessaire pour les cas de re-login ou d'upgrade de compte.
-void setCachedUserRole(Ref ref, UserRole role, {bool force = false}) {
-  final current = ref.read(cachedUserRoleProvider);
-  if (force || current == UserRole.unknown) {
-    ref.read(cachedUserRoleProvider.notifier).state = role;
+// DESIGN : accepte StateController<UserRole> au lieu de Ref/WidgetRef.
+//
+// POURQUOI :
+//   Riverpod 2.x expose deux types de ref incompatibles au niveau des types :
+//     • Ref        — utilisé dans les providers (riverpod core)
+//     • WidgetRef  — utilisé dans les widgets (flutter_riverpod)
+//   Il n'existe pas d'ancêtre commun public utilisable comme paramètre.
+//
+//   La solution idiomatique est de ne pas accepter un ref du tout.
+//   La seule chose dont cette fonction a besoin est le notifier —
+//   c'est lui qui porte l'état et l'API de mutation.
+//   Le caller (widget ou provider) fait ref.read(cachedUserRoleProvider.notifier)
+//   avant d'appeler cette fonction ; les deux types de ref supportent .read().
+//
+// CONTRAT D'ÉCRITURE — OBLIGATOIRE pour tous les writers :
+//   N'écrire que si la valeur actuelle est `unknown`, OU si `force: true`.
+//   Ne jamais écraser un rôle résolu par `unknown`.
+//
+// [force: false] → écriture seulement si le rôle actuel est unknown
+// [force: true]  → écriture inconditionnelle (upgrade client→worker, re-login)
+void setCachedUserRole(
+  StateController<UserRole> notifier,
+  UserRole role, {
+  bool force = false,
+}) {
+  if (force || notifier.state == UserRole.unknown) {
+    notifier.state = role;
   }
   // Si current != unknown et force == false → écriture silencieusement ignorée.
   // Le premier writer gagne, les écrits concurrents sont idempotents.
