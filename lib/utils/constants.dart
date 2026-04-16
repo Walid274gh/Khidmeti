@@ -82,14 +82,43 @@
 //   [MANUAL] radioOuterSize = 16.0 / radioInnerSize = 6.0
 //
 // CHANGES (worker_jobs ui-apply — MANUAL):
-//   [MANUAL] buttonHeightFab = 48.0 — canonical FAB-area CTA button height.
-//            All FAB-area buttons (JobCompleteBtn, JobCompletedBadge,
-//            JobLoadingBtn, _StartJobBtn in JobDetailFabRow) must use this
-//            token. Resolves the 44/46/48dp three-way split identified in the
-//            UI audit. buttonHeightMd (48dp) is the reference value; this
-//            constant is a named alias that documents intent for the FAB area.
-//            Note: buttonHeightMd already = 48.0. buttonHeightFab = 48.0 is an
-//            alias — if the design ever diverges, change only buttonHeightFab.
+//   [MANUAL] buttonHeightFab = 48.0
+//
+// CHANGES (nav-overlap fix — ROOT CAUSE FIX):
+//   [NAV-FIX] navBarHeight: 68.0 → 80.0
+//     The old value (68dp) was a stale leftover from the pre-glass nav bar era.
+//     The GlassNavigationBar widget renders at:
+//       _kPillHeight(58) + navBarMarginB(10) + navBarBottomGap(12) = 80dp.
+//     Using the wrong value meant every scroll clearance calculation was 12dp
+//     short, causing the last card to be partially hidden behind the nav bar
+//     regardless of device bottom inset.
+//
+//   [NAV-FIX] navBarBottomGap = 12.0 (NEW)
+//     Extracted from the magic `12.0` literal in glass_navigation_bars.dart
+//     (_NavShell SizedBox height formula). Now a named token so the nav bar
+//     widget and all clearance calculations reference the same value.
+//     Formula: navBarHeight = navPillHeight + navBarMarginB + navBarBottomGap.
+//     If the pill height or gaps ever change, only constants.dart needs editing.
+//
+//   [NAV-FIX] navPillHeight = 58.0 (NEW)
+//     Extracted from _kPillHeight in glass_navigation_bars.dart.
+//     Previously a file-local const — promoted to AppConstants so the
+//     navBarHeight formula is fully expressible in tokens.
+//
+//   [NAV-FIX] navBarScrollClearance = 96.0 (NEW)
+//     = navBarHeight(80) + spacingMd(16).
+//     The canonical bottom padding to apply to any scrollable body that
+//     sits behind a floating GlassNavigationBar. The 16dp (spacingMd) gap
+//     ensures the last card's bottom edge is comfortably above the nav bar,
+//     never flush against it. HomeScreen and HomeSkeletonLoading both use
+//     this token + viewPadding.bottom for per-device inset compensation.
+//
+//   [NAV-FIX] fabClearance: kept at 80.0 but semantics clarified.
+//     fabClearance is now the FAB/action button clearance token (80dp),
+//     distinct from navBarScrollClearance (96dp). FAB-area layouts that
+//     need clearance from the nav bar should use navBarScrollClearance.
+//     fabClearance is retained for backward-compat with any FAB that
+//     only needs to clear the nav bar height without breathing room.
 //
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
@@ -162,10 +191,6 @@ class AppConstants {
   static const double buttonHeightSm = 44.0;
 
   /// Canonical FAB-area CTA button height (48dp).
-  /// All FAB-area primary action buttons (JobCompleteBtn, JobCompletedBadge,
-  /// JobLoadingBtn, _StartJobBtn) must use this token so they stay visually
-  /// aligned. Currently aliases buttonHeightMd; update independently if
-  /// the FAB row ever needs its own height in the design system.
   static const double buttonHeightFab = 48.0;
 
   /// Back button touch target size.
@@ -185,11 +210,55 @@ class AppConstants {
   static const double inputPaddingH = 18.0;
   static const double inputPaddingV = 15.0;
 
-  // Navigation bar
+  // ── Navigation bar ────────────────────────────────────────────────────────
+  //
+  // Glass nav bar sizing model:
+  //
+  //   navPillHeight   = 58dp  — the visible pill widget height
+  //   navBarMarginB   = 10dp  — bottom margin below the pill (above home indicator)
+  //   navBarBottomGap = 12dp  — additional bottom clearance for SafeArea breathing room
+  //   ──────────────────────────────────────────────────────────────────────
+  //   navBarHeight    = 80dp  — total SizedBox height consumed in bottomNavigationBar
+  //
+  //   navBarScrollClearance = navBarHeight(80) + spacingMd(16) = 96dp
+  //   → The canonical value to add to scroll body bottom padding so that
+  //     the last card always appears ABOVE the floating nav pill with a
+  //     comfortable 16dp gap. Any screen with SafeArea(bottom: false) and a
+  //     GlassNavigationBar must add viewPadding.bottom on top of this value.
+  //
+  // [NAV-FIX]: navBarHeight corrected from stale 68.0 → 80.0.
+  // navPillHeight, navBarBottomGap, and navBarScrollClearance are new tokens
+  // that replace magic numbers in glass_navigation_bars.dart and home_screen.dart.
+
+  /// Height of the glass pill widget itself.
+  static const double navPillHeight = 58.0;
+
+  /// Space below the pill (between pill bottom and device edge / home indicator).
+  static const double navBarMarginB = 10.0;
+
+  /// Additional bottom gap baked into the _NavShell SizedBox.
+  /// Together with navPillHeight + navBarMarginB this forms navBarHeight.
+  static const double navBarBottomGap = 12.0;
+
+  /// Total height of the GlassNavigationBar widget as rendered in
+  /// Scaffold.bottomNavigationBar.
+  /// = navPillHeight(58) + navBarMarginB(10) + navBarBottomGap(12) = 80dp.
+  ///
+  /// [NAV-FIX] Corrected from stale 68.0 (old fixed-bar era) to 80.0.
+  static const double navBarHeight = 80.0;
+
+  /// Canonical scroll-body bottom clearance for screens that float above the
+  /// GlassNavigationBar.
+  /// = navBarHeight(80) + spacingMd(16) = 96dp.
+  /// Add MediaQuery.viewPaddingOf(context).bottom on top for per-device inset.
+  ///
+  /// Usage in SafeArea(bottom: false) scroll bodies:
+  ///   SizedBox(height: AppConstants.navBarScrollClearance
+  ///                  + MediaQuery.viewPaddingOf(context).bottom)
+  static const double navBarScrollClearance = 96.0;
+
   static const double navBarRadius    = 24.0;
-  static const double navBarHeight    = 68.0;
   static const double navBarMarginH   = 16.0;
-  static const double navBarMarginB   = 10.0;
   static const double navPillPaddingH = 14.0;
   static const double navPillPaddingV = 8.0;
   static const double navDotSize      = 4.0;
@@ -582,6 +651,10 @@ class PrefKeys {
   static const String accountRole   = 'account_role';
   static const String fcmToken      = 'fcm_token';
   static const String lastLocation  = 'last_location';
+
+  /// Persisted by OnboardingController when user taps "Get started".
+  /// Read by the router on every redirect to gate /onboarding display.
+  static const String onboardingDone = 'onboarding_done';
 }
 
 class UserType {
