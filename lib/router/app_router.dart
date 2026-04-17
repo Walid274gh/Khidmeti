@@ -1,33 +1,25 @@
 // lib/router/app_router.dart
 //
-// MIGRATION NOTE:
-//   - /login, /register, /forgot-password, /verify-email removed.
-//   + /onboarding, /phone-auth, /role-selection, /user-profile-setup,
-//     /worker-profile-setup added.
-//   - Email verification check removed from redirect.
-//   + Onboarding check added: new installs see /onboarding before /phone-auth.
-//   - loginControllerProvider / registerControllerProvider removed.
-//   - AuthController (phone) is screen-scoped (autoDispose) — not in router.
+// REDIRECT LOGIC SUMMARY:
+//   1. App not initialized           → /splash
+//   2. Onboarding not done           → /onboarding
+//   3. Not logged in                 → /phone-auth  (deep-link saved)
+//   4. Logged in, from splash:
+//        role == unknown             → /role-selection  (profile not set up)
+//        role == client|worker       → /home
+//   5. Logged in, on auth screens    → /home  (or saved deep-link)
+//   6. Worker-only path for client   → /home
+//   7. /worker-home                  → /home  (normalize legacy route)
 //
-// Redirect logic summary:
-//   1. App not initialized → /splash
-//   2. Onboarding not done → /onboarding
-//   3. Not logged in → /phone-auth  (save deep link for post-auth restore)
-//   4. Logged in + role unknown → wait (null redirect)
-//   5. Role guard: /worker/* paths blocked for clients
-//   6. /worker-home → /home
-//
-// NAMING NOTE:
-//   Two files share a similar purpose but are distinct widgets:
-//
-//   lib/screens/auth/worker_profile_screen.dart
-//     → WorkerProfileSetupScreen  (new-user setup flow, no params)
-//
-//   lib/screens/worker_profile/worker_profile_screen.dart
-//     → WorkerProfileScreen  (public profile viewer, requires workerId)
-//
-//   The auth setup screen was renamed WorkerProfileSetupScreen to eliminate
-//   the compile-time ambiguity when both are imported in this file.
+// WHY role==unknown → roleSelection (not home):
+//   SplashController uses a two-tier strategy to resolve the role:
+//     Tier 1 — backend GET /users/:uid
+//     Tier 2 — SharedPreferences (written by ProfileSetupController on success)
+//   If both tiers fail to find a role the pref is absent, meaning the user
+//   authenticated with Firebase but never completed profile setup.  Sending
+//   them to /home would show an app with no profile — routing them back to
+//   /role-selection is always safe because the setup screens upsert the
+//   document and work correctly for both new and returning users.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +31,6 @@ import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/auth/phone_auth_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/auth/user_profile_screen.dart';
-// WorkerProfileSetupScreen — new-user worker setup (renamed to avoid collision)
 import '../screens/auth/worker_profile_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/main_navigation_screen.dart';
@@ -52,7 +43,6 @@ import '../screens/worker_jobs/worker_jobs_screen.dart';
 import '../screens/worker_jobs/job_detail_screen.dart';
 import '../screens/worker_jobs/submit_bid_screen.dart';
 import '../screens/edit_profile/edit_profile_screen.dart';
-// WorkerProfileScreen — public profile viewer (requires workerId param)
 import '../screens/worker_profile/worker_profile_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/about/about_screen.dart';
@@ -68,12 +58,6 @@ import '../utils/localization.dart';
 import '../utils/logger.dart';
 
 // ── Deep-link restoration ──────────────────────────────────────────────────
-//
-// When a guest hits a protected route, we store the target path here.
-// After successful auth, the router restores the original destination
-// instead of always landing on /home.
-//
-// Auth-specific paths are never stored (would cause post-login loops).
 
 final pendingDeepLinkProvider = StateProvider<String?>((ref) => null);
 
@@ -94,10 +78,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     listenable.dispose();
   });
 
-  // Matches /worker/<single segment> (worker profile view — accessible to all).
+  // Matches /worker/<single segment> — the public worker profile viewer,
+  // which is accessible to all authenticated users regardless of role.
   final _workerProfilePattern = RegExp(r'^/worker/[^/]+$');
 
-  // Auth paths — never stored as pending deep links.
+  // Paths that must never be stored as pending deep links.
   const _authPaths = {
     AppRoutes.splash,
     AppRoutes.onboarding,
@@ -120,18 +105,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       final isLoggedIn  = authService.isLoggedIn;
       final currentPath = state.matchedLocation;
+      final cachedRole  = ref.read(cachedUserRoleProvider);
+      final onboardingDone = ref.read(onboardingDoneProvider);
 
-      final isOnSplash       = currentPath == AppRoutes.splash;
-      final isOnOnboarding   = currentPath == AppRoutes.onboarding;
-      final isOnAuth         = currentPath == AppRoutes.phoneAuth;
-      final isOnSetup        = currentPath == AppRoutes.roleSelection
-                            || currentPath == AppRoutes.userProfileSetup
-                            || currentPath == AppRoutes.workerProfileSetup;
-      final isOnWorkerHome   = currentPath == AppRoutes.workerHome;
-      final isOnWorkerRoute  = currentPath.startsWith('/worker');
-
-      final cachedRole      = ref.read(cachedUserRoleProvider);
-      final onboardingDone  = ref.read(onboardingDoneProvider);
+      final isOnSplash      = currentPath == AppRoutes.splash;
+      final isOnOnboarding  = currentPath == AppRoutes.onboarding;
+      final isOnAuth        = currentPath == AppRoutes.phoneAuth;
+      final isOnSetup       = currentPath == AppRoutes.roleSelection
+                           || currentPath == AppRoutes.userProfileSetup
+                           || currentPath == AppRoutes.workerProfileSetup;
+      final isOnWorkerHome  = currentPath == AppRoutes.workerHome;
+      final isOnWorkerRoute = currentPath.startsWith('/worker');
 
       AppLogger.debug(
         'Redirect: path=$currentPath loggedIn=$isLoggedIn '
@@ -140,16 +124,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       // ── 1. Splash → resolve navigation target ────────────────────────────
       if (isOnSplash) {
-        if (!onboardingDone) return AppRoutes.onboarding;
-        if (!isLoggedIn)     return AppRoutes.phoneAuth;
+        if (!onboardingDone)             return AppRoutes.onboarding;
+        if (!isLoggedIn)                 return AppRoutes.phoneAuth;
+
+        // Role resolved by SplashController using the two-tier strategy:
+        //   Tier 1 → backend   Tier 2 → SharedPreferences
+        // unknown means neither tier found a role → user has no profile yet.
+        if (cachedRole == UserRole.unknown) return AppRoutes.roleSelection;
+
         return AppRoutes.home;
       }
 
       // ── 2. Onboarding ────────────────────────────────────────────────────
-      if (isOnOnboarding) {
-        // Stay on onboarding until the user taps "Get started".
-        return null;
-      }
+      if (isOnOnboarding) return null;
 
       // ── 3. Unauthenticated access ────────────────────────────────────────
       if (!isLoggedIn && !isOnAuth && !isOnSetup) {
@@ -159,9 +146,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.phoneAuth;
       }
 
-      // ── 4. Post sign-in: restore deep link or go to home ─────────────────
+      // ── 4. Post sign-in: restore deep link or go home ────────────────────
       if (isLoggedIn && (isOnAuth || isOnSplash)) {
-        if (cachedRole == UserRole.unknown) return null; // still resolving
+        // Still resolving role — wait.
+        if (cachedRole == UserRole.unknown) return null;
 
         final pendingLink = ref.read(pendingDeepLinkProvider.notifier).state;
         if (pendingLink != null) {
@@ -178,13 +166,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
-      // ── 5. Role guard: worker-only paths ────────────────────────────────
+      // ── 5. Role guard: worker-only paths ─────────────────────────────────
       if (isLoggedIn && isOnWorkerRoute && cachedRole == UserRole.client) {
         final isWorkerProfilePath = _workerProfilePattern.hasMatch(currentPath);
         if (!isWorkerProfilePath) return AppRoutes.home;
       }
 
-      // ── 6. Normalize /worker-home → /home ───────────────────────────────
+      // ── 6. Normalize /worker-home → /home ────────────────────────────────
       if (isLoggedIn && isOnWorkerHome) return AppRoutes.home;
 
       return null;
@@ -226,7 +214,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path:        AppRoutes.workerProfileSetup,
         name:        'worker-profile-setup',
-        // WorkerProfileSetupScreen — the new-user setup widget (auth folder)
         pageBuilder: (_, s) => _fade(s.pageKey, const WorkerProfileSetupScreen()),
       ),
 
@@ -274,7 +261,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name:        'worker-profile',
         pageBuilder: (_, s) {
           final workerId = s.pathParameters['id'] ?? '';
-          // WorkerProfileScreen — the public viewer (worker_profile folder)
           return _fade(s.pageKey, WorkerProfileScreen(workerId: workerId));
         },
       ),
