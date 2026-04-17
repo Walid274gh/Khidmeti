@@ -7,14 +7,19 @@
 //
 // State machine is driven by authControllerProvider (AuthController).
 //
-// NAVIGATION FIXES:
-//   • ref.listen handles navigation on AuthStatus.success:
-//       - isNewUser  → context.go(AppRoutes.roleSelection)
-//       - existing   → fetch role via currentUserRoleProvider,
-//                      set cachedUserRoleProvider, then navigate to /home.
-//   • isOtpPhase now includes AuthStatus.success so the OTP card stays
-//     visible (instead of the phone card flashing) while navigation occurs.
-//   • Verify button now calls onCompleted with the real OTP code as fallback.
+// FIXES:
+//   • resizeToAvoidBottomInset: false — prevents the Scaffold body from
+//     resizing when the keyboard appears, eliminating the layout jump at
+//     the bottom of the screen.  The ScrollView's bottom padding already
+//     accounts for viewInsets.bottom so content stays above the keyboard.
+//   • Removed _cardController.reset()/_cardController.forward() from
+//     _sendOtp() and _resendOtp().  These calls ran AFTER the async
+//     operation completed, causing the already-visible OTP card to
+//     briefly collapse and re-enter — the visual "rebuild" the user saw.
+//     The AnimatedSwitcher's own FadeTransition handles the phone→OTP
+//     crossfade correctly without any extra animation.
+//   • _backToPhone() keeps its reset/forward because that is a genuine
+//     re-entry of the phone card.
 
 import 'dart:async';
 
@@ -58,6 +63,8 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
   bool   _otpSubmitting = false;
 
   // ── Animations ──────────────────────────────────────────────────────────────
+  // This controller runs once on screen entry.  It is only reset when the
+  // user explicitly navigates back to the phone card (_backToPhone).
   late final AnimationController _cardController;
   late final Animation<double>    _cardFade;
   late final Animation<Offset>    _cardSlide;
@@ -93,14 +100,9 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
 
   // ── Navigation after successful authentication ────────────────────────────
   //
-  // FIX: The router redirect waits for cachedUserRoleProvider != unknown,
-  // but nobody sets that provider after phone auth. We handle navigation
-  // here instead, for both new users and returning users.
+  // The router redirect waits for cachedUserRoleProvider != unknown, but
+  // nobody sets that provider after phone auth — we do it here instead.
 
-  /// Called by ref.listen when AuthStatus.success is reached for an
-  /// existing user (isNewUser == false). Fetches the user's role from the
-  /// API, writes it into cachedUserRoleProvider so MainNavigationScreen
-  /// displays the correct tab bar, then navigates to /home.
   Future<void> _handleExistingUserLogin() async {
     try {
       final role = await ref.read(currentUserRoleProvider.future);
@@ -111,7 +113,6 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
         force: true,
       );
     } catch (_) {
-      // Degrade gracefully: treat as client if the API is unreachable.
       if (!mounted) return;
       setCachedUserRole(
         ref.read(cachedUserRoleProvider.notifier),
@@ -132,13 +133,15 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
 
     final raw  = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     final e164 = '${_selectedCountry.dialCode}$raw';
+
     await ref.read(authControllerProvider.notifier).sendOtp(e164);
 
-    // Replay card entrance animation for OTP state.
-    if (mounted) {
-      _cardController.reset();
-      _cardController.forward();
-    }
+    // FIX: Do NOT reset/forward _cardController here.
+    // When this await resolves, the controller state is already `otpSent`
+    // and the AnimatedSwitcher below has already crossfaded to the OTP card.
+    // Calling reset()+forward() at this point would collapse the visible OTP
+    // card and replay the entrance animation — the "screen rebuild" the user
+    // reported.  The AnimatedSwitcher handles the visual transition on its own.
   }
 
   // ── OTP submission ──────────────────────────────────────────────────────────
@@ -154,10 +157,10 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
   Future<void> _resendOtp() async {
     _otpKey.currentState?.clear();
     await ref.read(authControllerProvider.notifier).resendOtp();
-    if (mounted) {
-      _cardController.reset();
-      _cardController.forward();
-    }
+
+    // FIX: Do NOT reset/forward _cardController here either.
+    // During a resend we remain on the OTP card — there is no card switch,
+    // so no entrance animation is needed.
   }
 
   // ── Back to phone ───────────────────────────────────────────────────────────
@@ -166,6 +169,8 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     ref.invalidate(authControllerProvider);
     _phoneController.clear();
     _otpKey.currentState?.clear();
+    // Replaying the animation here IS correct — the phone card is genuinely
+    // re-entering the screen from scratch.
     _cardController.reset();
     _cardController.forward();
   }
@@ -188,27 +193,19 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     final isDark    = Theme.of(context).brightness == Brightness.dark;
 
     // ── Navigation listener ──────────────────────────────────────────────────
-    // FIX: Navigate as soon as the controller reaches success.
-    // This is the correct place for navigation since the router's redirect
-    // function waits for cachedUserRoleProvider to be resolved, which only
-    // happens here for freshly-authenticated users.
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (!mounted) return;
       if (next.status != AuthStatus.success) return;
 
       if (next.isNewUser) {
-        // New user has no profile yet — send to role selection.
         context.go(AppRoutes.roleSelection);
       } else {
-        // Existing user — resolve role then go home.
         _handleExistingUserLogin();
       }
     });
 
-    // FIX: Include AuthStatus.success so the OTP card stays visible while
-    // the navigation animation plays. Without this, the phone card briefly
-    // appears after successful verification (status changes to success which
-    // is not otpSent/verifying → isOtpPhase was false → phone card shown).
+    // Include AuthStatus.success so the OTP card stays visible while the
+    // navigation animation plays (prevents a flash of the phone card).
     final isOtpPhase = authState.status == AuthStatus.otpSent    ||
                        authState.status == AuthStatus.verifying   ||
                        authState.status == AuthStatus.success;
@@ -216,6 +213,15 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemOverlayStyle(isDark),
       child: Scaffold(
+        // FIX: resizeToAvoidBottomInset: false keeps the Scaffold body at
+        // full height even when the software keyboard is open.  The
+        // AuthBackground (Positioned.fill) therefore always covers the
+        // full screen, matching the edge-to-edge design intent.
+        // Keyboard avoidance is handled manually via viewInsets.bottom in
+        // the ScrollView padding below — this is the single source of truth
+        // for keyboard-driven layout, eliminating the double-accounting that
+        // caused the bottom-of-screen layout jump.
+        resizeToAvoidBottomInset: false,
         backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         body: Stack(
           children: [
@@ -236,7 +242,10 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
 
                     const SizedBox(height: AppConstants.spacingXl),
 
-                    // Card — switches between phone and OTP
+                    // Card — switches between phone and OTP.
+                    // The outer FadeTransition+SlideTransition animate once
+                    // on entry (controlled by _cardController).  The inner
+                    // AnimatedSwitcher crossfades between phone and OTP cards.
                     FadeTransition(
                       opacity: _cardFade,
                       child: SlideTransition(
@@ -626,8 +635,7 @@ class _OtpCardState extends State<_OtpCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Back link — hidden while verifying/success so user can't go back
-          // mid-flight.
+          // Back link — hidden while verifying/success
           if (!isVerifyingOrDone)
             Semantics(
               button: true,
@@ -699,10 +707,8 @@ class _OtpCardState extends State<_OtpCard> {
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // FIX: Verify button now actually submits the OTP.
-          // It reads the current code from OtpInputRowState.currentCode
-          // (public getter added in otp_input_row.dart) and calls onCompleted.
-          // This acts as a reliable fallback if auto-submit didn't fire.
+          // Verify button — reads current code from OtpInputRowState as fallback
+          // if auto-submit didn't fire (e.g. user typed slowly).
           AuthSubmitButton(
             isLoading: isVerifyingOrDone,
             isDark:    widget.isDark,
