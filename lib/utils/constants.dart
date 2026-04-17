@@ -126,6 +126,33 @@
 //   [PHONE-AUTH] Old email-auth AppRoutes constants retained for backward
 //     compatibility — they are unused and will be removed in a future cleanup.
 //
+// CHANGES (hero padding compact — HOME-NAV-OVERLAP FIX v3):
+//   [HERO-FIX] heroPaddingTop:    38.0 → 8.0
+//   [HERO-FIX] heroPaddingBottom: 30.0 → 8.0
+//
+//     ROOT CAUSE ANALYSIS:
+//     The glass nav bar floats as a Stack overlay in the parent shell — it is
+//     NOT a Scaffold.bottomNavigationBar. Flutter therefore does NOT subtract
+//     its height from the HomeScreen body. The scroll content was taller than
+//     the usable viewport, so the CTA card at the bottom was hidden behind
+//     the nav pill in the default (at-rest) scroll position.
+//
+//     WHY REDUCE TOP PADDING INSTEAD OF ADDING BOTTOM BUFFER:
+//     Adding a bottom SizedBox/padding only works if the user scrolls down.
+//     Reducing the hero section's top/bottom margins shifts ALL elements up
+//     by the same amount (inter-element spacings unchanged), so the CTA card
+//     is visible WITHOUT scrolling. This is the correct UX fix.
+//
+//     ARITHMETIC:
+//       saved top    = 38 − 8  = 30dp
+//       saved bottom = 30 − 8  = 22dp
+//       total lift   = 52dp
+//     Combined with navBarScrollClearance(96dp) this brings the CTA card
+//     comfortably above the 80dp nav pill on all tested devices.
+//
+//     TOKENS KEPT INTACT — only the two hero padding values change. All
+//     inter-element spacings (spacingMd, spacingXs, etc.) are unchanged.
+//
 // TODO(S3-grid-audit): spacingTileInner (14dp), badgePaddingV (3dp), and
 //   spacingXxs (2dp) are off the 4dp grid. No immediate visual regression —
 //   schedule for next design-system alignment pass with designer sign-off.
@@ -206,9 +233,9 @@ class AppConstants {
   static const double buttonFontSize = 15.0;
 
   // Cards
-  static const double cardPadding     = 18.0;
-  static const double cardBorderWidth = 0.5;
-  static const double accentBarWidth  = 3.0;
+  static const double cardPadding      = 18.0;
+  static const double cardBorderWidth  = 0.5;
+  static const double accentBarWidth   = 3.0;
   static const double cardIconLabelGap = 8.0;
 
   // Inputs
@@ -269,10 +296,24 @@ class AppConstants {
   static const double navPillPaddingV = 8.0;
   static const double navDotSize      = 4.0;
 
-  // Hero
-  static const double heroPaddingTop    = 38.0;
+  // ── Hero section padding ──────────────────────────────────────────────────
+  //
+  // [HERO-FIX] heroPaddingTop:    38.0 → 8.0  (saves 30dp of dead space)
+  // [HERO-FIX] heroPaddingBottom: 30.0 → 8.0  (saves 22dp of dead space)
+  //
+  // Together these lift every element in HomeScreen upward by 52dp so the
+  // "Programmer une demande" CTA card clears the floating GlassNavigationBar
+  // in the default (at-rest, un-scrolled) position.
+  //
+  // This approach is preferred over adding a bottom buffer because it works
+  // without requiring the user to scroll at all — the content simply starts
+  // higher on screen. All inter-element spacings are completely unchanged.
+  //
+  // heroPaddingH (horizontal) is intentionally unchanged at 24dp.
+
+  static const double heroPaddingTop    = 8.0;
   static const double heroPaddingH      = 24.0;
-  static const double heroPaddingBottom = 30.0;
+  static const double heroPaddingBottom = 8.0;
 
   // Sections
   static const double sectionLabelMB = 12.0;
@@ -316,25 +357,25 @@ class AppConstants {
   static const double lineHeightTight = 1.4;
 
   // Icons
-  static const double iconSizeXs = 16.0;
-  static const double iconSizeSm = 20.0;
-  static const double iconSizeMd = 24.0;
-  static const double iconSizeLg = 32.0;
-  static const double iconSizeXl = 48.0;
+  static const double iconSizeXs   = 16.0;
+  static const double iconSizeSm   = 20.0;
+  static const double iconSizeMd   = 24.0;
+  static const double iconSizeLg   = 32.0;
+  static const double iconSizeXl   = 48.0;
   static const double iconSizeLg2  = 64.0;
   static const double iconSizeHero = 80.0;
 
   // Container sizes
-  static const double iconContainerSm  = 28.0;
-  static const double iconContainerMd  = 32.0;
-  static const double iconContainerLg  = 36.0;
-  static const double iconContainerXl  = 40.0;
-  static const double buttonIconSize   = 20.0;
-  static const double iconContainerFeature = 56.0;
+  static const double iconContainerSm         = 28.0;
+  static const double iconContainerMd         = 32.0;
+  static const double iconContainerLg         = 36.0;
+  static const double iconContainerXl         = 40.0;
+  static const double buttonIconSize          = 20.0;
+  static const double iconContainerFeature    = 56.0;
   static const double serviceIconContainerSize = 40.0;
-  static const double emojiIconSize = 22.0;
-  static const double spinnerSizeLg = 20.0;
-  static const double spinnerSizeSm = 14.0;
+  static const double emojiIconSize           = 22.0;
+  static const double spinnerSizeLg           = 20.0;
+  static const double spinnerSizeSm           = 14.0;
 
   // ── Auth UI tokens ────────────────────────────────────────────────────────
   static const double logoOrbSize       = 64.0;
@@ -347,10 +388,10 @@ class AppConstants {
   static const double strengthBarRadius = 2.0;
 
   // ── Checkbox / role tab tokens ────────────────────────────────────────────
-  static const double roleTabIconSize  = 18.0;
-  static const double checkboxSize     = 22.0;
-  static const double checkboxIconSize = 14.0;
-  static const double checkboxRadius   = 6.0;
+  static const double roleTabIconSize     = 18.0;
+  static const double checkboxSize        = 22.0;
+  static const double checkboxIconSize    = 14.0;
+  static const double checkboxRadius      = 6.0;
   static const double accentShadowOpacity = 0.35;
   static const int    goodPasswordLength  = 10;
 
@@ -380,8 +421,8 @@ class AppConstants {
   /// Canonical row height for SettingsTile, SignOutTile, _DeleteAccountTile.
   static const double tileHeight = 64.0;
 
-  static const double settingsRetryButtonWidth    = 180.0;
-  static const double profileCardSkeletonHeight   = 110.0;
+  static const double settingsRetryButtonWidth  = 180.0;
+  static const double profileCardSkeletonHeight = 110.0;
 
   // ── Toggle switch ─────────────────────────────────────────────────────────
   static const double toggleTrackW    = 40.0;
