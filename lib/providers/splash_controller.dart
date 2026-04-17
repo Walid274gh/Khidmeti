@@ -1,12 +1,28 @@
 // lib/providers/splash_controller.dart
 //
-// MIGRATION NOTE:
-//   - waitForInitialization() now relies on FirebaseAuth.authStateChanges()
-//     directly — no dependency on the email auth flow.
-//   - Onboarding check added: if the user has never seen the onboarding slides,
-//     the router goes to /onboarding regardless of auth state.
-//   - Email verification check removed — phone auth users are always verified.
-//   - _resolveAndCacheRole logic unchanged (getUser → isWorker).
+// ROLE RESOLUTION — TWO-TIER STRATEGY:
+//
+//   Tier 1 (preferred): GET /users/:uid from the backend.
+//     → Authoritative, reflects latest server state.
+//     → Persists result to SharedPreferences for Tier 2.
+//
+//   Tier 2 (fallback): read `accountRole` from SharedPreferences.
+//     → Used when the backend is unreachable (no server yet, offline, timeout).
+//     → Written by ProfileSetupController after a successful submit, and by
+//       Tier 1 after every successful server read.
+//     → If the pref is absent it means the user has never completed profile
+//       setup → cachedUserRoleProvider stays UserRole.unknown.
+//
+// ROUTER CONTRACT:
+//   The router's splash redirect reads cachedUserRoleProvider:
+//     unknown  → AppRoutes.roleSelection   (profile not set up)
+//     client   → AppRoutes.home
+//     worker   → AppRoutes.home
+//
+//   This eliminates the "failed submit → works on reopen" symptom: a user
+//   who pressed submit while the server was down has no prefs entry, so
+//   cachedRole stays unknown and the router sends them back to role-selection
+//   rather than straight to /home.
 
 import 'dart:async';
 
@@ -83,7 +99,6 @@ class SplashController extends StateNotifier<SplashState> {
 
       _armMinDurationTimer();
 
-      // Wait for Firebase auth state to resolve + onboarding state to load.
       await Future.wait([
         _waitForAuthState(),
         _waitForOnboarding(),
@@ -96,7 +111,6 @@ class SplashController extends StateNotifier<SplashState> {
         },
       );
 
-      // If user is logged in, resolve their role.
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         await _resolveAndCacheRole(currentUser.uid);
@@ -154,9 +168,6 @@ class SplashController extends StateNotifier<SplashState> {
   }
 
   Future<void> _waitForOnboarding() async {
-    // OnboardingController loads SharedPrefs asynchronously.
-    // We poll until isLoaded to prevent a flash of the onboarding screen
-    // for returning users.
     const maxWait  = Duration(seconds: 2);
     const interval = Duration(milliseconds: 50);
     final start    = DateTime.now();
@@ -189,9 +200,19 @@ class SplashController extends StateNotifier<SplashState> {
     }
   }
 
-  /// Resolves whether the user is a worker or client and caches the result.
-  /// Uses GET /users/:uid — the unified collection with `role` field.
+  // ── Role resolution — two-tier ────────────────────────────────────────────
+
+  /// Tier 1: resolve role from the backend.
+  /// Falls back to Tier 2 (SharedPreferences) on any network/server error.
+  ///
+  /// On success, persists the resolved role to SharedPreferences so that
+  /// Tier 2 is always up-to-date for the next offline start.
+  ///
+  /// IMPORTANT: if neither tier can resolve the role, cachedUserRoleProvider
+  /// stays UserRole.unknown.  The router interprets unknown-after-splash as
+  /// "profile not set up" and redirects to AppRoutes.roleSelection.
   Future<void> _resolveAndCacheRole(String uid) async {
+    // ── Tier 1: backend ─────────────────────────────────────────────────────
     try {
       final firestoreService = _ref.read(firestoreServiceProvider);
 
@@ -199,27 +220,84 @@ class SplashController extends StateNotifier<SplashState> {
           .getUser(uid)
           .timeout(_kRoleResolveTimeout, onTimeout: () => null);
 
-      final role = userDoc?.isWorker == true ? UserRole.worker : UserRole.client;
+      if (userDoc != null) {
+        final role = userDoc.isWorker ? UserRole.worker : UserRole.client;
 
-      setCachedUserRole(_ref, role);
+        _setCachedRole(role);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        PrefKeys.accountRole,
-        role == UserRole.worker ? UserType.worker : UserType.user,
-      );
+        // Keep prefs in sync with latest server state.
+        await _writeRoleToPrefs(role);
+        AppLogger.info('SplashController: role=$role from server uid=$uid');
+        return;
+      }
 
-      AppLogger.info('SplashController: cached role=$role uid=$uid');
+      // Server returned null document — fall through to Tier 2.
+      AppLogger.warning('SplashController: getUser returned null for uid=$uid');
     } on FirebaseException catch (e) {
       if (e.code == 'permission-denied') {
         AppLogger.error('SplashController: PERMISSION_DENIED uid=$uid', e);
         rethrow;
       }
-      setCachedUserRole(_ref, UserRole.client);
+      AppLogger.warning(
+        'SplashController: server error (${e.code}) — trying prefs fallback',
+      );
     } catch (e) {
-      setCachedUserRole(_ref, UserRole.client);
-      AppLogger.error('SplashController._resolveAndCacheRole', e);
+      AppLogger.warning(
+        'SplashController: backend unreachable — trying prefs fallback ($e)',
+      );
     }
+
+    // ── Tier 2: SharedPreferences fallback ──────────────────────────────────
+    await _resolveRoleFromPrefs(uid);
+  }
+
+  /// Tier 2: read the role that was persisted by ProfileSetupController
+  /// (on successful submit) or by a previous successful Tier-1 resolution.
+  ///
+  /// If no entry is found, the cachedUserRoleProvider is left as
+  /// UserRole.unknown, which causes the router to redirect to roleSelection.
+  Future<void> _resolveRoleFromPrefs(String uid) async {
+    try {
+      final prefs  = await SharedPreferences.getInstance();
+      final saved  = prefs.getString(PrefKeys.accountRole);
+
+      if (saved == null) {
+        // No pref entry → user never completed profile setup successfully.
+        // Leave cachedRole as UserRole.unknown.
+        AppLogger.info(
+          'SplashController: no role pref for uid=$uid → unknown → roleSelection',
+        );
+        return;
+      }
+
+      final role = saved == UserType.worker ? UserRole.worker : UserRole.client;
+      _setCachedRole(role);
+      AppLogger.info('SplashController: role=$role from prefs uid=$uid');
+    } catch (e) {
+      AppLogger.error('SplashController._resolveRoleFromPrefs', e);
+      // Leave cachedRole as unknown — router sends to roleSelection.
+    }
+  }
+
+  /// Writes `accountRole` pref — single helper to avoid duplication.
+  Future<void> _writeRoleToPrefs(UserRole role) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        PrefKeys.accountRole,
+        role == UserRole.worker ? UserType.worker : UserType.user,
+      );
+    } catch (e) {
+      AppLogger.warning('SplashController._writeRoleToPrefs failed: $e');
+    }
+  }
+
+  /// Thin wrapper so call sites don't have to read the notifier every time.
+  void _setCachedRole(UserRole role) {
+    setCachedUserRole(
+      _ref.read(cachedUserRoleProvider.notifier),
+      role,
+    );
   }
 
   SplashErrorType _mapFirebaseError(FirebaseException e) {
