@@ -40,6 +40,22 @@ import 'widgets/home_top_bar.dart';
 //   Independent of keyboard and Scaffold nav bar. Typically 0dp on hardware-
 //   button Android, 20–34dp on gesture-nav devices and iPhones ≥ X.
 //
+// ── Why the nav bar overlap was fixed in constants.dart, not here ─────────────
+//
+// The root cause of the CTA card overlapping the GlassNavigationBar was NOT
+// insufficient bottom clearance — it was excessive top padding in the hero
+// section pushing all content downward. The fix:
+//
+//   heroPaddingTop:    38dp → 8dp  (saves 30dp)
+//   heroPaddingBottom: 30dp → 8dp  (saves 22dp)
+//   total lift = 52dp
+//
+// This approach is correct because:
+//   1. The content block shifts up as a whole — all spacings unchanged.
+//   2. The CTA card is visible WITHOUT requiring any scrolling.
+//   3. home_screen.dart needs no modification — the fix is purely in the
+//      design token layer where it belongs.
+//
 // [NAV-OVERLAP ROOT CAUSE — now fixed]:
 //   The previous code used fabClearance(80dp) which equalled navBarHeight
 //   exactly → zero breathing room. On top of that, navBarHeight in constants
@@ -205,7 +221,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                       // Scroll clearance — keeps last card fully above nav bar.
                       // = navBarScrollClearance(96dp) + device bottom inset.
-                      // See class-level comment for full formula breakdown.
+                      // The actual nav-overlap fix lives in constants.dart:
+                      // heroPaddingTop/Bottom were reduced to lift ALL content
+                      // upward by 52dp so the CTA card clears the nav bar at rest.
                       SizedBox(height: bottomClearance),
                     ],
                   ),
