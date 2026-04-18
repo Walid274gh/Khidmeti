@@ -7,6 +7,9 @@
 //   main.ts rejects any unknown field with 400 before reaching the service.
 //   bid.toMap() included id/status/createdAt/expiresAt/acceptedAt which are
 //   all absent from CreateBidDto → instant 400.
+// PATCH — Bug 2 fix: createOrUpdateUser/Worker no longer sends email='' in
+//   payload. @IsEmail() @IsOptional() does NOT ignore empty string '' —
+//   @IsOptional() only ignores null/undefined → 400 validation error.
 
 import 'dart:async';
 import 'dart:convert';
@@ -271,9 +274,12 @@ class ApiService {
     _ensureNotDisposed();
 
     final payload = <String, dynamic>{
-      'id':    user.id,
-      'name':  user.name,
-      'email': user.email,
+      'id':   user.id,
+      'name': user.name,
+      // FIX Bug 1: لا ترسل email إذا كانت فارغة.
+      // @IsEmail() @IsOptional() لا تتجاهل السلسلة الفارغة '' —
+      // @IsOptional() يتجاهل null/undefined فقط → 400 validation error
+      if (user.email.isNotEmpty) 'email': user.email,
     };
     if (user.phoneNumber.isNotEmpty)  payload['phoneNumber']     = user.phoneNumber;
     if (user.latitude != null)        payload['latitude']        = user.latitude;
@@ -389,7 +395,8 @@ class ApiService {
     final payload = <String, dynamic>{
       'id':    worker.id,
       'name':  worker.name,
-      'email': worker.email,
+      // FIX Bug 1: نفس السبب — لا ترسل email فارغة
+      if (worker.email.isNotEmpty) 'email': worker.email,
       'role':  'worker',
       if (worker.profession?.isNotEmpty == true)
         'profession': worker.profession,
