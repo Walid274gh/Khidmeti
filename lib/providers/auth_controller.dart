@@ -208,11 +208,25 @@ class AuthController extends StateNotifier<AuthState> {
         return;
       }
 
-      // Ensure backend profile exists (fire-and-forget — never block navigation).
-      _authService.ensureBackendProfile(user);
+      // FIX Bug 2 & 3: احدد أولاً هل هو مستخدم جديد قبل أي auto-provisioning.
+      //
+      // المشكلة السابقة:
+      //   ensureBackendProfile كانت تُستدعى fire-and-forget قبل _checkIsNewUser.
+      //   بما أن GET /users/:id يستدعي ensureExists() من الـ backend، ينشئ
+      //   stub من نوع client قبل أن يصل _checkIsNewUser — فيُعيد isNewUser=false
+      //   وتذهب للـ home بدلاً من role-selection.
+      //
+      // الحل:
+      //   1. استدعِ _checkIsNewUser أولاً (بدون أي stub موجود).
+      //   2. استدعِ ensureBackendProfile فقط للمستخدمين الموجودين (isNew=false).
+      //      المستخدمون الجدد سيُنشئون ملفهم عبر شاشات الإعداد.
 
-      // Determine if this is a new user needing profile setup.
       final isNew = await _checkIsNewUser(user.uid);
+
+      // فقط للمستخدمين العائدين الذين قد يكون ملفهم في MongoDB اختفى
+      if (!isNew) {
+        _authService.ensureBackendProfile(user);
+      }
 
       if (!mounted) return;
       state = state.copyWith(
