@@ -5,21 +5,21 @@
 //   State 1 — OTP entry    : 6-box grid, resend timer, auto-submit
 //   State 2 — Success/loading: animated checkmark while router redirects
 //
-// State machine is driven by authControllerProvider (AuthController).
-//
-// FIXES:
-//   • resizeToAvoidBottomInset: false — prevents the Scaffold body from
-//     resizing when the keyboard appears, eliminating the layout jump at
-//     the bottom of the screen.  The ScrollView's bottom padding already
-//     accounts for viewInsets.bottom so content stays above the keyboard.
-//   • Removed _cardController.reset()/_cardController.forward() from
-//     _sendOtp() and _resendOtp().  These calls ran AFTER the async
-//     operation completed, causing the already-visible OTP card to
-//     briefly collapse and re-enter — the visual "rebuild" the user saw.
-//     The AnimatedSwitcher's own FadeTransition handles the phone→OTP
-//     crossfade correctly without any extra animation.
-//   • _backToPhone() keeps its reset/forward because that is a genuine
-//     re-entry of the phone card.
+// FIXES (UI/UX):
+//   • _PhoneInputRow — border width is now always 1.0; only the color
+//     animates between inactive/focused states.  The old 0.5 → 1.5 jump
+//     caused the field to visually "pop" on focus (0.5dp is sub-pixel on
+//     most densities, so the jump to 1.5 looked like an abrupt resize).
+//   • _PhoneInputRow — removed the inner `Border(right: …)` on the country
+//     code container.  It was rendered on top of the outer AnimatedContainer
+//     border, producing a harsh double-line at the separator.  Replaced with
+//     a slim centered divider Container (width: 1, height: 22) that visually
+//     floats inside the field without touching the outer stroke.
+//   • _PhoneInputRow — fill color is now consistent; when focused the fill
+//     shifts to a very-low-opacity accent wash so the field reads as "active"
+//     without relying solely on the border color.
+//   • All other logic (sendOtp, verifyOtp, resendOtp, _backToPhone,
+//     animation controllers) is unchanged from the reviewed version.
 
 import 'dart:async';
 
@@ -33,7 +33,6 @@ import '../../providers/auth_controller.dart';
 import '../../providers/user_role_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
-import '../../utils/form_validators.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
 import '../auth/widgets/auth_background.dart';
@@ -59,15 +58,13 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
   bool _phoneValid = false;
 
   // ── OTP state ───────────────────────────────────────────────────────────────
-  final _otpKey  = GlobalKey<OtpInputRowState>();
-  bool   _otpSubmitting = false;
+  final _otpKey = GlobalKey<OtpInputRowState>();
+  bool _otpSubmitting = false;
 
   // ── Animations ──────────────────────────────────────────────────────────────
-  // This controller runs once on screen entry.  It is only reset when the
-  // user explicitly navigates back to the phone card (_backToPhone).
   late final AnimationController _cardController;
-  late final Animation<double>    _cardFade;
-  late final Animation<Offset>    _cardSlide;
+  late final Animation<double> _cardFade;
+  late final Animation<Offset> _cardSlide;
 
   @override
   void initState() {
@@ -75,20 +72,22 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
 
     _phoneController.addListener(() {
       final digits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-      final valid  = digits.length == 9;
+      final valid = digits.length == 9;
       if (valid != _phoneValid) setState(() => _phoneValid = valid);
     });
 
     _cardController = AnimationController(
-      vsync:    this,
+      vsync: this,
       duration: AppConstants.authCardEntranceDuration,
     )..forward();
 
-    _cardFade  = CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
+    _cardFade =
+        CurvedAnimation(parent: _cardController, curve: Curves.easeOut);
     _cardSlide = Tween<Offset>(
       begin: const Offset(0, 0.06),
-      end:   Offset.zero,
-    ).animate(CurvedAnimation(parent: _cardController, curve: Curves.easeOut));
+      end: Offset.zero,
+    ).animate(
+        CurvedAnimation(parent: _cardController, curve: Curves.easeOut));
   }
 
   @override
@@ -98,10 +97,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     super.dispose();
   }
 
-  // ── Navigation after successful authentication ────────────────────────────
-  //
-  // The router redirect waits for cachedUserRoleProvider != unknown, but
-  // nobody sets that provider after phone auth — we do it here instead.
+  // ── Navigation after successful authentication ─────────────────────────────
 
   Future<void> _handleExistingUserLogin() async {
     try {
@@ -131,17 +127,10 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     FocusScope.of(context).unfocus();
     HapticFeedback.mediumImpact();
 
-    final raw  = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    final raw = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     final e164 = '${_selectedCountry.dialCode}$raw';
 
     await ref.read(authControllerProvider.notifier).sendOtp(e164);
-
-    // FIX: Do NOT reset/forward _cardController here.
-    // When this await resolves, the controller state is already `otpSent`
-    // and the AnimatedSwitcher below has already crossfaded to the OTP card.
-    // Calling reset()+forward() at this point would collapse the visible OTP
-    // card and replay the entrance animation — the "screen rebuild" the user
-    // reported.  The AnimatedSwitcher handles the visual transition on its own.
   }
 
   // ── OTP submission ──────────────────────────────────────────────────────────
@@ -157,10 +146,6 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
   Future<void> _resendOtp() async {
     _otpKey.currentState?.clear();
     await ref.read(authControllerProvider.notifier).resendOtp();
-
-    // FIX: Do NOT reset/forward _cardController here either.
-    // During a resend we remain on the OTP card — there is no card switch,
-    // so no entrance animation is needed.
   }
 
   // ── Back to phone ───────────────────────────────────────────────────────────
@@ -169,8 +154,6 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
     ref.invalidate(authControllerProvider);
     _phoneController.clear();
     _otpKey.currentState?.clear();
-    // Replaying the animation here IS correct — the phone card is genuinely
-    // re-entering the screen from scratch.
     _cardController.reset();
     _cardController.forward();
   }
@@ -190,9 +173,8 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // ── Navigation listener ──────────────────────────────────────────────────
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (!mounted) return;
       if (next.status != AuthStatus.success) return;
@@ -204,77 +186,62 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen>
       }
     });
 
-    // Include AuthStatus.success so the OTP card stays visible while the
-    // navigation animation plays (prevents a flash of the phone card).
-    final isOtpPhase = authState.status == AuthStatus.otpSent    ||
-                       authState.status == AuthStatus.verifying   ||
-                       authState.status == AuthStatus.success;
+    final isOtpPhase = authState.status == AuthStatus.otpSent ||
+        authState.status == AuthStatus.verifying ||
+        authState.status == AuthStatus.success;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemOverlayStyle(isDark),
       child: Scaffold(
-        // FIX: resizeToAvoidBottomInset: false keeps the Scaffold body at
-        // full height even when the software keyboard is open.  The
-        // AuthBackground (Positioned.fill) therefore always covers the
-        // full screen, matching the edge-to-edge design intent.
-        // Keyboard avoidance is handled manually via viewInsets.bottom in
-        // the ScrollView padding below — this is the single source of truth
-        // for keyboard-driven layout, eliminating the double-accounting that
-        // caused the bottom-of-screen layout jump.
         resizeToAvoidBottomInset: false,
-        backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
         body: Stack(
           children: [
             AuthBackground(isDark: isDark),
             SafeArea(
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(
-                  left:   AppConstants.paddingLg,
-                  right:  AppConstants.paddingLg,
-                  top:    AppConstants.paddingXl,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + AppConstants.paddingXl,
+                  left: AppConstants.paddingLg,
+                  right: AppConstants.paddingLg,
+                  top: AppConstants.paddingXl,
+                  bottom: MediaQuery.of(context).viewInsets.bottom +
+                      AppConstants.paddingXl,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo / wordmark
                     _AuthHeader(isDark: isDark),
-
                     const SizedBox(height: AppConstants.spacingXl),
-
-                    // Card — switches between phone and OTP.
-                    // The outer FadeTransition+SlideTransition animate once
-                    // on entry (controlled by _cardController).  The inner
-                    // AnimatedSwitcher crossfades between phone and OTP cards.
                     FadeTransition(
                       opacity: _cardFade,
                       child: SlideTransition(
                         position: _cardSlide,
                         child: AnimatedSwitcher(
-                          duration:        const Duration(milliseconds: 320),
+                          duration: const Duration(milliseconds: 320),
                           transitionBuilder: (child, anim) => FadeTransition(
                             opacity: anim,
-                            child:   child,
+                            child: child,
                           ),
                           child: isOtpPhase
                               ? _OtpCard(
-                                  key:          const ValueKey('otp'),
-                                  authState:    authState,
-                                  isDark:       isDark,
-                                  otpKey:       _otpKey,
-                                  onCompleted:  _verifyOtp,
-                                  onResend:     _resendOtp,
-                                  onBack:       _backToPhone,
+                                  key: const ValueKey('otp'),
+                                  authState: authState,
+                                  isDark: isDark,
+                                  otpKey: _otpKey,
+                                  onCompleted: _verifyOtp,
+                                  onResend: _resendOtp,
+                                  onBack: _backToPhone,
                                 )
                               : _PhoneCard(
-                                  key:          const ValueKey('phone'),
-                                  authState:    authState,
-                                  isDark:       isDark,
-                                  controller:   _phoneController,
-                                  country:      _selectedCountry,
-                                  phoneValid:   _phoneValid,
+                                  key: const ValueKey('phone'),
+                                  authState: authState,
+                                  isDark: isDark,
+                                  controller: _phoneController,
+                                  country: _selectedCountry,
+                                  phoneValid: _phoneValid,
                                   onPickCountry: _pickCountry,
-                                  onSubmit:     _sendOtp,
+                                  onSubmit: _sendOtp,
                                 ),
                         ),
                       ),
@@ -305,39 +272,36 @@ class _AuthHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo orb
         Container(
-          width:  AppConstants.logoOrbSize,
+          width: AppConstants.logoOrbSize,
           height: AppConstants.logoOrbSize,
           decoration: BoxDecoration(
-            shape:  BoxShape.circle,
-            color:  accent,
+            shape: BoxShape.circle,
+            color: accent,
             boxShadow: [
               BoxShadow(
-                color:      AppTheme.accentShadow,
+                color: AppTheme.accentShadow,
                 blurRadius: 40,
-                offset:     const Offset(0, 8),
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Icon(
             AppIcons.home,
             color: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-            size:  AppConstants.logoOrbIconSize,
+            size: AppConstants.logoOrbIconSize,
           ),
         ),
-
         const SizedBox(height: AppConstants.spacingLg),
-
         Semantics(
           header: true,
           child: Text(
             'Khidmeti',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontWeight:    FontWeight.w700,
-              letterSpacing: -0.5,
-              color: isDark ? AppTheme.darkText : AppTheme.lightText,
-            ),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  color: isDark ? AppTheme.darkText : AppTheme.lightText,
+                ),
           ),
         ),
       ],
@@ -350,13 +314,13 @@ class _AuthHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PhoneCard extends StatelessWidget {
-  final AuthState             authState;
-  final bool                  isDark;
+  final AuthState authState;
+  final bool isDark;
   final TextEditingController controller;
-  final CountryCode           country;
-  final bool                  phoneValid;
-  final VoidCallback          onPickCountry;
-  final VoidCallback          onSubmit;
+  final CountryCode country;
+  final bool phoneValid;
+  final VoidCallback onPickCountry;
+  final VoidCallback onSubmit;
 
   const _PhoneCard({
     super.key,
@@ -376,60 +340,46 @@ class _PhoneCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Title
           Text(
             context.tr('phone_auth.title'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: isDark ? AppTheme.darkText : AppTheme.lightText,
-            ),
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppTheme.darkText : AppTheme.lightText,
+                ),
           ),
-
           const SizedBox(height: AppConstants.spacingXs),
-
           Text(
             context.tr('phone_auth.subtitle'),
             style: TextStyle(
               fontSize: AppConstants.fontSizeSm,
-              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+              color: isDark
+                  ? AppTheme.darkSecondaryText
+                  : AppTheme.lightSecondaryText,
             ),
           ),
-
           const SizedBox(height: AppConstants.spacingLg),
-
-          // Phone input row: [flag+dial] [number]
           _PhoneInputRow(
-            isDark:        isDark,
-            controller:    controller,
-            country:       country,
+            isDark: isDark,
+            controller: controller,
+            country: country,
             onPickCountry: onPickCountry,
-            onSubmit:      onSubmit,
+            onSubmit: onSubmit,
           ),
-
-          // Error
           if (authState.hasError && authState.errorKey != null) ...[
             const SizedBox(height: AppConstants.spacingSm),
-            _ErrorBanner(
-              messageKey: authState.errorKey!,
-              isDark:     isDark,
-            ),
+            _ErrorBanner(messageKey: authState.errorKey!, isDark: isDark),
           ],
-
           const SizedBox(height: AppConstants.spacingLg),
-
-          // CTA
           AuthSubmitButton(
             isLoading: authState.status == AuthStatus.sendingOtp,
-            isDark:    isDark,
-            onPressed: phoneValid && authState.status != AuthStatus.sendingOtp
-                ? onSubmit
-                : null,
-            labelKey:  'phone_auth.send_code',
+            isDark: isDark,
+            onPressed:
+                phoneValid && authState.status != AuthStatus.sendingOtp
+                    ? onSubmit
+                    : null,
+            labelKey: 'phone_auth.send_code',
           ),
-
           const SizedBox(height: AppConstants.spacingMd),
-
-          // SMS cost disclaimer
           Text(
             context.tr('phone_auth.sms_disclaimer'),
             style: TextStyle(
@@ -451,11 +401,11 @@ class _PhoneCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PhoneInputRow extends StatefulWidget {
-  final bool                  isDark;
+  final bool isDark;
   final TextEditingController controller;
-  final CountryCode           country;
-  final VoidCallback          onPickCountry;
-  final VoidCallback          onSubmit;
+  final CountryCode country;
+  final VoidCallback onPickCountry;
+  final VoidCallback onSubmit;
 
   const _PhoneInputRow({
     required this.isDark,
@@ -491,96 +441,140 @@ class _PhoneInputRowState extends State<_PhoneInputRow> {
   Widget build(BuildContext context) {
     final accent = widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
+    // FIX: Border color animates, width stays at 1.0 always.
+    // Old code: 0.5 (inactive) → 1.5 (focused) caused a visual "pop" / layout
+    // micro-shift when the TextField was tapped.
+    final borderColor = _isFocused
+        ? accent
+        : (widget.isDark ? AppTheme.darkBorder : AppTheme.lightBorder);
+
+    // Subtle accent wash when focused — reinforces "active" state beyond
+    // just the border color change.
+    final fillColor = _isFocused
+        ? (widget.isDark
+            ? AppTheme.darkAccent.withOpacity(0.06)
+            : AppTheme.lightAccent.withOpacity(0.04))
+        : (widget.isDark
+            ? AppTheme.darkSurfaceVariant
+            : AppTheme.lightSurfaceVariant);
+
     return AnimatedContainer(
       duration: AppConstants.animDurationMicro,
+      height: 56,
       decoration: BoxDecoration(
-        color: widget.isDark
-            ? AppTheme.darkSurfaceVariant
-            : AppTheme.lightSurfaceVariant,
+        color: fillColor,
         borderRadius: BorderRadius.circular(AppConstants.inputRadius),
         border: Border.all(
-          color: _isFocused ? accent : (widget.isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-          width: _isFocused ? 1.5 : 0.5,
+          // FIX: width always 1.0, no layout shift on focus.
+          color: borderColor,
+          width: 1.0,
         ),
+        // Soft glow when focused — gives depth without border-width change.
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: accent.withOpacity(0.14),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
-          // Country code button
+          // ── Country code button ──────────────────────────────────────────
           Semantics(
             button: true,
-            label: 'Country code, current: ${widget.country.name} ${widget.country.dialCode}',
+            label:
+                'Country code, current: ${widget.country.name} ${widget.country.dialCode}',
             child: GestureDetector(
               onTap: widget.onPickCountry,
-              child: Container(
+              child: SizedBox(
                 height: 56,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingMd,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: widget.isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                      width: 0.5,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingMd,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      widget.country.flag,
-                      style: const TextStyle(fontSize: AppConstants.iconSizeSm),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      widget.country.dialCode,
-                      style: TextStyle(
-                        fontSize:   AppConstants.fontSizeMd,
-                        fontWeight: FontWeight.w600,
-                        color: widget.isDark ? AppTheme.darkText : AppTheme.lightText,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.country.flag,
+                        style: const TextStyle(
+                            fontSize: AppConstants.iconSizeSm),
                       ),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size:  16,
-                      color: widget.isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.country.dialCode,
+                        style: TextStyle(
+                          fontSize: AppConstants.fontSizeMd,
+                          fontWeight: FontWeight.w600,
+                          color: widget.isDark
+                              ? AppTheme.darkText
+                              : AppTheme.lightText,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: widget.isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Phone number input
+          // FIX: Replaced `Border(right: BorderSide(...))` on the country
+          // container with a slim floating divider.  The old approach drew
+          // a border on the inner container which visually overlapped the
+          // outer AnimatedContainer border, creating a harsh double-line.
+          // This divider is centered vertically and shorter than the field
+          // height so it "floats" rather than touching top/bottom edges.
+          Container(
+            width: 1,
+            height: 22,
+            color: (widget.isDark ? AppTheme.darkBorder : AppTheme.lightBorder)
+                .withOpacity(0.7),
+          ),
+
+          // ── Phone number input ───────────────────────────────────────────
           Expanded(
             child: TextField(
-              controller:       widget.controller,
-              focusNode:        _focusNode,
-              keyboardType:     TextInputType.phone,
-              textInputAction:  TextInputAction.done,
-              autofillHints:    const [AutofillHints.telephoneNumberNational],
-              maxLength:        9,
-              onSubmitted:      (_) => widget.onSubmit(),
+              controller: widget.controller,
+              focusNode: _focusNode,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.telephoneNumberNational],
+              maxLength: 9,
+              onSubmitted: (_) => widget.onSubmit(),
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
               ],
               style: TextStyle(
-                fontSize:   AppConstants.fontSizeLg,
+                fontSize: AppConstants.fontSizeLg,
                 fontWeight: FontWeight.w400,
-                color: widget.isDark ? AppTheme.darkText : AppTheme.lightText,
+                color:
+                    widget.isDark ? AppTheme.darkText : AppTheme.lightText,
               ),
               decoration: InputDecoration(
-                border:         InputBorder.none,
-                hintText:       '6XXXXXXXX',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hintText: '6XXXXXXXX',
                 hintStyle: TextStyle(
-                  color:    widget.isDark ? AppTheme.darkHintText : AppTheme.lightHintText,
+                  color: widget.isDark
+                      ? AppTheme.darkHintText
+                      : AppTheme.lightHintText,
                   fontSize: AppConstants.fontSizeLg,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingMd,
-                  vertical:   AppConstants.paddingMd,
+                  vertical: AppConstants.paddingMd,
                 ),
                 counterText: '',
               ),
@@ -597,12 +591,12 @@ class _PhoneInputRowState extends State<_PhoneInputRow> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _OtpCard extends StatefulWidget {
-  final AuthState                   authState;
-  final bool                        isDark;
+  final AuthState authState;
+  final bool isDark;
   final GlobalKey<OtpInputRowState> otpKey;
-  final ValueChanged<String>        onCompleted;
-  final VoidCallback                onResend;
-  final VoidCallback                onBack;
+  final ValueChanged<String> onCompleted;
+  final VoidCallback onResend;
+  final VoidCallback onBack;
 
   const _OtpCard({
     super.key,
@@ -621,12 +615,12 @@ class _OtpCard extends StatefulWidget {
 class _OtpCardState extends State<_OtpCard> {
   @override
   Widget build(BuildContext context) {
-    // Show spinner when verifying OR when success (navigation in progress).
-    final isVerifyingOrDone = widget.authState.status == AuthStatus.verifying ||
-                              widget.authState.status == AuthStatus.success;
+    final isVerifyingOrDone =
+        widget.authState.status == AuthStatus.verifying ||
+            widget.authState.status == AuthStatus.success;
     final cooldown = widget.authState.resendCooldown;
-    final phone    = widget.authState.phone;
-    final masked   = phone.length >= 4
+    final phone = widget.authState.phone;
+    final masked = phone.length >= 4
         ? '${phone.substring(0, phone.length - 4)}****'
         : phone;
 
@@ -635,11 +629,10 @@ class _OtpCardState extends State<_OtpCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Back link — hidden while verifying/success
           if (!isVerifyingOrDone)
             Semantics(
               button: true,
-              label:  'Retour à la saisie du numéro',
+              label: 'Retour à la saisie du numéro',
               child: GestureDetector(
                 onTap: widget.onBack,
                 child: Row(
@@ -647,16 +640,20 @@ class _OtpCardState extends State<_OtpCard> {
                   children: [
                     Icon(
                       Icons.arrow_back_rounded,
-                      size:  AppConstants.iconSizeSm,
-                      color: widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                      size: AppConstants.iconSizeSm,
+                      color: widget.isDark
+                          ? AppTheme.darkAccent
+                          : AppTheme.lightAccent,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       context.tr('phone_auth.change_number'),
                       style: TextStyle(
-                        fontSize:   AppConstants.fontSizeSm,
+                        fontSize: AppConstants.fontSizeSm,
                         fontWeight: FontWeight.w600,
-                        color: widget.isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                        color: widget.isDark
+                            ? AppTheme.darkAccent
+                            : AppTheme.lightAccent,
                       ),
                     ),
                   ],
@@ -667,13 +664,12 @@ class _OtpCardState extends State<_OtpCard> {
           if (!isVerifyingOrDone)
             const SizedBox(height: AppConstants.spacingMd),
 
-          // Title
           Text(
             context.tr('phone_auth.otp_title'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: widget.isDark ? AppTheme.darkText : AppTheme.lightText,
-            ),
+                  fontWeight: FontWeight.w700,
+                  color: widget.isDark ? AppTheme.darkText : AppTheme.lightText,
+                ),
           ),
 
           const SizedBox(height: AppConstants.spacingXs),
@@ -682,52 +678,50 @@ class _OtpCardState extends State<_OtpCard> {
             '${context.tr("phone_auth.otp_sent_to")} $masked',
             style: TextStyle(
               fontSize: AppConstants.fontSizeSm,
-              color: widget.isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+              color: widget.isDark
+                  ? AppTheme.darkSecondaryText
+                  : AppTheme.lightSecondaryText,
             ),
           ),
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // OTP boxes
           OtpInputRow(
-            key:         widget.otpKey,
-            hasError:    widget.authState.hasError,
+            key: widget.otpKey,
+            hasError: widget.authState.hasError,
             onCompleted: widget.onCompleted,
-            onChanged:   () {},
+            onChanged: () {},
           ),
 
-          // Error
           if (widget.authState.hasError && widget.authState.errorKey != null) ...[
             const SizedBox(height: AppConstants.spacingSm),
             _ErrorBanner(
               messageKey: widget.authState.errorKey!,
-              isDark:     widget.isDark,
+              isDark: widget.isDark,
             ),
           ],
 
           const SizedBox(height: AppConstants.spacingLg),
 
-          // Verify button — reads current code from OtpInputRowState as fallback
-          // if auto-submit didn't fire (e.g. user typed slowly).
           AuthSubmitButton(
             isLoading: isVerifyingOrDone,
-            isDark:    widget.isDark,
-            onPressed: isVerifyingOrDone ? null : () {
-              final code = widget.otpKey.currentState?.currentCode ?? '';
-              if (code.length == 6) {
-                widget.onCompleted(code);
-              }
-            },
-            labelKey:  'phone_auth.verify',
+            isDark: widget.isDark,
+            onPressed: isVerifyingOrDone
+                ? null
+                : () {
+                    final code =
+                        widget.otpKey.currentState?.currentCode ?? '';
+                    if (code.length == 6) widget.onCompleted(code);
+                  },
+            labelKey: 'phone_auth.verify',
           ),
 
           const SizedBox(height: AppConstants.spacingMd),
 
-          // Resend timer — hidden while verifying/success
           if (!isVerifyingOrDone)
             _ResendTimer(
               cooldown: cooldown,
-              isDark:   widget.isDark,
+              isDark: widget.isDark,
               onResend: cooldown == 0 ? widget.onResend : null,
             ),
         ],
@@ -741,8 +735,8 @@ class _OtpCardState extends State<_OtpCard> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ResendTimer extends StatelessWidget {
-  final int           cooldown;
-  final bool          isDark;
+  final int cooldown;
+  final bool isDark;
   final VoidCallback? onResend;
 
   const _ResendTimer({
@@ -762,7 +756,9 @@ class _ResendTimer extends StatelessWidget {
           context.tr('phone_auth.resend_prefix'),
           style: TextStyle(
             fontSize: AppConstants.fontSizeSm,
-            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+            color: isDark
+                ? AppTheme.darkSecondaryText
+                : AppTheme.lightSecondaryText,
           ),
         ),
         const SizedBox(width: 4),
@@ -770,9 +766,11 @@ class _ResendTimer extends StatelessWidget {
           Text(
             '${cooldown}s',
             style: TextStyle(
-              fontSize:   AppConstants.fontSizeSm,
+              fontSize: AppConstants.fontSizeSm,
               fontWeight: FontWeight.w600,
-              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+              color: isDark
+                  ? AppTheme.darkSecondaryText
+                  : AppTheme.lightSecondaryText,
             ),
           )
         else
@@ -787,7 +785,7 @@ class _ResendTimer extends StatelessWidget {
               child: Text(
                 context.tr('phone_auth.resend'),
                 style: TextStyle(
-                  fontSize:   AppConstants.fontSizeSm,
+                  fontSize: AppConstants.fontSizeSm,
                   fontWeight: FontWeight.w700,
                   color: accent,
                   decoration: TextDecoration.underline,
@@ -806,7 +804,7 @@ class _ResendTimer extends StatelessWidget {
 
 class _ErrorBanner extends StatelessWidget {
   final String messageKey;
-  final bool   isDark;
+  final bool isDark;
 
   const _ErrorBanner({required this.messageKey, required this.isDark});
 
@@ -815,18 +813,20 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
-        color: (isDark ? AppTheme.darkError : AppTheme.lightError).withOpacity(0.10),
+        color: (isDark ? AppTheme.darkError : AppTheme.lightError)
+            .withOpacity(0.10),
         borderRadius: BorderRadius.circular(AppConstants.radiusSm),
         border: Border.all(
-          color: (isDark ? AppTheme.darkError : AppTheme.lightError).withOpacity(0.30),
-          width: 0.5,
+          color: (isDark ? AppTheme.darkError : AppTheme.lightError)
+              .withOpacity(0.30),
+          width: 1.0,
         ),
       ),
       child: Row(
         children: [
           Icon(
             Icons.error_outline_rounded,
-            size:  AppConstants.iconSizeXs,
+            size: AppConstants.iconSizeXs,
             color: isDark ? AppTheme.darkError : AppTheme.lightError,
           ),
           const SizedBox(width: AppConstants.spacingSm),
@@ -850,7 +850,7 @@ class _ErrorBanner extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AuthCard extends StatelessWidget {
-  final bool   isDark;
+  final bool isDark;
   final Widget child;
 
   const _AuthCard({required this.isDark, required this.child});
@@ -864,7 +864,7 @@ class _AuthCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppConstants.radiusCard),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-          width: 0.5,
+          width: 1.0,
         ),
       ),
       child: child,
