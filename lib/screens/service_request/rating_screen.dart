@@ -15,6 +15,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
+import '../../widgets/back_button.dart';
 
 
 class RatingScreen extends ConsumerStatefulWidget {
@@ -78,28 +79,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                     0),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label:  context.tr('common.back'),
-                      child: GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Container(
-                          width:  AppConstants.backButtonSize,
-                          height: AppConstants.backButtonSize,
-                          decoration: BoxDecoration(
-                            color: (isDark ? Colors.white : Colors.black)
-                                .withOpacity(0.07),
-                            borderRadius:
-                                BorderRadius.circular(AppConstants.radiusMd),
-                          ),
-                          child: Icon(AppIcons.back,
-                              size:  20,
-                              color: isDark
-                                  ? AppTheme.darkText
-                                  : AppTheme.lightText),
-                        ),
-                      ),
-                    ),
+                    AppBackButton(isDark: isDark),
                     const SizedBox(width: AppConstants.spacingMd),
                     Text(
                       context.tr('rating.title'),

@@ -13,6 +13,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
+import '../../widgets/back_button.dart';
 import 'widgets/bid_card.dart';
 
 
@@ -70,28 +71,7 @@ class BidsListScreen extends ConsumerWidget {
                     0),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label:  context.tr('common.back'),
-                      child: GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Container(
-                          width:  48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: (isDark ? Colors.white : Colors.black)
-                                .withOpacity(0.07),
-                            borderRadius:
-                                BorderRadius.circular(AppConstants.radiusMd),
-                          ),
-                          child: Icon(AppIcons.back,
-                              size:  20,
-                              color: isDark
-                                  ? AppTheme.darkText
-                                  : AppTheme.lightText),
-                        ),
-                      ),
-                    ),
+                    AppBackButton(isDark: isDark),
                     const SizedBox(width: AppConstants.spacingMd),
                     Expanded(
                       child: Column(
