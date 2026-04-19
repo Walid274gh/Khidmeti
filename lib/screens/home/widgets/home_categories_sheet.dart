@@ -1,4 +1,9 @@
 // lib/screens/home/widgets/home_categories_sheet.dart
+//
+// CHANGES:
+//   • Search bar replaced with AppSearchBar (lib/widgets/search_bar.dart),
+//     simple mode — text only, no voice, no camera.
+//   • ProfessionResolver integration unchanged.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +12,7 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/profession_resolver.dart';
+import '../../../widgets/search_bar.dart';
 import '../../../widgets/sheet_chrome.dart';
 
 class HomeCategoriesSheet extends StatefulWidget {
@@ -69,18 +75,12 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
 
   List<_CategoryItem> get _filtered {
     if (_query.isEmpty) return _allItems;
-
     final q = _query.toLowerCase();
-
-    final labelMatches = _allItems
-        .where((i) => i.label.toLowerCase().contains(q))
-        .toSet();
-
-    final resolvedType = ProfessionResolver.resolve(_query);
+    final labelMatches   = _allItems.where((i) => i.label.toLowerCase().contains(q)).toSet();
+    final resolvedType   = ProfessionResolver.resolve(_query);
     final resolverMatches = resolvedType != null
         ? _allItems.where((i) => i.type == resolvedType).toSet()
         : <_CategoryItem>{};
-
     final matchedTypes = {...labelMatches, ...resolverMatches}.map((i) => i.type).toSet();
     return _allItems.where((i) => matchedTypes.contains(i.type)).toList();
   }
@@ -104,12 +104,11 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
         ),
         child: Column(
           children: [
-            // ── Handle ────────────────────────────────────────────────
             const SizedBox(height: AppConstants.spacingSm),
             const SheetHandle(),
             const SizedBox(height: AppConstants.spacingLg),
 
-            // ── Title row (RTL-aware) ──────────────────────────────────
+            // ── Title row ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg,
@@ -120,13 +119,10 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
                   Expanded(
                     child: Text(
                       context.tr('home.all_services'),
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(
-                            fontWeight:    FontWeight.w700,
-                            letterSpacing: isRtl ? 0.0 : -0.3,
-                          ),
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight:    FontWeight.w700,
+                        letterSpacing: isRtl ? 0.0 : -0.3,
+                      ),
                     ),
                   ),
                   SheetCloseButton(
@@ -139,83 +135,32 @@ class _HomeCategoriesSheetState extends State<HomeCategoriesSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
-            // ── Search bar ─────────────────────────────────────────────
-            // [C2-CRITICAL AUTO FIX]: was AppConstants.searchBarHeight (44dp).
-            // Now uses AppConstants.buttonHeightMd (48dp) — the canonical
-            // interactive-element height, matching advanced_search_bar.dart.
-            // searchBarHeight constant in constants.dart has also been updated
-            // to 48dp for backward-compatibility of any other call sites.
+            // ── Search bar (simple — text + ProfessionResolver, no voice) ──
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg,
               ),
-              child: Container(
-                height: AppConstants.buttonHeightMd,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkSurface.withOpacity(0.60)
-                      : AppTheme.lightSurfaceVariant,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: AppConstants.spacingMd),
-                    Icon(
-                      AppIcons.search,
-                      size:  AppConstants.iconSizeSm,
-                      color: isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
-                    const SizedBox(width: AppConstants.spacingSm),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged:  (v) => setState(() => _query = v),
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(
-                          color: isDark
-                              ? AppTheme.darkText
-                              : AppTheme.lightText,
-                        ),
-                        decoration: InputDecoration(
-                          border:         InputBorder.none,
-                          enabledBorder:  InputBorder.none,
-                          focusedBorder:  InputBorder.none,
-                          hintText:       context.tr('home.search_service'),
-                          hintStyle:      Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
-                              ),
-                          isDense:        true,
-                          contentPadding: EdgeInsets.zero,
-                          filled:         true,
-                          fillColor:      Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: AppSearchBar(
+                controller: _searchCtrl,
+                hintText:   context.tr('home.search_service'),
+                onChanged:  (v) => setState(() => _query = v),
+                isDark:     isDark,
               ),
             ),
 
             const SizedBox(height: AppConstants.spacingMd),
 
-            // ── Category grid ──────────────────────────────────────────
+            // ── Category grid ──────────────────────────────────────────────
             Expanded(
               child: items.isEmpty
                   ? Center(
                       child: Text(
                         context.tr('home.no_service_found'),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark
-                                  ? AppTheme.darkSecondaryText
-                                  : AppTheme.lightSecondaryText,
-                            ),
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
                       ),
                     )
                   : GridView.builder(
@@ -267,7 +212,6 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Unified accent — getProfessionColor() removed; all tiles use brand Indigo.
     final color = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return Semantics(
@@ -299,11 +243,11 @@ class _CategoryTile extends StatelessWidget {
               child: Text(
                 item.label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isDark
-                          ? AppTheme.darkText
-                          : AppTheme.lightSecondaryText,
-                      height: 1.2,
-                    ),
+                  color: isDark
+                      ? AppTheme.darkText
+                      : AppTheme.lightSecondaryText,
+                  height: 1.2,
+                ),
                 textAlign: TextAlign.center,
                 maxLines:  2,
                 overflow:  TextOverflow.ellipsis,

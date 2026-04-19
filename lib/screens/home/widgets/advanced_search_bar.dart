@@ -1,4 +1,14 @@
 // lib/screens/home/widgets/advanced_search_bar.dart
+//
+// CHANGES:
+//   • The inline search bar Container (search icon + TextField + clear +
+//     camera + mic) is replaced with AppSearchBar from lib/widgets/search_bar.dart.
+//     This eliminates the duplication and ensures the focus-ring fix applies here
+//     too, since AppSearchBar explicitly sets all border variants to InputBorder.none.
+//   • _kBarHeight, _kActionSize, _kTapZoneSize raw constants removed — they were
+//     only needed by the inline implementation; AppSearchBar uses AppConstants tokens.
+//   • All other logic (_onTextChanged, _onSubmitted, _onClear, _openAiSearch,
+//     _openVoice, _openCamera, the AI button row) is completely unchanged.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,26 +20,14 @@ import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
 import '../../../utils/profession_resolver.dart';
+import '../../../widgets/search_bar.dart';
 import 'ai_search_sheet.dart';
 import 'image_search_sheet.dart';
 import 'voice_search_sheet.dart';
 
-// [AUTO FIX S2]: _kBarHeight and _kTapZoneSize were raw 48.0 literals.
-// Now both reference AppConstants.buttonHeightMd — the single source of truth
-// for the 48dp interactive-element height. This also resolves the 44dp vs 48dp
-// search-bar height split with home_categories_sheet (which now also uses
-// AppConstants.buttonHeightMd via the updated searchBarHeight token).
-const double _kBarHeight   = AppConstants.buttonHeightMd;
-// [W1 FIX]: _kActionSize 38.0 → 40.0 (8dp-grid snap).
-// [UI-FIX TOUCH]: Visual size of camera/mic icons kept at 40dp.
-// The GestureDetector tap zone is enlarged to 48×48 via an outer SizedBox
-// so both the visual and the tap area are now correct.
-const double _kActionSize  = 40.0;
-const double _kTapZoneSize = AppConstants.buttonHeightMd;
 // [W1 FIX]: _kAiBtnHeight 34.0 → 32.0 (8dp-grid snap).
 const double _kAiBtnHeight = 32.0;
-// [S3 FIX]: was bare `size: 11` — off every standard scale (iconSizeXs=16).
-// 12dp is the nearest on-grid value for a badge icon inside a 20dp container.
+// [S3 FIX]: 12dp is the nearest on-grid value for a badge icon inside a 20dp container.
 const double _kAiIconBadgeSize = 12.0;
 
 class AdvancedSearchBar extends ConsumerStatefulWidget {
@@ -143,11 +141,7 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
     );
 
     final isDark  = Theme.of(context).brightness == Brightness.dark;
-    final accent  = isDark ? AppTheme.darkAccent        : AppTheme.lightAccent;
-    final subtext = isDark ? AppTheme.darkSecondaryText  : AppTheme.lightSecondaryText;
-    final border  = isDark ? AppTheme.darkBorder         : AppTheme.lightBorder;
-    final hasText = _ctrl.text.isNotEmpty;
-
+    final accent  = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
     final onPrimary = Theme.of(context).colorScheme.onPrimary;
 
     if (isMapFullscreen) return const SizedBox.shrink();
@@ -157,118 +151,31 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            height: _kBarHeight,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.darkSurface.withOpacity(0.60)
-                  : AppTheme.lightSurfaceVariant,
-              borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-              border: Border.all(color: border, width: 0.5),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: AppConstants.spacingMd),
-                Icon(AppIcons.search, size: 18, color: subtext),
-                const SizedBox(width: AppConstants.spacingSm),
-                Expanded(
-                  child: TextField(
-                    controller: _ctrl,
-                    focusNode:  _focus,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: context.tr('home.search_placeholder'),
-                      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: subtext,
-                      ),
-                      border:         InputBorder.none,
-                      enabledBorder:  InputBorder.none,
-                      focusedBorder:  InputBorder.none,
-                      isDense:        true,
-                      contentPadding: EdgeInsets.zero,
-                      filled:         true,
-                      fillColor:      Colors.transparent,
-                    ),
-                    textInputAction: TextInputAction.search,
-                    onChanged:   _onTextChanged,
-                    onSubmitted: _onSubmitted,
-                  ),
-                ),
-                if (hasText)
-                  Semantics(
-                    label:  context.tr('common.close'),
-                    button: true,
-                    child: GestureDetector(
-                      onTap: _onClear,
-                      child: SizedBox(
-                        width:  _kTapZoneSize,
-                        height: _kTapZoneSize,
-                        child: Center(
-                          child: Icon(AppIcons.close, size: 16, color: subtext),
-                        ),
-                      ),
-                    ),
-                  ),
-                Container(
-                  width:  0.5,
-                  height: AppConstants.iconSizeMd,
-                  color:  border,
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.spacingXs),
-                ),
-                Semantics(
-                  label:  context.tr('home.search_by_image'),
-                  button: true,
-                  child: GestureDetector(
-                    onTap: _openCamera,
-                    child: SizedBox(
-                      width:  _kTapZoneSize,
-                      height: _kTapZoneSize,
-                      child: Center(
-                        child: SizedBox(
-                          width:  _kActionSize,
-                          height: _kActionSize,
-                          child: Center(
-                            child: Icon(AppIcons.camera, size: 20, color: subtext),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Semantics(
-                  label:  context.tr('home.search_by_voice'),
-                  button: true,
-                  child: GestureDetector(
-                    onTap: _openVoice,
-                    child: SizedBox(
-                      width:  _kTapZoneSize,
-                      height: _kTapZoneSize,
-                      child: Center(
-                        child: Container(
-                          width:      _kActionSize,
-                          height:     _kActionSize,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Icon(AppIcons.mic, size: 18, color: onPrimary),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingXs),
-              ],
-            ),
+          // ── Search bar (camera + voice via AppSearchBar) ───────────────
+          AppSearchBar(
+            controller:   _ctrl,
+            focusNode:    _focus,
+            hintText:     context.tr('home.search_placeholder'),
+            isDark:       isDark,
+            onChanged: (v) {
+              _onTextChanged(v);
+              // When cleared via internal button, also reset the search state
+              // and unfocus — mirrors the previous _onClear() behaviour.
+              if (v.isEmpty) {
+                _focus.unfocus();
+                ref.read(homeSearchControllerProvider.notifier).reset();
+              }
+            },
+            onSubmitted:  _onSubmitted,
+            onCameraTap:  _openCamera,
+            onVoiceTap:   _openVoice,
           ),
+
           const SizedBox(height: AppConstants.spacingSm),
+
+          // ── AI search pill ─────────────────────────────────────────────
           SizedBox(
-            height: _kTapZoneSize,
+            height: AppConstants.buttonHeightMd,
             width:  double.infinity,
             child: Center(
               child: Align(
@@ -311,12 +218,6 @@ class _AdvancedSearchBarState extends ConsumerState<AdvancedSearchBar> {
                             ),
                           ),
                           const SizedBox(width: AppConstants.spacingSm),
-                          // [AUTO FIX C2]: was TextStyle(fontSize: AppConstants.fontSizeSm,
-                          // fontWeight: FontWeight.w500, color: accent) — inline TextStyle
-                          // that bypasses the textTheme, rendering at 12dp while
-                          // textTheme.labelSmall is 11dp. Now uses labelSmall?.copyWith(...)
-                          // for consistency with ai_example_chips.dart and every other
-                          // label in this file.
                           Text(
                             context.tr('home.ai_search_label'),
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
