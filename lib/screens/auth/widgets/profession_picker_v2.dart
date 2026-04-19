@@ -2,37 +2,42 @@
 //
 // SCALABLE PROFESSION PICKER — supports 8 to 100+ professions.
 //
-// Layout strategy:
-//   ≤12 professions  → 4-col grid (no search bar, no categories)
-//   13–24 professions → 4-col grid + search bar at top
-//   25+  professions  → grouped list by category + search bar + category tabs
-//
-// Data source: professionsProvider (API-driven, 24h cache, kDefaultProfessions offline)
-// Voice button: always visible (VoiceProfessionButton)
-// Auto-select: animates highlight + scrolls to selected profession
+// CHANGES:
+//   • _SearchBar removed. AppSearchBar (lib/widgets/search_bar.dart) used instead.
+//   • Voice search integrated into the search bar when showVoiceButton = true:
+//       tap mic → start recording (max 5 s)
+//       tap again → stop early + process
+//       result → ProfessionResolver.resolve() → autoSelect()
+//   • _VoicePhase state machine owned by ProfessionPickerV2State.
+//   • Compact status text (AnimatedSize) shown below the bar.
+//   • All timers disposed on widget removal.
 
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/profession_model.dart';
+import '../../../providers/core_providers.dart';
 import '../../../providers/professions_provider.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../utils/profession_resolver.dart';
+import '../../../widgets/search_bar.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _VoicePhase { idle, recording, processing }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ProfessionPickerV2 extends ConsumerStatefulWidget {
-  /// Currently selected profession key, or null.
   final String? selectedKey;
-
-  /// Called when user selects/deselects a profession.
   final ValueChanged<String?> onSelected;
-
-  /// Whether to show the voice detection button.
   final bool showVoiceButton;
 
   const ProfessionPickerV2({
@@ -49,20 +54,29 @@ class ProfessionPickerV2 extends ConsumerStatefulWidget {
 class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
     with TickerProviderStateMixin {
 
-  final TextEditingController _searchCtrl  = TextEditingController();
-  final ScrollController       _scrollCtrl  = ScrollController();
+  // ── Search / filter ──────────────────────────────────────────────────────
+  final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController      _scrollCtrl = ScrollController();
 
   Timer?  _debounce;
-  String  _query          = '';
+  String  _query            = '';
   String? _activeCategoryKey;
 
+  // ── Highlight animation ──────────────────────────────────────────────────
   late final AnimationController _highlightController;
   String? _animatedKey;
+
+  // ── Voice state machine ──────────────────────────────────────────────────
+  _VoicePhase _voicePhase   = _VoicePhase.idle;
+  int         _voiceElapsed = 0;
+  Timer?      _voiceMaxTimer;
+  Timer?      _voiceElapsedTimer;
+
+  static const int _kMaxVoiceSeconds = 5;
 
   @override
   void initState() {
     super.initState();
-
     _highlightController = AnimationController(
       vsync:    this,
       duration: const Duration(milliseconds: 600),
@@ -75,12 +89,13 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
     _scrollCtrl.dispose();
     _debounce?.cancel();
     _highlightController.dispose();
+    _voiceMaxTimer?.cancel();
+    _voiceElapsedTimer?.cancel();
     super.dispose();
   }
 
-  // ── Public: auto-select from voice detection ───────────────────────────────
+  // ── Public: auto-select (called after voice detection) ───────────────────
 
-  /// Programmatically selects a profession key with animated highlight.
   void autoSelect(String professionKey) {
     if (!mounted) return;
     widget.onSelected(professionKey);
@@ -89,22 +104,114 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
       _query       = '';
       _searchCtrl.clear();
     });
-
     _highlightController.reset();
     _highlightController.forward().then((_) {
       if (mounted) setState(() => _animatedKey = null);
     });
   }
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  // ── Voice helpers ─────────────────────────────────────────────────────────
+
+  String? get _voiceStatusText {
+    switch (_voicePhase) {
+      case _VoicePhase.idle:
+        return null;
+      case _VoicePhase.recording:
+        final remaining = _kMaxVoiceSeconds - _voiceElapsed;
+        return '${remaining}s — ${context.tr("home.voice_listening")}';
+      case _VoicePhase.processing:
+        return context.tr('home.voice_processing');
+    }
+  }
+
+  Future<void> _onVoiceTap() async {
+    // Tap while recording → stop early.
+    if (_voicePhase == _VoicePhase.recording) {
+      await _stopVoice();
+      return;
+    }
+    if (_voicePhase != _VoicePhase.idle) return;
+
+    final audioService = ref.read(audioServiceProvider);
+    final hasPerm      = await audioService.hasAudioPermission();
+    if (!mounted) return;
+
+    if (!hasPerm) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:  Text(context.tr('home.voice_mic_unavailable')),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    try {
+      await audioService.startRecording();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+
+    setState(() { _voicePhase = _VoicePhase.recording; _voiceElapsed = 0; });
+
+    _voiceElapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _voiceElapsed++);
+    });
+    _voiceMaxTimer = Timer(
+      Duration(seconds: _kMaxVoiceSeconds),
+      () { if (mounted) _stopVoice(); },
+    );
+  }
+
+  Future<void> _stopVoice() async {
+    _voiceMaxTimer?.cancel();
+    _voiceElapsedTimer?.cancel();
+    if (!mounted || _voicePhase != _VoicePhase.recording) return;
+
+    setState(() => _voicePhase = _VoicePhase.processing);
+    HapticFeedback.lightImpact();
+
+    final audioService = ref.read(audioServiceProvider);
+    final aiService    = ref.read(localAiServiceProvider);
+
+    try {
+      final path = await audioService.stopRecording();
+      if (path == null || !mounted) { _resetVoice(); return; }
+
+      final file = File(path);
+      if (!await file.exists() || !mounted) { _resetVoice(); return; }
+
+      final Uint8List bytes = await file.readAsBytes();
+      if (!mounted) return;
+
+      final intent = await aiService.extractFromAudio(bytes, mime: 'audio/m4a');
+      if (!mounted) return;
+
+      if (intent.profession != null && intent.profession!.isNotEmpty) {
+        final resolved = ProfessionResolver.resolve(intent.profession!);
+        autoSelect(resolved ?? intent.profession!);
+      }
+    } catch (_) {
+      // Silent fail — user can try again.
+    } finally {
+      _resetVoice();
+    }
+  }
+
+  void _resetVoice() {
+    _voiceMaxTimer?.cancel();
+    _voiceElapsedTimer?.cancel();
+    if (mounted) setState(() { _voicePhase = _VoicePhase.idle; _voiceElapsed = 0; });
+  }
+
+  // ── Filtering ─────────────────────────────────────────────────────────────
 
   List<ProfessionModel> _filter(List<ProfessionModel> all) {
     List<ProfessionModel> result = all.where((p) => p.isActive).toList();
-
     if (_activeCategoryKey != null) {
       result = result.where((p) => p.categoryKey == _activeCategoryKey).toList();
     }
-
     if (_query.trim().isNotEmpty) {
       final q = _query.trim().toLowerCase();
       result = result.where((p) =>
@@ -112,11 +219,8 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
         p.key.toLowerCase().contains(q)
       ).toList();
     }
-
     return result..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
-
-  // ── Layout selection ───────────────────────────────────────────────────────
 
   _Layout _layoutFor(int count) {
     if (count <= 12) return _Layout.gridSimple;
@@ -128,8 +232,8 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
 
   @override
   Widget build(BuildContext context) {
-    final isDark        = Theme.of(context).brightness == Brightness.dark;
-    final professions   = ref.watch(professionsProvider);
+    final isDark      = Theme.of(context).brightness == Brightness.dark;
+    final professions = ref.watch(professionsProvider);
 
     return professions.when(
       loading: () => const _LoadingGrid(),
@@ -143,26 +247,29 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
         final filtered  = _filter(professions);
 
         return _PickerBody(
-          all:             allActive,
-          filtered:        filtered,
-          layout:          layout,
-          isDark:          isDark,
-          selectedKey:     widget.selectedKey,
-          animatedKey:     _animatedKey,
-          highlightAnim:   _highlightController,
-          searchCtrl:      _searchCtrl,
-          scrollCtrl:      _scrollCtrl,
-          query:           _query,
+          all:              allActive,
+          filtered:         filtered,
+          layout:           layout,
+          isDark:           isDark,
+          selectedKey:      widget.selectedKey,
+          animatedKey:      _animatedKey,
+          highlightAnim:    _highlightController,
+          searchCtrl:       _searchCtrl,
+          scrollCtrl:       _scrollCtrl,
+          query:            _query,
           activeCategoryKey: _activeCategoryKey,
-          showSearch:      layout != _Layout.gridSimple,
+          showSearch:       layout != _Layout.gridSimple,
+          showVoice:        widget.showVoiceButton,
+          isVoiceActive:    _voicePhase != _VoicePhase.idle,
+          onVoiceTap:       _onVoiceTap,
+          voiceStatusText:  _voiceStatusText,
           onSearchChanged: (value) {
             _debounce?.cancel();
             _debounce = Timer(const Duration(milliseconds: 300), () {
               if (mounted) setState(() => _query = value);
             });
           },
-          onCategorySelected: (key) =>
-              setState(() => _activeCategoryKey = key),
+          onCategorySelected: (key) => setState(() => _activeCategoryKey = key),
           onTap: (key) {
             HapticFeedback.selectionClick();
             widget.onSelected(widget.selectedKey == key ? null : key);
@@ -180,7 +287,7 @@ class ProfessionPickerV2State extends ConsumerState<ProfessionPickerV2>
 enum _Layout { gridSimple, gridWithSearch, groupedList }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main picker body
+// Picker body
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PickerBody extends StatelessWidget {
@@ -196,6 +303,10 @@ class _PickerBody extends StatelessWidget {
   final String                  query;
   final String?                 activeCategoryKey;
   final bool                    showSearch;
+  final bool                    showVoice;
+  final bool                    isVoiceActive;
+  final VoidCallback            onVoiceTap;
+  final String?                 voiceStatusText;
   final ValueChanged<String>    onSearchChanged;
   final ValueChanged<String?>   onCategorySelected;
   final ValueChanged<String>    onTap;
@@ -213,6 +324,10 @@ class _PickerBody extends StatelessWidget {
     required this.query,
     required this.activeCategoryKey,
     required this.showSearch,
+    required this.showVoice,
+    required this.isVoiceActive,
+    required this.onVoiceTap,
+    required this.voiceStatusText,
     required this.onSearchChanged,
     required this.onCategorySelected,
     required this.onTap,
@@ -224,28 +339,53 @@ class _PickerBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Search bar (when needed)
+        // ── Search bar + optional voice ────────────────────────────────────
         if (showSearch) ...[
-          _SearchBar(
-            controller: searchCtrl,
-            isDark:     isDark,
-            onChanged:  onSearchChanged,
+          AppSearchBar(
+            controller:    searchCtrl,
+            hintText:      context.tr('common.search'),
+            onChanged:     onSearchChanged,
+            isDark:        isDark,
+            onVoiceTap:    showVoice ? onVoiceTap : null,
+            isVoiceActive: isVoiceActive,
+          ),
+          // Voice status line — animated so it slides in/out smoothly.
+          AnimatedSize(
+            duration: AppConstants.animDurationMicro,
+            child: voiceStatusText != null
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AppConstants.spacingXs),
+                    child: Text(
+                      voiceStatusText!,
+                      style: TextStyle(
+                        fontSize:   AppConstants.fontSizeSm,
+                        fontWeight: FontWeight.w500,
+                        color: isVoiceActive
+                            ? AppTheme.recordingRed
+                            : (isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(height: AppConstants.spacingSm),
         ],
 
-        // Category tabs (for grouped list layout)
+        // ── Category tabs (grouped list only) ─────────────────────────────
         if (layout == _Layout.groupedList) ...[
           _CategoryTabs(
-            all:            all,
-            isDark:         isDark,
-            activeKey:      activeCategoryKey,
-            onSelected:     onCategorySelected,
+            all:        all,
+            isDark:     isDark,
+            activeKey:  activeCategoryKey,
+            onSelected: onCategorySelected,
           ),
           const SizedBox(height: AppConstants.spacingMd),
         ],
 
-        // Grid
+        // ── Grid ──────────────────────────────────────────────────────────
         if (filtered.isEmpty)
           _EmptySearch(isDark: isDark)
         else
@@ -264,14 +404,13 @@ class _PickerBody extends StatelessWidget {
               final profession = filtered[index];
               final isSelected = selectedKey == profession.key;
               final isAnimated = animatedKey == profession.key;
-
               return _ProfessionTile(
-                profession:   profession,
-                isSelected:   isSelected,
-                isAnimated:   isAnimated,
+                profession:    profession,
+                isSelected:    isSelected,
+                isAnimated:    isAnimated,
                 highlightAnim: highlightAnim,
-                isDark:       isDark,
-                onTap:        () => onTap(profession.key),
+                isDark:        isDark,
+                onTap:         () => onTap(profession.key),
               );
             },
           ),
@@ -285,12 +424,12 @@ class _PickerBody extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ProfessionTile extends StatelessWidget {
-  final ProfessionModel   profession;
-  final bool              isSelected;
-  final bool              isAnimated;
+  final ProfessionModel     profession;
+  final bool                isSelected;
+  final bool                isAnimated;
   final AnimationController highlightAnim;
-  final bool              isDark;
-  final VoidCallback      onTap;
+  final bool                isDark;
+  final VoidCallback        onTap;
 
   const _ProfessionTile({
     required this.profession,
@@ -301,14 +440,11 @@ class _ProfessionTile extends StatelessWidget {
     required this.onTap,
   });
 
-  IconData _resolveIcon() {
-    return AppTheme.getProfessionIcon(profession.key);
-  }
+  IconData _resolveIcon() => AppTheme.getProfessionIcon(profession.key);
 
   @override
   Widget build(BuildContext context) {
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-
     return Semantics(
       button:   true,
       selected: isSelected,
@@ -318,13 +454,13 @@ class _ProfessionTile extends StatelessWidget {
         child: isAnimated
             ? AnimatedBuilder(
                 animation: highlightAnim,
-                builder: (_, child) => _TileContent(
-                  profession:   profession,
-                  isSelected:   isSelected,
-                  isDark:       isDark,
-                  pulseValue:   Curves.elasticOut.transform(highlightAnim.value),
-                  icon:         _resolveIcon(),
-                  accent:       accent,
+                builder: (_, __) => _TileContent(
+                  profession: profession,
+                  isSelected: isSelected,
+                  isDark:     isDark,
+                  pulseValue: Curves.elasticOut.transform(highlightAnim.value),
+                  icon:       _resolveIcon(),
+                  accent:     accent,
                 ),
               )
             : _TileContent(
@@ -360,7 +496,6 @@ class _TileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = 1.0 + (pulseValue - 1.0) * 0.05;
-
     return AnimatedContainer(
       duration: AppConstants.animDurationMicro,
       transform: Matrix4.identity()
@@ -383,7 +518,6 @@ class _TileContent extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Icon
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -392,11 +526,8 @@ class _TileContent extends StatelessWidget {
                 size:  AppConstants.iconSizeMd,
                 color: isSelected
                     ? accent
-                    : (isDark
-                        ? AppTheme.darkSecondaryText
-                        : AppTheme.lightSecondaryText),
+                    : (isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText),
               ),
-              // Check badge for selected
               if (isSelected)
                 Positioned(
                   right: -6,
@@ -408,29 +539,18 @@ class _TileContent extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: accent,
                       border: Border.all(
-                        color: isDark
-                            ? AppTheme.darkBackground
-                            : AppTheme.lightBackground,
+                        color: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
                         width: 1.5,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      size:  10,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.check_rounded, size: 10, color: Colors.white),
                   ),
                 ),
             ],
           ),
-
           const SizedBox(height: AppConstants.spacingXs),
-
-          // Label
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingXs,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingXs),
             child: Text(
               profession.label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -445,73 +565,6 @@ class _TileContent extends StatelessWidget {
               overflow:  TextOverflow.ellipsis,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Search bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final bool                  isDark;
-  final ValueChanged<String>  onChanged;
-
-  const _SearchBar({
-    required this.controller,
-    required this.isDark,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: AppConstants.searchBarHeight,
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkSurface : AppTheme.lightSurfaceVariant,
-        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: AppConstants.spacingMd),
-          Icon(
-            AppIcons.search,
-            size:  AppConstants.iconSizeSm,
-            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-          ),
-          const SizedBox(width: AppConstants.spacingSm),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged:  onChanged,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isDark ? AppTheme.darkText : AppTheme.lightText,
-              ),
-              decoration: InputDecoration(
-                border:         InputBorder.none,
-                hintText:       context.tr('common.search'),
-                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDark
-                      ? AppTheme.darkSecondaryText
-                      : AppTheme.lightSecondaryText,
-                ),
-                isDense:        true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (controller.text.isNotEmpty)
-            IconButton(
-              icon:  const Icon(AppIcons.close, size: 16),
-              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-              onPressed: () {
-                controller.clear();
-                onChanged('');
-              },
-            ),
         ],
       ),
     );
@@ -537,23 +590,19 @@ class _CategoryTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Collect unique categories preserving order
     final seen = <String>{};
-    final categories = <MapEntry<String, String>>[]; // key → label
+    final categories = <MapEntry<String, String>>[];
     for (final p in all) {
       if (seen.add(p.categoryKey)) {
         categories.add(MapEntry(p.categoryKey, p.categoryLabel));
       }
     }
-
     final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
-
     return SizedBox(
       height: 36,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          // "All" chip
           Padding(
             padding: const EdgeInsets.only(right: AppConstants.spacingXs),
             child: _CategoryChip(
@@ -571,9 +620,7 @@ class _CategoryTabs extends StatelessWidget {
               isSelected: activeKey == e.key,
               accent:     accent,
               isDark:     isDark,
-              onTap:      () => onSelected(
-                activeKey == e.key ? null : e.key,
-              ),
+              onTap:      () => onSelected(activeKey == e.key ? null : e.key),
             ),
           )),
         ],
@@ -583,10 +630,10 @@ class _CategoryTabs extends StatelessWidget {
 }
 
 class _CategoryChip extends StatelessWidget {
-  final String     label;
-  final bool       isSelected;
-  final Color      accent;
-  final bool       isDark;
+  final String       label;
+  final bool         isSelected;
+  final Color        accent;
+  final bool         isDark;
   final VoidCallback onTap;
 
   const _CategoryChip({
@@ -604,15 +651,10 @@ class _CategoryChip extends StatelessWidget {
       selected: isSelected,
       label:    label,
       child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
+        onTap: () { HapticFeedback.selectionClick(); onTap(); },
         child: AnimatedContainer(
           duration: AppConstants.animDurationMicro,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.paddingMd,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMd),
           decoration: BoxDecoration(
             color: isSelected ? accent : Colors.transparent,
             borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
@@ -651,10 +693,10 @@ class _LoadingGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
-      shrinkWrap:  true,
-      physics:     const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      physics:    const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount:   4,
+        crossAxisCount: 4,
         crossAxisSpacing: AppConstants.spacingChipGap,
         mainAxisSpacing:  AppConstants.spacingChipGap,
         childAspectRatio: 0.85,
@@ -676,7 +718,6 @@ class _LoadingGrid extends StatelessWidget {
 class _ErrorWidget extends StatelessWidget {
   final bool         isDark;
   final VoidCallback onRetry;
-
   const _ErrorWidget({required this.isDark, required this.onRetry});
 
   @override
@@ -690,10 +731,7 @@ class _ErrorWidget extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppConstants.spacingMd),
-        TextButton(
-          onPressed: onRetry,
-          child: Text(context.tr('common.retry')),
-        ),
+        TextButton(onPressed: onRetry, child: Text(context.tr('common.retry'))),
       ],
     );
   }
