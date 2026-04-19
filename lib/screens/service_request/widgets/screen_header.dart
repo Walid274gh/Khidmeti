@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/back_button.dart';
 import 'request_form_stepper.dart';
 
 // ============================================================================
@@ -50,33 +51,13 @@ class ServiceRequestScreenHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Semantics(
-                    button: true,
-                    label:  context.tr('common.back'),
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).maybePop(),
-                      child: Container(
-                        width:  48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: (isDark ? Colors.white : Colors.black)
-                              .withOpacity(0.07),
-                          borderRadius:
-                              BorderRadius.circular(AppConstants.radiusMd),
-                          border: Border.all(
-                            color: (isDark ? Colors.white : Colors.black)
-                                .withOpacity(0.08),
-                          ),
-                        ),
-                        child: Icon(
-                          AppIcons.back,
-                          size:  20,
-                          color: isDark
-                              ? AppTheme.darkText
-                              : AppTheme.lightText,
-                        ),
-                      ),
-                    ),
+                  // withBorder: true matches the original design of this
+                  // specific header. onPressed uses maybePop because the
+                  // service request screen may be at the root of a branch.
+                  AppBackButton(
+                    isDark:    isDark,
+                    withBorder: true,
+                    onPressed: () => Navigator.of(context).maybePop(),
                   ),
                   const SizedBox(width: AppConstants.spacingMd),
                   Expanded(

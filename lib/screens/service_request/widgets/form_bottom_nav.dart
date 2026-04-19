@@ -14,6 +14,7 @@ import '../../../providers/service_request_form_controller.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/back_button.dart';
 
 // ============================================================================
 // FORM BOTTOM NAV
@@ -71,35 +72,15 @@ class FormBottomNav extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Back button — shown only when onBack is provided (i.e. step > 0).
+          // useSecondaryColor: de-emphasises the arrow vs the primary CTA.
+          // withBorder: matches the visual style of this header-adjacent context.
           if (onBack != null) ...[
-            Semantics(
-              button: true,
-              label: context.tr('common.back'),
-              child: GestureDetector(
-                onTap: onBack,
-                child: Container(
-                  // [W1] FIX: 52dp → backButtonSize (48dp)
-                  width:  AppConstants.backButtonSize,
-                  height: AppConstants.backButtonSize,
-                  decoration: BoxDecoration(
-                    color: (isDark ? Colors.white : Colors.black)
-                        .withOpacity(0.06),
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusMd),
-                    border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withOpacity(0.08),
-                    ),
-                  ),
-                  child: Icon(
-                    AppIcons.back,
-                    size: 20,
-                    color: isDark
-                        ? AppTheme.darkSecondaryText
-                        : AppTheme.lightSecondaryText,
-                  ),
-                ),
-              ),
+            AppBackButton(
+              isDark:            isDark,
+              withBorder:        true,
+              useSecondaryColor: true,
+              onPressed:         onBack,
             ),
             const SizedBox(width: AppConstants.spacingSm),
           ],
