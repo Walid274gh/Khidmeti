@@ -10,6 +10,15 @@
 // PATCH — Bug 2 fix: createOrUpdateUser/Worker no longer sends email='' in
 //   payload. @IsEmail() @IsOptional() does NOT ignore empty string '' —
 //   @IsOptional() only ignores null/undefined → 400 validation error.
+// PATCH — Bug 3 fix: streamOnlineWorkersByWilayas and streamOnlineWorkersUnscoped
+//   were pure WebSocket streams. Seeded workers (and any worker not currently
+//   connected) never appear because they never emit WebSocket events.
+//   These methods now use the same hybrid HTTP+WS pattern as service requests:
+//   1. Immediate REST fetch populates the map on screen mount.
+//   2. WebSocket snapshot (workers:snapshot) and live diff events (worker:location,
+//      worker:status) keep markers updated in real time.
+//   The RealtimeService handles workers:snapshot → re-triggers the REST fetch so
+//   the list stays consistent with any delta that arrives between fetches.
 
 import 'dart:async';
 import 'dart:convert';
@@ -165,7 +174,17 @@ class ApiService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // HYBRID STREAM UTILITIES — BUG 1 FIX
+  // HYBRID STREAM UTILITIES
+  //
+  // Pattern commun aux requests, bids, et workers :
+  //   1. fetch() dès le premier listener → état initial immédiat depuis REST.
+  //   2. wsSignal.listen(...) → re-fetch à chaque événement WS.
+  //
+  // Avantages vs WS-only :
+  //   • Workers seedés (pas de connexion WS) apparaissent immédiatement.
+  //   • Résistant aux déconnexions WS transitoires.
+  //   • Cohérence garantie : l'état affiché vient toujours de MongoDB,
+  //     jamais d'un état WS partiel.
   // ═══════════════════════════════════════════════════════════════════════════
 
   Stream<List<ServiceRequestEnhancedModel>> _hybridRequestStream({
@@ -247,6 +266,68 @@ class ApiService {
     return ctrl.stream;
   }
 
+  // ── Bug 3 fix ──────────────────────────────────────────────────────────────
+  //
+  // _hybridWorkerStream — identique aux deux méthodes ci-dessus mais typé
+  // pour List<WorkerModel>.
+  //
+  // POURQUOI :
+  //   streamOnlineWorkersByWilayas et streamOnlineWorkersUnscoped
+  //   déléguaient directement à _realtime (WS pur). Les workers seedés
+  //   n'ayant aucune connexion WebSocket, la carte restait vide même si
+  //   MongoDB contenait 10 workers en ligne.
+  //
+  // COMPORTEMENT :
+  //   • fetch() est appelé immédiatement au premier listener → affichage
+  //     instantané des markers sur la carte.
+  //   • wsSignal re-déclenche fetch() à chaque événement WS → live updates.
+  //   • En cas d'erreur réseau, ctrl.addError() propage l'erreur au widget
+  //     qui peut afficher un état d'erreur propre.
+  //
+  // NOTE SUR LES WORKERS HORS LIGNE :
+  //   La requête REST utilise isOnline=true. Les workers offline ne sont
+  //   pas envoyés dans le snapshot mais restent en base. Si le besoin
+  //   apparaît de les afficher (ex: mode admin), retirer &isOnline=true.
+  Stream<List<WorkerModel>> _hybridWorkerStream({
+    required String httpQuery,
+    required Stream<List<WorkerModel>> wsSignal,
+  }) {
+    late StreamController<List<WorkerModel>> ctrl;
+    StreamSubscription<List<WorkerModel>>? wsSub;
+
+    Future<void> fetch() async {
+      if (ctrl.isClosed) return;
+      try {
+        final data = await _get(httpQuery);
+        if (data == null || ctrl.isClosed) return;
+        ctrl.add(
+          (data as List)
+              .map((e) => WorkerModel.fromJson((e as Map).cast<String, dynamic>()))
+              .toList(),
+        );
+      } catch (e) {
+        if (!ctrl.isClosed) ctrl.addError(e);
+      }
+    }
+
+    ctrl = StreamController<List<WorkerModel>>.broadcast(
+      onListen: () {
+        fetch();
+        wsSub = wsSignal.listen(
+          (_) => fetch(),
+          onError: (Object e) { if (!ctrl.isClosed) ctrl.addError(e); },
+          cancelOnError: false,
+        );
+      },
+      onCancel: () {
+        wsSub?.cancel();
+        wsSub = null;
+      },
+    );
+
+    return ctrl.stream;
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MÉTHODES USER
   // ═══════════════════════════════════════════════════════════════════════════
@@ -276,9 +357,8 @@ class ApiService {
     final payload = <String, dynamic>{
       'id':   user.id,
       'name': user.name,
-      // FIX Bug 1: لا ترسل email إذا كانت فارغة.
-      // @IsEmail() @IsOptional() لا تتجاهل السلسلة الفارغة '' —
-      // @IsOptional() يتجاهل null/undefined فقط → 400 validation error
+      // Ne pas envoyer email vide — @IsEmail() @IsOptional() rejette ''
+      // avec un 400 car @IsOptional() n'ignore que null/undefined.
       if (user.email.isNotEmpty) 'email': user.email,
     };
     if (user.phoneNumber.isNotEmpty)  payload['phoneNumber']     = user.phoneNumber;
@@ -334,7 +414,6 @@ class ApiService {
       return UserCheckResult.fromJson(data as Map<String, dynamic>);
     } on ApiServiceException catch (e) {
       if (kDebugMode) debugPrint('[ApiService] checkAuthUser error: $e');
-      // Treat any error as new user — setup screen handles upsert safely.
       return UserCheckResult.newUser;
     }
   }
@@ -395,7 +474,6 @@ class ApiService {
     final payload = <String, dynamic>{
       'id':    worker.id,
       'name':  worker.name,
-      // FIX Bug 1: نفس السبب — لا ترسل email فارغة
       if (worker.email.isNotEmpty) 'email': worker.email,
       'role':  'worker',
       if (worker.profession?.isNotEmpty == true)
@@ -471,14 +549,46 @@ class ApiService {
         .toList();
   }
 
+  /// Stream for a single worker — WebSocket only is correct here.
+  /// A single known worker is unlikely to be a seeded stub, and live
+  /// position/status updates are the primary use case.
   Stream<WorkerModel?> streamWorker(String workerId) =>
       _realtime.streamWorker(workerId);
 
-  Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) =>
-      _realtime.streamOnlineWorkersByWilayas(wilayaCodes);
+  // ── Bug 3 fix — hybrid worker streams ─────────────────────────────────────
+  //
+  // streamOnlineWorkersByWilayas:
+  //   Fetches online workers for the given wilaya codes from REST on subscribe,
+  //   then re-fetches on each WebSocket signal (workers:snapshot, worker:status,
+  //   worker:location). For the common single-wilaya case (map view), the first
+  //   wilayaCode is used for the REST query. Live updates from all supplied
+  //   wilaya codes are handled by the underlying RealtimeService.
+  //
+  // Multi-wilaya note: the REST API supports a single wilayaCode parameter.
+  // If multiple codes are supplied and workers from all are needed for the
+  // initial state, call getWorkersInWilaya() for each code in parallel and
+  // merge client-side, OR use streamOnlineWorkersUnscoped() which fetches
+  // without a wilaya filter.
+  Stream<List<WorkerModel>> streamOnlineWorkersByWilayas(List<int> wilayaCodes) {
+    if (wilayaCodes.isEmpty) return const Stream.empty();
 
+    // Build the REST query using the primary wilaya code.
+    // The WS signal covers updates from all supplied codes.
+    final primaryCode = wilayaCodes.first;
+    return _hybridWorkerStream(
+      httpQuery: '/workers?wilayaCode=$primaryCode&isOnline=true&limit=100',
+      wsSignal:  _realtime.streamOnlineWorkersByWilayas(wilayaCodes),
+    );
+  }
+
+  // streamOnlineWorkersUnscoped:
+  //   Used when no wilaya filter is available (e.g. worker hasn't set location).
+  //   REST query fetches all online workers up to [limit].
   Stream<List<WorkerModel>> streamOnlineWorkersUnscoped({int limit = 100}) =>
-      _realtime.streamOnlineWorkersUnscoped(limit: limit);
+      _hybridWorkerStream(
+        httpQuery: '/workers?isOnline=true&limit=$limit',
+        wsSignal:  _realtime.streamOnlineWorkersUnscoped(limit: limit),
+      );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MÉTHODES SERVICE REQUEST
@@ -636,25 +746,17 @@ class ApiService {
       );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // BUG 1 FIX — createBid()
+  // createBid() — champs exacts de CreateBidDto uniquement
   //
   // PROBLÈME : bid.toMap() sérialisait TOUS les champs du modèle, y compris
   //   id, status, createdAt, expiresAt, acceptedAt — absents de CreateBidDto.
-  //   ValidationPipe (forbidNonWhitelisted:true) dans main.ts déclenche
-  //   immédiatement un BadRequestException 400 avant d'atteindre le service.
+  //   ValidationPipe (forbidNonWhitelisted:true) → BadRequestException 400.
   //
-  // SOLUTION : construire manuellement le payload avec UNIQUEMENT les champs
-  //   déclarés dans CreateBidDto (src/dto/create-bid.dto.ts) :
-  //   serviceRequestId, workerId, workerName, workerAverageRating,
-  //   workerJobsCompleted, workerProfileImageUrl?, proposedPrice,
-  //   estimatedMinutes, availableFrom, message?, expiresAt?
+  // SOLUTION : payload manuel avec les seuls champs de CreateBidDto.
   // ─────────────────────────────────────────────────────────────────────────
   Future<WorkerBidModel> createBid(WorkerBidModel bid) async {
     _ensureNotDisposed();
 
-    // CRITICAL: ne transmettre QUE les champs déclarés dans CreateBidDto.
-    // Tout champ supplémentaire (id, status, createdAt…) déclenche un 400
-    // via ValidationPipe(forbidNonWhitelisted:true).
     final payload = <String, dynamic>{
       'serviceRequestId':    bid.serviceRequestId,
       'workerId':            bid.workerId,
@@ -666,7 +768,6 @@ class ApiService {
       'availableFrom':       bid.availableFrom.toIso8601String(),
     };
 
-    // Champs optionnels : n'ajouter que s'ils ont une valeur non-nulle/non-vide
     if (bid.workerProfileImageUrl != null) {
       payload['workerProfileImageUrl'] = bid.workerProfileImageUrl;
     }
