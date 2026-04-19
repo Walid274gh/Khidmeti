@@ -12,6 +12,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/localization.dart';
 import '../../utils/system_ui_overlay.dart';
+import '../../widgets/back_button.dart';
 
 
 class SubmitBidScreen extends ConsumerStatefulWidget {
@@ -115,30 +116,7 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                 ),
                 child: Row(
                   children: [
-                    Semantics(
-                      button: true,
-                      label: context.tr('common.back'),
-                      child: GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: (isDark ? Colors.white : Colors.black)
-                                .withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(
-                                AppConstants.radiusMd),
-                          ),
-                          child: Icon(
-                            AppIcons.back,
-                            size: 20,
-                            color: isDark
-                                ? AppTheme.darkText
-                                : AppTheme.lightText,
-                          ),
-                        ),
-                      ),
-                    ),
+                    AppBackButton(isDark: isDark),
                     const SizedBox(width: AppConstants.spacingMd),
                     Text(
                       context.tr('worker_browse.make_offer'),
@@ -333,10 +311,6 @@ class _SubmitBidScreenState extends ConsumerState<SubmitBidScreen> {
                                 ),
                           ),
                         ],
-                        // [DEAD CODE FIX]: removed the intentionally-empty
-                        // spread block `if (!_isSubmitting && ...) ...[...]`
-                        // — it compiled but produced no widgets and cluttered
-                        // the build method. Removed entirely.
                       ],
                     ),
                   ),
