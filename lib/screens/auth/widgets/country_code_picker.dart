@@ -5,10 +5,9 @@
 // Filtered in-place with a debounced search field.
 // Returns a [CountryCode] record via Navigator.pop.
 //
-// FIX: `const CountryCode kDefaultCountry = _kCountries[0]` was illegal —
-//   Dart does not support compile-time const indexing of a List literal.
-//   Replaced with an explicit inline const, which is semantically identical
-//   and compiles without error.
+// CHANGES:
+//   • Search bar replaced with AppSearchBar (lib/widgets/search_bar.dart).
+//     Fixes the focus-ring bug — blue OutlineInputBorder inside the bar on tap.
 
 import 'dart:async';
 
@@ -18,17 +17,17 @@ import 'package:flutter/services.dart';
 import '../../../utils/app_theme.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/localization.dart';
+import '../../../widgets/search_bar.dart';
 import '../../../widgets/sheet_chrome.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Represents a dialling country with its flag, ISO code, and dial prefix.
 class CountryCode {
   final String flag;
-  final String code;      // ISO 3166-1 alpha-2: DZ, FR, US …
-  final String dialCode;  // E.164 prefix:  +213, +33, +1 …
+  final String code;
+  final String dialCode;
   final String name;
 
   const CountryCode({
@@ -39,8 +38,6 @@ class CountryCode {
   });
 }
 
-// Curated list — DZ first, then alphabetical by name.
-// Keep this const so the list is allocated once and shared.
 const List<CountryCode> _kCountries = [
   CountryCode(flag: '🇩🇿', code: 'DZ', dialCode: '+213', name: 'Algérie'),
   CountryCode(flag: '🇲🇦', code: 'MA', dialCode: '+212', name: 'Maroc'),
@@ -64,16 +61,6 @@ const List<CountryCode> _kCountries = [
   CountryCode(flag: '🇸🇳', code: 'SN', dialCode: '+221', name: 'Sénégal'),
 ];
 
-// FIX: was `const CountryCode kDefaultCountry = _kCountries[0]`
-//
-// Dart evaluates const expressions at compile time. Indexing a List with []
-// is a runtime operation even when both the list and index are const — the
-// language spec does not define [] as a const-eligible operation.
-//
-// Solution: inline the first entry explicitly. The value is identical to
-// _kCountries[0] and remains in sync as long as DZ stays at position 0.
-// If the default country ever changes, update this constant together with
-// the list ordering.
 const CountryCode kDefaultCountry = CountryCode(
   flag:     '🇩🇿',
   code:     'DZ',
@@ -85,8 +72,6 @@ const CountryCode kDefaultCountry = CountryCode(
 // Public helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Shows the country picker bottom sheet and resolves with the selected
-/// [CountryCode], or `null` when the user dismisses without selecting.
 Future<CountryCode?> showCountryCodePicker(BuildContext context) {
   return showModalBottomSheet<CountryCode>(
     context:            context,
@@ -120,8 +105,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     super.dispose();
   }
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
-
   List<CountryCode> get _filtered {
     if (_query.trim().isEmpty) return _kCountries;
     final q = _query.trim().toLowerCase();
@@ -140,8 +123,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       if (mounted) setState(() => _query = value);
     });
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -193,64 +174,16 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
             const SizedBox(height: AppConstants.spacingMd),
 
-            // ── Search bar ─────────────────────────────────────────────────
+            // ── Search bar (simple — text only, no voice/camera) ───────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingLg,
               ),
-              child: Container(
-                height: AppConstants.searchBarHeight,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkSurface
-                      : AppTheme.lightSurfaceVariant,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: AppConstants.spacingMd),
-                    Icon(
-                      AppIcons.search,
-                      size:  AppConstants.iconSizeSm,
-                      color: isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
-                    ),
-                    const SizedBox(width: AppConstants.spacingSm),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged:  _onSearch,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                        ),
-                        decoration: InputDecoration(
-                          border:         InputBorder.none,
-                          hintText:       context.tr('common.search'),
-                          hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
-                          ),
-                          isDense:        true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ),
-                    if (_query.isNotEmpty)
-                      IconButton(
-                        icon:  const Icon(AppIcons.close, size: 16),
-                        color: isDark
-                            ? AppTheme.darkSecondaryText
-                            : AppTheme.lightSecondaryText,
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                      ),
-                  ],
-                ),
+              child: AppSearchBar(
+                controller: _searchCtrl,
+                hintText:   context.tr('common.search'),
+                onChanged:  _onSearch,
+                isDark:     isDark,
               ),
             ),
 
@@ -268,8 +201,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                         AppConstants.paddingLg,
                         AppConstants.paddingLg,
                       ),
-                      // When not filtered: add a divider after DZ (index 0).
-                      // When filtered: just a small gap between items.
                       itemCount: filtered.length,
                       separatorBuilder: (_, index) {
                         if (!_isFiltered && index == 0) {
@@ -330,14 +261,11 @@ class _CountryTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Flag emoji — rendered at 22dp to match emojiIconSize token
                 Text(
                   country.flag,
                   style: const TextStyle(fontSize: AppConstants.emojiIconSize),
                 ),
                 const SizedBox(width: AppConstants.spacingMd),
-
-                // Country name
                 Expanded(
                   child: Text(
                     country.name,
@@ -347,8 +275,6 @@ class _CountryTile extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // Dial code
                 Text(
                   country.dialCode,
                   style: TextStyle(
